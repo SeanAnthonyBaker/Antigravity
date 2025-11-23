@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { DocumentNode } from '../types';
 import ReactMarkdown from 'react-markdown';
-import tulkahLogo from 'assets/tulkah-logo.png';
+import tulkahLogo from '../assets/tulkah-logo.png';
 import { NodeService } from '../services/NodeService';
 
 interface NodeDetailsModalProps {
