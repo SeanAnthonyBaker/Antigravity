@@ -42,5 +42,15 @@ export const NodeService = {
             .eq('nodeID', nodeID);
 
         if (error) throw error;
+    },
+
+    async bulkUpdateNodes(nodes: Partial<DocumentNode>[]) {
+        const { data, error } = await supabase
+            .from('documents')
+            .upsert(nodes)
+            .select();
+
+        if (error) throw error;
+        return data as DocumentNode[];
     }
 };

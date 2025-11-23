@@ -1,31 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { DocumentNode, NodeTreeItem } from '../types';
 import { NodeService } from '../services/NodeService';
 import { NodeItem } from './NodeItem';
 import { NodeDetailsModal } from './NodeDetailsModal';
 
-export const NodeTree: React.FC = () => {
-    const [nodes, setNodes] = useState<DocumentNode[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+interface NodeTreeProps {
+    nodes: DocumentNode[];
+    expandedNodeIds: Set<number>;
+    loading: boolean;
+    error: string | null;
+    onToggle: (nodeId: number) => void;
+    onRefresh: () => void;
+}
+
+export const NodeTree: React.FC<NodeTreeProps> = ({ nodes, expandedNodeIds, loading, error, onToggle, onRefresh }) => {
     const [selectedNode, setSelectedNode] = useState<DocumentNode | null>(null);
     const [draggedNodeId, setDraggedNodeId] = useState<number | null>(null);
-
-    const loadNodes = async () => {
-        try {
-            setLoading(true);
-            const data = await NodeService.fetchNodes();
-            setNodes(data);
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        loadNodes();
-    }, []);
 
     const buildTree = (flatNodes: DocumentNode[]): NodeTreeItem[] => {
         const nodeMap = new Map<number, NodeTreeItem>();
@@ -91,11 +81,12 @@ export const NodeTree: React.FC = () => {
                 visible: true,
                 children: false,
                 type: 'folder',
-                url: ''
+                url: '',
+                urltype: undefined
             };
 
             await NodeService.createNode(newNode);
-            loadNodes();
+            onRefresh();
         } catch (err: any) {
             alert('Failed to create node: ' + err.message);
         }
@@ -105,7 +96,7 @@ export const NodeTree: React.FC = () => {
         if (node.title === newTitle) return;
         try {
             await NodeService.updateNode(node.nodeID, { title: newTitle });
-            loadNodes();
+            onRefresh();
         } catch (err: any) {
             alert('Failed to update node: ' + err.message);
         }
@@ -115,7 +106,7 @@ export const NodeTree: React.FC = () => {
         if (!confirm('Are you sure you want to delete this node?')) return;
         try {
             await NodeService.deleteNode(nodeId);
-            loadNodes();
+            onRefresh();
         } catch (err: any) {
             alert('Failed to delete node: ' + err.message);
         }
@@ -155,16 +146,14 @@ export const NodeTree: React.FC = () => {
                 order: index
             }));
 
-            const newNodes = nodes.map(n => {
-                const update = updates.find(u => u.nodeID === n.nodeID);
-                return update ? { ...n, order: update.order } : n;
-            });
-            setNodes(newNodes);
+            // Optimistic update not strictly needed as we refresh, but could be added if desired.
+            // For now, we rely on onRefresh.
 
             await Promise.all(updates.map(u => NodeService.updateNode(u.nodeID, { order: u.order })));
+            onRefresh();
         } catch (err: any) {
             alert('Failed to move node: ' + err.message);
-            loadNodes();
+            onRefresh();
         }
     };
 
@@ -184,12 +173,15 @@ export const NodeTree: React.FC = () => {
                     <NodeItem
                         key={node.nodeID}
                         node={node}
+                        isExpanded={expandedNodeIds.has(node.nodeID)}
+                        expandedNodeIds={expandedNodeIds}
                         onAdd={handleAddNode}
                         onEdit={handleEditNode}
                         onDelete={handleDeleteNode}
                         onClick={setSelectedNode}
                         onDragStart={handleDragStart}
                         onDrop={handleMoveNode}
+                        onToggle={onToggle}
                     />
                 ))
             )}
@@ -198,7 +190,7 @@ export const NodeTree: React.FC = () => {
                 <NodeDetailsModal
                     node={selectedNode}
                     onClose={() => setSelectedNode(null)}
-                    onUpdate={loadNodes}
+                    onUpdate={onRefresh}
                 />
             )}
         </div>

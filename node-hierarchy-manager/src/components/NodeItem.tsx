@@ -3,18 +3,20 @@ import type { DocumentNode, NodeTreeItem } from '../types';
 
 interface NodeItemProps {
     node: NodeTreeItem;
+    isExpanded: boolean;
+    expandedNodeIds: Set<number>;
     onAdd: (parentId: number) => void;
     onEdit: (node: DocumentNode, newTitle: string) => void;
     onDelete: (nodeId: number) => void;
     onClick: (node: DocumentNode) => void;
     onDragStart: (nodeId: number) => void;
     onDrop: (targetNodeId: number) => void;
+    onToggle: (nodeId: number) => void;
 }
 
-export const NodeItem: React.FC<NodeItemProps> = ({ node, onAdd, onEdit, onDelete, onClick, onDragStart, onDrop }) => {
+export const NodeItem: React.FC<NodeItemProps> = ({ node, isExpanded, expandedNodeIds, onAdd, onEdit, onDelete, onClick, onDragStart, onDrop, onToggle }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editTitle, setEditTitle] = useState(node.title);
-    const [isExpanded, setIsExpanded] = useState(true);
     const [isDragging, setIsDragging] = useState(false);
     const [isDragOver, setIsDragOver] = useState(false);
 
@@ -78,7 +80,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ node, onAdd, onEdit, onDelet
                 <div className="node-content">
                     <button
                         className="icon-btn"
-                        onClick={() => setIsExpanded(!isExpanded)}
+                        onClick={() => onToggle(node.nodeID)}
                         style={{ visibility: hasChildren ? 'visible' : 'hidden' }}
                     >
                         {isExpanded ? '▼' : '▶'}
@@ -105,7 +107,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ node, onAdd, onEdit, onDelet
                             onDoubleClick={() => setIsEditing(true)}
                             onClick={() => onClick(node)}
                         >
-                            {node.title}
+                            {node.title || 'Untitled Node'}
                         </span>
                     )}
                 </div>
@@ -122,12 +124,15 @@ export const NodeItem: React.FC<NodeItemProps> = ({ node, onAdd, onEdit, onDelet
                         <NodeItem
                             key={child.nodeID}
                             node={child}
+                            isExpanded={expandedNodeIds.has(child.nodeID)}
+                            expandedNodeIds={expandedNodeIds}
                             onAdd={onAdd}
                             onEdit={onEdit}
                             onDelete={onDelete}
                             onClick={onClick}
                             onDragStart={onDragStart}
                             onDrop={onDrop}
+                            onToggle={onToggle}
                         />
                     ))}
                 </div>
