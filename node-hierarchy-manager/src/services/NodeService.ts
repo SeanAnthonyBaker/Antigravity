@@ -12,6 +12,17 @@ export const NodeService = {
         return data as DocumentNode[];
     },
 
+    async getNodeById(nodeID: number) {
+        const { data, error } = await supabase
+            .from('documents')
+            .select('*')
+            .eq('nodeID', nodeID)
+            .single();
+
+        if (error) throw error;
+        return data as DocumentNode;
+    },
+
     async createNode(node: Partial<DocumentNode>) {
         const { data, error } = await supabase
             .from('documents')
