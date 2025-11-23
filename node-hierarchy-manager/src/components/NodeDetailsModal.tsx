@@ -21,6 +21,19 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
     const [showPlayer, setShowPlayer] = useState(false);
     const [blobStoreFiles, setBlobStoreFiles] = useState<string[]>([]);
 
+    // AI Prompt Assistant state
+    const [showPromptAssistant, setShowPromptAssistant] = useState(false);
+    const [aiPrompt, setAiPrompt] = useState('');
+    const [selectedLLM, setSelectedLLM] = useState('gemini-2.5-pro');
+    const [promptSize, setPromptSize] = useState<'short' | 'mid' | 'long'>('mid');
+    const [promptFormat, setPromptFormat] = useState<'text' | 'markdown'>('text');
+    const [promptStyle, setPromptStyle] = useState<'formal' | 'casual'>('formal');
+    const [notebookId, setNotebookId] = useState('');
+    const [isExecuting, setIsExecuting] = useState(false);
+    const [generatedResponse, setGeneratedResponse] = useState('');
+    const [cursorPosition, setCursorPosition] = useState(0);
+    const [userApiKey, setUserApiKey] = useState('');
+
     // Fetch files from BlobStore bucket
     useEffect(() => {
         const fetchFiles = async () => {
@@ -71,6 +84,71 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
         setEditedUrl(node.url || '');
         setEditedUrlType(node.urltype || null);
         setIsEditing(false);
+    };
+
+    const handlePasteResponse = () => {
+        if (!generatedResponse) return;
+
+        const before = editedText.substring(0, cursorPosition);
+        const after = editedText.substring(cursorPosition);
+        setEditedText(before + generatedResponse + after);
+
+        // Close the assistant and reset state
+        setShowPromptAssistant(false);
+        setAiPrompt('');
+        setGeneratedResponse('');
+    };
+
+    const handleExecutePrompt = async () => {
+        try {
+            setIsExecuting(true);
+            setGeneratedResponse(''); // Clear previous response
+
+            // Build the full prompt with parameters
+            const fullPrompt = `${aiPrompt}\n\nPlease respond in ${promptFormat} format, with a ${promptSize} length response, using a ${promptStyle} tone.`;
+
+            let responseText = '';
+
+            if (selectedLLM.startsWith('gemini')) {
+                const apiKey = import.meta.env.VITE_GEMINI_API_KEY || userApiKey;
+                if (!apiKey) {
+                    responseText = "Please enter your Gemini API Key in the field above to proceed.";
+                } else {
+                    // Use the selected LLM directly as the model ID
+                    const modelId = selectedLLM;
+
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`;
+
+                    const apiRes = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: fullPrompt }] }]
+                        })
+                    });
+
+                    if (!apiRes.ok) {
+                        const errorData = await apiRes.json();
+                        throw new Error(errorData.error?.message || apiRes.statusText);
+                    }
+
+                    const data = await apiRes.json();
+                    responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
+                }
+            } else {
+                // Placeholder for other models
+                responseText = `[Response from ${selectedLLM}]\n\n(Simulation)\nPrompt: ${fullPrompt}`;
+            }
+
+            // Store response for review/pasting
+            setGeneratedResponse(responseText);
+        } catch (err: any) {
+            setGeneratedResponse(`Error executing prompt: ${err.message}`);
+        } finally {
+            setIsExecuting(false);
+        }
     };
 
     const handlePlayMedia = () => {
@@ -147,42 +225,47 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                 padding: 40px;
                                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
                                 line-height: 1.6;
-                                color: #333;
-                                background: #f5f5f5;
+                                color: #c9d1d9;
+                                background: #0d1117;
                             }
                             .container {
                                 max-width: 900px;
                                 margin: 0 auto;
-                                background: white;
+                                background: #161b22;
                                 padding: 40px;
                                 border-radius: 8px;
-                                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                                border: 1px solid #30363d;
+                                box-shadow: 0 2px 8px rgba(0,0,0,0.5);
                             }
-                            h1 { border-bottom: 2px solid #e1e4e8; padding-bottom: 0.3em; }
-                            h2 { border-bottom: 1px solid #e1e4e8; padding-bottom: 0.3em; margin-top: 24px; }
+                            h1 { border-bottom: 2px solid #21262d; padding-bottom: 0.3em; color: #e6edf3; }
+                            h2 { border-bottom: 1px solid #21262d; padding-bottom: 0.3em; margin-top: 24px; color: #e6edf3; }
+                            h3, h4, h5, h6 { color: #e6edf3; }
                             code {
-                                background: #f6f8fa;
+                                background: rgba(110,118,129,0.4);
                                 padding: 2px 6px;
                                 border-radius: 3px;
                                 font-family: 'Courier New', monospace;
+                                color: #e6edf3;
                             }
                             pre {
-                                background: #f6f8fa;
+                                background: #161b22;
                                 padding: 16px;
                                 border-radius: 6px;
                                 overflow-x: auto;
+                                border: 1px solid #30363d;
                             }
                             pre code {
                                 background: none;
                                 padding: 0;
+                                color: #e6edf3;
                             }
                             blockquote {
-                                border-left: 4px solid #dfe2e5;
+                                border-left: 4px solid #30363d;
                                 padding-left: 16px;
-                                color: #6a737d;
+                                color: #8b949e;
                                 margin-left: 0;
                             }
-                            a { color: #0366d6; text-decoration: none; }
+                            a { color: #58a6ff; text-decoration: none; }
                             a:hover { text-decoration: underline; }
                             img { max-width: 100%; }
                             table {
@@ -191,12 +274,14 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                 margin: 16px 0;
                             }
                             table th, table td {
-                                border: 1px solid #dfe2e5;
+                                border: 1px solid #30363d;
                                 padding: 8px 12px;
+                                color: #c9d1d9;
                             }
                             table th {
-                                background: #f6f8fa;
+                                background: #161b22;
                                 font-weight: 600;
+                                color: #e6edf3;
                             }
                         </style>
                     </head>
@@ -486,14 +571,229 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                         <label>Text Content:</label>
 
                         {isEditing ? (
-                            <textarea
-                                value={editedText}
-                                onChange={(e) => setEditedText(e.target.value)}
-                                className="text-editor"
-                                placeholder="Enter markdown text..."
-                                rows={15}
-                                style={{ marginTop: '0.5rem' }}
-                            />
+                            <div style={{ position: 'relative' }}>
+                                <textarea
+                                    value={editedText}
+                                    onChange={(e) => {
+                                        setEditedText(e.target.value);
+                                        setCursorPosition(e.target.selectionStart);
+                                    }}
+                                    onSelect={(e) => setCursorPosition(e.currentTarget.selectionStart)}
+                                    onClick={(e) => {
+                                        setCursorPosition(e.currentTarget.selectionStart);
+                                    }}
+                                    onKeyUp={(e) => {
+                                        setCursorPosition(e.currentTarget.selectionStart);
+                                    }}
+                                    onDoubleClick={(e) => {
+                                        setCursorPosition(e.currentTarget.selectionStart);
+                                        if (!showPromptAssistant) setShowPromptAssistant(true);
+                                    }}
+                                    className="text-editor"
+                                    placeholder="Double-click to use AI Assistant..."
+                                    rows={15}
+                                    style={{ marginTop: '0.5rem', width: '100%' }}
+                                />
+                                {showPromptAssistant && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: 0,
+                                        width: '100%',
+                                        height: '100%',
+                                        backgroundColor: 'var(--color-bg-secondary)',
+                                        border: '1px solid var(--color-border)',
+                                        borderRadius: '4px',
+                                        padding: '1rem',
+                                        zIndex: 10,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '1rem'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Generate LLM Prompt</h3>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setShowPromptAssistant(false);
+                                                }}
+                                                style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--color-text-primary)' }}
+                                            >✕</button>
+                                        </div>
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                                            <label style={{ marginBottom: '0.5rem', fontWeight: 500 }}>Prompt:</label>
+                                            <textarea
+                                                value={aiPrompt}
+                                                onChange={(e) => setAiPrompt(e.target.value)}
+                                                placeholder="Describe what you want to generate..."
+                                                style={{
+                                                    flex: 1,
+                                                    resize: 'none',
+                                                    padding: '0.5rem',
+                                                    borderRadius: '4px',
+                                                    border: '1px solid var(--color-border)',
+                                                    backgroundColor: 'var(--color-bg-primary)',
+                                                    color: 'var(--color-text-primary)'
+                                                }}
+                                            />
+                                        </div>
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <label style={{ fontSize: '0.8rem', marginBottom: '0.25rem' }}>Size</label>
+                                                    <select
+                                                        value={promptSize}
+                                                        onChange={(e) => setPromptSize(e.target.value as any)}
+                                                        style={{ padding: '0.4rem', borderRadius: '4px', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}
+                                                    >
+                                                        <option value="short">Short</option>
+                                                        <option value="mid">Mid</option>
+                                                        <option value="long">Long</option>
+                                                    </select>
+                                                </div>
+
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <label style={{ fontSize: '0.8rem', marginBottom: '0.25rem' }}>Format</label>
+                                                    <select
+                                                        value={promptFormat}
+                                                        onChange={(e) => setPromptFormat(e.target.value as any)}
+                                                        style={{ padding: '0.4rem', borderRadius: '4px', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}
+                                                    >
+                                                        <option value="text">Text</option>
+                                                        <option value="markdown">Markdown</option>
+                                                    </select>
+                                                </div>
+
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <label style={{ fontSize: '0.8rem', marginBottom: '0.25rem' }}>Style</label>
+                                                    <select
+                                                        value={promptStyle}
+                                                        onChange={(e) => setPromptStyle(e.target.value as any)}
+                                                        style={{ padding: '0.4rem', borderRadius: '4px', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}
+                                                    >
+                                                        <option value="formal">Formal</option>
+                                                        <option value="casual">Casual</option>
+                                                    </select>
+                                                </div>
+
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <label style={{ fontSize: '0.8rem', marginBottom: '0.25rem' }}>LLM Model</label>
+                                                    <select
+                                                        value={selectedLLM}
+                                                        onChange={(e) => setSelectedLLM(e.target.value)}
+                                                        style={{ padding: '0.4rem', borderRadius: '4px', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}
+                                                    >
+                                                        <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                                                        <option value="mannus">Mannus</option>
+                                                        <option value="grok">Grok</option>
+                                                        <option value="notebook-lm">Notebook LM</option>
+                                                    </select>
+                                                </div>
+
+                                                {!import.meta.env.VITE_GEMINI_API_KEY && selectedLLM.startsWith('gemini') && (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: '200px' }}>
+                                                        <label style={{ fontSize: '0.8rem', marginBottom: '0.25rem', color: '#ef4444' }}>API Key Required</label>
+                                                        <input
+                                                            type="password"
+                                                            value={userApiKey}
+                                                            onChange={(e) => setUserApiKey(e.target.value)}
+                                                            placeholder="Enter Gemini API Key..."
+                                                            style={{
+                                                                padding: '0.4rem',
+                                                                borderRadius: '4px',
+                                                                backgroundColor: 'var(--color-bg-primary)',
+                                                                color: 'var(--color-text-primary)',
+                                                                border: '1px solid #ef4444',
+                                                                width: '100%'
+                                                            }}
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                {selectedLLM === 'notebook-lm' && (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: '200px' }}>
+                                                        <label style={{ fontSize: '0.8rem', marginBottom: '0.25rem' }}>Notebook ID</label>
+                                                        <input
+                                                            type="text"
+                                                            value={notebookId}
+                                                            onChange={(e) => setNotebookId(e.target.value)}
+                                                            placeholder="Enter ID..."
+                                                            style={{
+                                                                padding: '0.4rem',
+                                                                borderRadius: '4px',
+                                                                backgroundColor: 'var(--color-bg-primary)',
+                                                                color: 'var(--color-text-primary)',
+                                                                border: '1px solid var(--color-border)',
+                                                                width: '100%'
+                                                            }}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                                                <button
+                                                    onClick={handleExecutePrompt}
+                                                    disabled={isExecuting || !aiPrompt.trim()}
+                                                    style={{
+                                                        padding: '0.5rem 1.5rem',
+                                                        backgroundColor: '#3b82f6',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '4px',
+                                                        cursor: 'pointer',
+                                                        fontWeight: 500,
+                                                        opacity: (isExecuting || !aiPrompt.trim()) ? 0.7 : 1
+                                                    }}
+                                                >
+                                                    {isExecuting ? 'Generating...' : 'Execute'}
+                                                </button>
+                                                <button
+                                                    onClick={handlePasteResponse}
+                                                    disabled={!generatedResponse}
+                                                    style={{
+                                                        padding: '0.5rem 1.5rem',
+                                                        backgroundColor: generatedResponse ? '#10b981' : 'var(--color-bg-tertiary)', // Green when active
+                                                        color: generatedResponse ? 'white' : 'var(--color-text-primary)',
+                                                        border: generatedResponse ? 'none' : '1px solid var(--color-border)',
+                                                        borderRadius: '4px',
+                                                        cursor: 'pointer',
+                                                        fontWeight: 500,
+                                                        opacity: !generatedResponse ? 0.5 : 1,
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                >
+                                                    Paste
+                                                </button>
+                                            </div>
+
+                                            {generatedResponse && (
+                                                <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column' }}>
+                                                    <label style={{ fontSize: '0.8rem', marginBottom: '0.25rem' }}>Generated Response:</label>
+                                                    <textarea
+                                                        value={generatedResponse}
+                                                        onChange={(e) => setGeneratedResponse(e.target.value)}
+                                                        rows={6}
+                                                        placeholder="Response will appear here..."
+                                                        style={{
+                                                            padding: '0.5rem',
+                                                            borderRadius: '4px',
+                                                            border: '1px solid var(--color-border)',
+                                                            backgroundColor: 'var(--color-bg-primary)',
+                                                            color: 'var(--color-text-primary)',
+                                                            resize: 'vertical',
+                                                            fontFamily: 'monospace',
+                                                            fontSize: '0.9rem'
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         ) : (
                             <div className="rich-text-display markdown-content" style={{ marginTop: '0.5rem' }}>
                                 {editedText ? (
