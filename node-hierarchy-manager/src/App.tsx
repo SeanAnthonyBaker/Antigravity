@@ -12,6 +12,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showSaveMessage, setShowSaveMessage] = useState(false);
 
   const loadNodes = async () => {
     try {
@@ -111,7 +112,8 @@ function App() {
 
       await NodeService.bulkUpdateNodes(updates);
 
-      alert('Hierarchy saved successfully!');
+      setShowSaveMessage(true);
+      setTimeout(() => setShowSaveMessage(false), 2000);
     } catch (err: any) {
       alert('Failed to save hierarchy: ' + err.message);
     } finally {
@@ -136,6 +138,7 @@ function App() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1>Node Hierarchy Manager</h1>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          {showSaveMessage && <span style={{ color: '#4ade80', fontWeight: 'bold', animation: 'fadeIn 0.3s ease-in-out' }}>Hierarchy Saved</span>}
           <button onClick={handleSaveHierarchy} disabled={isSaving || loading}>
             {isSaving ? 'Saving...' : 'Save Hierarchy'}
           </button>
