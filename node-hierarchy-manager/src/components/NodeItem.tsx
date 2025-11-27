@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { DocumentNode, NodeTreeItem } from '../types';
+import { openMarkdownWindow } from '../utils/markdownUtils';
 
 interface NodeItemProps {
     node: NodeTreeItem;
@@ -12,9 +13,11 @@ interface NodeItemProps {
     onDragStart: (nodeId: number) => void;
     onDrop: (targetNodeId: number) => void;
     onToggle: (nodeId: number) => void;
+    onMoveUpDown: (nodeId: number, direction: 'up' | 'down') => void;
+    showActions: boolean;
 }
 
-export const NodeItem: React.FC<NodeItemProps> = ({ node, isExpanded, expandedNodeIds, onAdd, onEdit, onDelete, onClick, onDragStart, onDrop, onToggle }) => {
+export const NodeItem: React.FC<NodeItemProps> = ({ node, isExpanded, expandedNodeIds, onAdd, onEdit, onDelete, onClick, onDragStart, onDrop, onToggle, onMoveUpDown, showActions }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editTitle, setEditTitle] = useState(node.title);
     const [isDragging, setIsDragging] = useState(false);
@@ -112,9 +115,39 @@ export const NodeItem: React.FC<NodeItemProps> = ({ node, isExpanded, expandedNo
                     )}
                 </div>
                 <div className="node-actions">
-                    <button className="icon-btn" onClick={() => onAdd(node.nodeID)} title="Add Child">+</button>
-                    <button className="icon-btn" onClick={() => setIsEditing(true)} title="Edit">✎</button>
-                    <button className="icon-btn" onClick={() => onDelete(node.nodeID)} title="Delete" style={{ color: 'var(--color-danger)' }}>🗑</button>
+                    {node.urltype && (node.urltype as string) !== 'null' && (node.urltype as string) !== 'undefined' && (
+                        <span
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (node.url) {
+                                    if (node.urltype?.toLowerCase() === 'markdown') {
+                                        openMarkdownWindow(node.title, node.url);
+                                    } else {
+                                        window.open(node.url, '_blank');
+                                    }
+                                }
+                            }}
+                            style={{
+                                fontSize: '0.85rem',
+                                color: 'var(--color-primary)',
+                                marginRight: '0.5rem',
+                                cursor: node.url ? 'pointer' : 'default',
+                                textDecoration: node.url ? 'underline' : 'none'
+                            }}
+                            title={node.url ? `Open ${node.url}` : 'No URL'}
+                        >
+                            ({node.urltype})
+                        </span>
+                    )}
+                    {showActions && (
+                        <>
+                            <button className="icon-btn" onClick={() => onMoveUpDown(node.nodeID, 'up')} title="Move Up">↑</button>
+                            <button className="icon-btn" onClick={() => onMoveUpDown(node.nodeID, 'down')} title="Move Down">↓</button>
+                            <button className="icon-btn" onClick={() => onAdd(node.nodeID)} title="Add Child">+</button>
+                            <button className="icon-btn" onClick={() => setIsEditing(true)} title="Edit">✎</button>
+                            <button className="icon-btn" onClick={() => onDelete(node.nodeID)} title="Delete" style={{ color: 'var(--color-danger)' }}>🗑</button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -133,6 +166,8 @@ export const NodeItem: React.FC<NodeItemProps> = ({ node, isExpanded, expandedNo
                             onDragStart={onDragStart}
                             onDrop={onDrop}
                             onToggle={onToggle}
+                            onMoveUpDown={onMoveUpDown}
+                            showActions={showActions}
                         />
                     ))}
                 </div>

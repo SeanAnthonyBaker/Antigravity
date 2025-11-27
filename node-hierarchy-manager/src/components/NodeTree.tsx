@@ -4,6 +4,8 @@ import { NodeService } from '../services/NodeService';
 import { NodeItem } from './NodeItem';
 import { NodeDetailsModal } from './NodeDetailsModal';
 
+import { ThemeToggle } from './ThemeToggle';
+
 interface NodeTreeProps {
     nodes: DocumentNode[];
     expandedNodeIds: Set<number>;
@@ -11,9 +13,30 @@ interface NodeTreeProps {
     error: string | null;
     onToggle: (nodeId: number) => void;
     onRefresh: () => void;
+    onNodeAdded: (newNode: DocumentNode) => void;
+    onNodeUpdated: (updatedNode: DocumentNode) => void;
+    onNodeDeleted: (nodeId: number) => void;
+    onNodesUpdated: (updatedNodes: DocumentNode[]) => void;
+    onSave: () => void;
+    isSaving: boolean;
+    showSaveMessage: boolean;
 }
 
-export const NodeTree: React.FC<NodeTreeProps> = ({ nodes, expandedNodeIds, loading, error, onToggle, onRefresh }) => {
+export const NodeTree: React.FC<NodeTreeProps> = ({
+    nodes,
+    expandedNodeIds,
+    loading,
+    error,
+    onToggle,
+    onRefresh,
+    onNodeAdded,
+    onNodeUpdated,
+    onNodeDeleted,
+    onNodesUpdated,
+    onSave,
+    isSaving,
+    showSaveMessage
+}) => {
     const [selectedNode, setSelectedNode] = useState<DocumentNode | null>(null);
     const [draggedNodeId, setDraggedNodeId] = useState<number | null>(null);
 
@@ -50,14 +73,7 @@ export const NodeTree: React.FC<NodeTreeProps> = ({ nodes, expandedNodeIds, load
 
         sortNodes(roots);
 
-        const childrenOnly: NodeTreeItem[] = [];
-        roots.forEach(root => {
-            if (root.childNodes && root.childNodes.length > 0) {
-                childrenOnly.push(...root.childNodes);
-            }
-        });
-
-        return childrenOnly;
+        return roots;
     };
 
     const handleAddNode = async (parentId: number | null) => {
@@ -85,8 +101,9 @@ export const NodeTree: React.FC<NodeTreeProps> = ({ nodes, expandedNodeIds, load
                 urltype: undefined
             };
 
-            await NodeService.createNode(newNode);
-            onRefresh();
+            const createdNode = await NodeService.createNode(newNode);
+            // Use optimistic update instead of full refresh
+            onNodeAdded(createdNode);
         } catch (err: any) {
             alert('Failed to create node: ' + err.message);
         }
@@ -95,8 +112,9 @@ export const NodeTree: React.FC<NodeTreeProps> = ({ nodes, expandedNodeIds, load
     const handleEditNode = async (node: DocumentNode, newTitle: string) => {
         if (node.title === newTitle) return;
         try {
-            await NodeService.updateNode(node.nodeID, { title: newTitle });
-            onRefresh();
+            const updatedNode = await NodeService.updateNode(node.nodeID, { title: newTitle });
+            // Use optimistic update instead of full refresh
+            onNodeUpdated(updatedNode);
         } catch (err: any) {
             alert('Failed to update node: ' + err.message);
         }
@@ -106,9 +124,53 @@ export const NodeTree: React.FC<NodeTreeProps> = ({ nodes, expandedNodeIds, load
         if (!confirm('Are you sure you want to delete this node?')) return;
         try {
             await NodeService.deleteNode(nodeId);
-            onRefresh();
+            // Use optimistic update instead of full refresh
+            onNodeDeleted(nodeId);
         } catch (err: any) {
             alert('Failed to delete node: ' + err.message);
+        }
+    };
+
+    const handleMoveNodeUpDown = async (nodeId: number, direction: 'up' | 'down') => {
+        const node = nodes.find(n => n.nodeID === nodeId);
+        if (!node) return;
+
+        // Get all siblings (nodes with the same parent)
+        const siblings = nodes
+            .filter(n => n.parentNodeID === node.parentNodeID)
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+        const currentIndex = siblings.findIndex(n => n.nodeID === nodeId);
+
+        // Check if move is valid
+        if (currentIndex === -1) return;
+        if (direction === 'up' && currentIndex === 0) return;
+        if (direction === 'down' && currentIndex === siblings.length - 1) return;
+
+        // Swap positions
+        const swapIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+        const temp = siblings[currentIndex];
+        siblings[currentIndex] = siblings[swapIndex];
+        siblings[swapIndex] = temp;
+
+        try {
+            // Update order for all affected siblings
+            const updates = siblings.map((sibling, index) => ({
+                nodeID: sibling.nodeID,
+                order: index
+            }));
+
+            // Update in database
+            const updatedNodes = await Promise.all(
+                updates.map(u => NodeService.updateNode(u.nodeID, { order: u.order }))
+            );
+
+            // Use optimistic update
+            onNodesUpdated(updatedNodes);
+        } catch (err: any) {
+            alert('Failed to reorder node: ' + err.message);
+            // On error, refresh to get correct state
+            onRefresh();
         }
     };
 
@@ -146,16 +208,21 @@ export const NodeTree: React.FC<NodeTreeProps> = ({ nodes, expandedNodeIds, load
                 order: index
             }));
 
-            // Optimistic update not strictly needed as we refresh, but could be added if desired.
-            // For now, we rely on onRefresh.
+            // Update all affected nodes in the database
+            const updatedNodes = await Promise.all(
+                updates.map(u => NodeService.updateNode(u.nodeID, { order: u.order }))
+            );
 
-            await Promise.all(updates.map(u => NodeService.updateNode(u.nodeID, { order: u.order })));
-            onRefresh();
+            // Use optimistic update instead of full refresh
+            onNodesUpdated(updatedNodes);
         } catch (err: any) {
             alert('Failed to move node: ' + err.message);
+            // On error, do a full refresh to get correct state
             onRefresh();
         }
     };
+
+    const [showActions, setShowActions] = useState(true);
 
     const treeData = buildTree(nodes);
 
@@ -164,7 +231,31 @@ export const NodeTree: React.FC<NodeTreeProps> = ({ nodes, expandedNodeIds, load
 
     return (
         <div className="tree-container">
-            <h2>Document Hierarchy</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h2 style={{ margin: 0 }}>Expert quality assured Knowledge</h2>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    {showSaveMessage && <span style={{ color: '#4ade80', fontWeight: 'bold', animation: 'fadeIn 0.3s ease-in-out' }}>Hierarchy Saved</span>}
+                    <button onClick={onSave} disabled={isSaving || loading}>
+                        {isSaving ? 'Saving...' : 'Save Hierarchy'}
+                    </button>
+                    <ThemeToggle />
+                    <button
+                        onClick={() => setShowActions(!showActions)}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '1.2rem',
+                            padding: '0.5rem',
+                            borderRadius: '4px',
+                            color: 'var(--color-text-primary)'
+                        }}
+                        title={showActions ? "Hide Actions" : "Show Actions"}
+                    >
+                        ⚙️
+                    </button>
+                </div>
+            </div>
 
             {treeData.length === 0 ? (
                 <div style={{ color: '#6b7280', fontStyle: 'italic' }}>No nodes found.</div>
@@ -182,6 +273,8 @@ export const NodeTree: React.FC<NodeTreeProps> = ({ nodes, expandedNodeIds, load
                         onDragStart={handleDragStart}
                         onDrop={handleMoveNode}
                         onToggle={onToggle}
+                        onMoveUpDown={handleMoveNodeUpDown}
+                        showActions={showActions}
                     />
                 ))
             )}
