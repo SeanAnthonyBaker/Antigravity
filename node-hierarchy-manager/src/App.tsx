@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import { NodeTree } from './components/NodeTree'
 import { Auth } from './components/Auth'
@@ -20,6 +20,9 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveMessage, setShowSaveMessage] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  const loadedSessionId = useRef<string | null>(null);
 
   // Auth Effect
   useEffect(() => {
@@ -30,8 +33,15 @@ function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
+      if (event === 'SIGNED_OUT') {
+        // Clear local storage on sign out
+        localStorage.removeItem('hierarchy_nodes');
+        localStorage.removeItem('hierarchy_expanded');
+        setNodes([]);
+        setExpandedNodeIds(new Set());
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -39,14 +49,37 @@ function App() {
 
   // Node Loading Effect - Only load if authenticated
   useEffect(() => {
-    if (session) {
+    if (session?.user?.id && session.user.id !== loadedSessionId.current) {
+      loadedSessionId.current = session.user.id;
       loadNodes();
     }
-  }, [session]);
+  }, [session?.user?.id]);
 
-  const loadNodes = async () => {
+  const loadNodes = async (force = false) => {
     try {
       setLoading(true);
+
+      if (!force) {
+        const savedNodes = localStorage.getItem('hierarchy_nodes');
+        const savedExpanded = localStorage.getItem('hierarchy_expanded');
+
+        if (savedNodes) {
+          try {
+            setNodes(JSON.parse(savedNodes));
+            if (savedExpanded) {
+              setExpandedNodeIds(new Set(JSON.parse(savedExpanded)));
+            } else {
+              setExpandedNodeIds(new Set());
+            }
+            setLoading(false);
+            return;
+          } catch (e) {
+            console.error('Failed to parse saved state:', e);
+            // Fall back to server load
+          }
+        }
+      }
+
       const data = await NodeService.fetchNodes();
       setNodes(data);
 
@@ -63,8 +96,22 @@ function App() {
       setError(err.message);
     } finally {
       setLoading(false);
+      setIsInitialized(true);
     }
   };
+
+  // Save state to local storage whenever it changes
+  useEffect(() => {
+    if (isInitialized && nodes.length > 0) {
+      localStorage.setItem('hierarchy_nodes', JSON.stringify(nodes));
+    }
+  }, [nodes, isInitialized]);
+
+  useEffect(() => {
+    if (isInitialized) {
+      localStorage.setItem('hierarchy_expanded', JSON.stringify(Array.from(expandedNodeIds)));
+    }
+  }, [expandedNodeIds, isInitialized]);
 
   const handleNodeAdded = (newNode: DocumentNode) => {
     setNodes(prev => [...prev, newNode]);
@@ -221,7 +268,7 @@ function App() {
         loading={loading}
         error={error}
         onToggle={handleToggleNode}
-        onRefresh={loadNodes}
+        onRefresh={() => loadNodes(true)}
         onNodeAdded={handleNodeAdded}
         onNodeUpdated={handleNodeUpdated}
         onNodeDeleted={handleNodeDeleted}

@@ -238,6 +238,13 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                     <button onClick={onSave} disabled={isSaving || loading}>
                         {isSaving ? 'Saving...' : 'Save Hierarchy'}
                     </button>
+                    <button
+                        onClick={onRefresh}
+                        disabled={loading}
+                        title="Reload from server (discards unsaved changes)"
+                    >
+                        Refresh
+                    </button>
                     <ThemeToggle />
                     <button
                         onClick={() => setShowActions(!showActions)}

@@ -390,7 +390,7 @@ input[type="text"] {
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  backdrop-filter: blur(2px);
+  /* backdrop-filter: blur(2px); Removed to prevent flickering */
   animation: fadeIn 0.2s ease;
 }
 
@@ -652,4 +652,22 @@ select:focus {
 select option {
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
+}
+
+/* Custom Scrollbar for AI Modal to prevent flickering */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #252526;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #777;
 }
