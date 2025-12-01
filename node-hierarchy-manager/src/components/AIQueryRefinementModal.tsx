@@ -25,6 +25,7 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
     const [newNotebookId, setNewNotebookId] = useState('');
     const [newNotebookDesc, setNewNotebookDesc] = useState('');
     const [userId, setUserId] = useState<string | null>(null);
+    const [showNotebookMaintenance, setShowNotebookMaintenance] = useState(false);
 
     // Core Parameters
     const [selectedAction, setSelectedAction] = useState('');
@@ -449,13 +450,24 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
                         {/* NotebookLM Management */}
                         {selectedLLM === 'NotebookLM' && (
                             <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#2d2d2d', borderRadius: '8px', border: '1px solid #444' }}>
-                                <h3 style={{ color: '#fff', fontSize: '0.9rem', marginBottom: '0.5rem', marginTop: 0 }}>Select Notebook</h3>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                    <h3 style={{ color: '#fff', fontSize: '0.9rem', margin: 0 }}>Select Notebook</h3>
+                                    <button
+                                        onClick={() => setShowNotebookMaintenance(!showNotebookMaintenance)}
+                                        style={{
+                                            background: 'none', border: 'none', color: '#3b82f6',
+                                            cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline'
+                                        }}
+                                    >
+                                        {showNotebookMaintenance ? 'Hide Maintenance' : 'Maintain Notebooks'}
+                                    </button>
+                                </div>
                                 <select
                                     value={selectedNotebookId}
                                     onChange={(e) => setSelectedNotebookId(e.target.value)}
                                     style={{
                                         width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #444',
-                                        backgroundColor: '#1e1e1e', color: '#fff', marginBottom: '1rem'
+                                        backgroundColor: '#1e1e1e', color: '#fff', marginBottom: '0.5rem'
                                     }}
                                 >
                                     <option value="">-- Select a Notebook --</option>
@@ -464,47 +476,51 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
                                     ))}
                                 </select>
 
-                                <h3 style={{ color: '#fff', fontSize: '0.9rem', marginBottom: '0.5rem' }}>Manage Notebooks</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    <input
-                                        type="text"
-                                        placeholder="Description (e.g. My Research)"
-                                        value={newNotebookDesc}
-                                        onChange={(e) => setNewNotebookDesc(e.target.value)}
-                                        style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #444', backgroundColor: '#1e1e1e', color: '#fff' }}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Notebook ID"
-                                        value={newNotebookId}
-                                        onChange={(e) => setNewNotebookId(e.target.value)}
-                                        style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #444', backgroundColor: '#1e1e1e', color: '#fff' }}
-                                    />
-                                    <button
-                                        onClick={handleAddNotebook}
-                                        style={{
-                                            padding: '0.4rem', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer'
-                                        }}
-                                    >
-                                        Add Notebook
-                                    </button>
-                                </div>
-                                {notebooks.length > 0 && (
-                                    <div style={{ marginTop: '1rem' }}>
-                                        <label style={{ color: '#aaa', fontSize: '0.8rem' }}>Saved Notebooks:</label>
-                                        <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0 0' }}>
-                                            {notebooks.map(nb => (
-                                                <li key={nb.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem', fontSize: '0.85rem', color: '#ddd' }}>
-                                                    <span>{nb.description}</span>
-                                                    <button
-                                                        onClick={() => handleDeleteNotebook(nb.id)}
-                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem' }}
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </li>
-                                            ))}
-                                        </ul>
+                                {showNotebookMaintenance && (
+                                    <div style={{ marginTop: '1rem', borderTop: '1px solid #444', paddingTop: '1rem' }}>
+                                        <h3 style={{ color: '#fff', fontSize: '0.9rem', marginBottom: '0.5rem' }}>Manage Notebooks</h3>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            <input
+                                                type="text"
+                                                placeholder="Description (e.g. My Research)"
+                                                value={newNotebookDesc}
+                                                onChange={(e) => setNewNotebookDesc(e.target.value)}
+                                                style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #444', backgroundColor: '#1e1e1e', color: '#fff' }}
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="Notebook ID"
+                                                value={newNotebookId}
+                                                onChange={(e) => setNewNotebookId(e.target.value)}
+                                                style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #444', backgroundColor: '#1e1e1e', color: '#fff' }}
+                                            />
+                                            <button
+                                                onClick={handleAddNotebook}
+                                                style={{
+                                                    padding: '0.4rem', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer'
+                                                }}
+                                            >
+                                                Add Notebook
+                                            </button>
+                                        </div>
+                                        {notebooks.length > 0 && (
+                                            <div style={{ marginTop: '1rem' }}>
+                                                <label style={{ color: '#aaa', fontSize: '0.8rem' }}>Saved Notebooks:</label>
+                                                <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0 0' }}>
+                                                    {notebooks.map(nb => (
+                                                        <li key={nb.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem', fontSize: '0.85rem', color: '#ddd' }}>
+                                                            <span>{nb.description}</span>
+                                                            <button
+                                                                onClick={() => handleDeleteNotebook(nb.id)}
+                                                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem' }}
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
