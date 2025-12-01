@@ -300,77 +300,79 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
 
 
                     <div className="detail-row" style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
-                        <div style={{ flex: '0 0 auto', minWidth: '200px' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>URL Type:</label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                {isEditing ? (
-                                    <select
-                                        value={editedUrlType || ''}
-                                        onChange={(e) => setEditedUrlType((e.target.value || null) as 'video' | 'audio' | 'image' | 'markdown' | 'pdf' | 'png' | null)}
-                                        style={{
-                                            padding: '0.5rem',
-                                            borderRadius: '4px',
-                                            border: '1px solid var(--color-border)',
-                                            backgroundColor: 'var(--color-bg-primary)',
-                                            color: 'var(--color-text-primary)',
-                                            width: '100%'
-                                        }}
-                                    >
-                                        <option value="">None</option>
-                                        <option value="video">Video</option>
-                                        <option value="audio">Audio</option>
-                                        <option value="image">Image</option>
-                                        <option value="markdown">Markdown</option>
-                                        <option value="pdf">PDF</option>
-                                        <option value="png">PNG</option>
-                                    </select>
-                                ) : (
-                                    <>
-                                        <span style={{ marginRight: '0.5rem' }}>{currentNode.urltype || 'None'}</span>
-                                        {canPlayMedia && (
-                                            <button
-                                                onClick={handlePlayMedia}
-                                                style={{
-                                                    fontSize: '0.9rem',
-                                                    padding: '0.4rem 0.8rem',
-                                                    whiteSpace: 'nowrap'
-                                                }}
-                                            >
-                                                📄 Display
-                                            </button>
-                                        )}
-                                        {currentNode.urltype === 'pdf' && (
-                                            <button
-                                                onClick={handleDisplayPdf}
-                                                style={{
-                                                    fontSize: '0.9rem',
-                                                    padding: '0.4rem 0.8rem',
-                                                    whiteSpace: 'nowrap'
-                                                }}
-                                            >
-                                                📑 Display
-                                            </button>
-                                        )}
-                                        {currentNode.urltype === 'png' && (
-                                            <button
-                                                onClick={handleDisplayPng}
-                                                style={{
-                                                    fontSize: '0.9rem',
-                                                    padding: '0.4rem 0.8rem',
-                                                    whiteSpace: 'nowrap'
-                                                }}
-                                            >
-                                                🖼️ Display
-                                            </button>
-                                        )}
-                                    </>
-                                )}
+                        <div style={{ flex: 1, display: 'flex', gap: '1rem' }}>
+                            <div style={{ flex: '0 0 auto' }}>
+                                <label style={{ display: 'block', marginBottom: '0.5rem' }}>URL Type:</label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    {isEditing ? (
+                                        <select
+                                            value={editedUrlType || ''}
+                                            onChange={(e) => setEditedUrlType((e.target.value || null) as 'video' | 'audio' | 'image' | 'markdown' | 'pdf' | 'png' | null)}
+                                            style={{
+                                                padding: '0.5rem',
+                                                borderRadius: '4px',
+                                                border: '1px solid var(--color-border)',
+                                                backgroundColor: 'var(--color-bg-primary)',
+                                                color: 'var(--color-text-primary)',
+                                                width: '100%'
+                                            }}
+                                        >
+                                            <option value="">None</option>
+                                            <option value="video">Video</option>
+                                            <option value="audio">Audio</option>
+                                            <option value="image">Image</option>
+                                            <option value="markdown">Markdown</option>
+                                            <option value="pdf">PDF</option>
+                                            <option value="png">PNG</option>
+                                        </select>
+                                    ) : (
+                                        <>
+                                            <span style={{ marginRight: '0.5rem' }}>{currentNode.urltype || 'None'}</span>
+                                            {canPlayMedia && (
+                                                <button
+                                                    onClick={handlePlayMedia}
+                                                    style={{
+                                                        fontSize: '0.9rem',
+                                                        padding: '0.4rem 0.8rem',
+                                                        whiteSpace: 'nowrap'
+                                                    }}
+                                                >
+                                                    📄 Display
+                                                </button>
+                                            )}
+                                            {currentNode.urltype === 'pdf' && (
+                                                <button
+                                                    onClick={handleDisplayPdf}
+                                                    style={{
+                                                        fontSize: '0.9rem',
+                                                        padding: '0.4rem 0.8rem',
+                                                        whiteSpace: 'nowrap'
+                                                    }}
+                                                >
+                                                    📑 Display
+                                                </button>
+                                            )}
+                                            {currentNode.urltype === 'png' && (
+                                                <button
+                                                    onClick={handleDisplayPng}
+                                                    style={{
+                                                        fontSize: '0.9rem',
+                                                        padding: '0.4rem 0.8rem',
+                                                        whiteSpace: 'nowrap'
+                                                    }}
+                                                >
+                                                    🖼️ Display
+                                                </button>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
                             </div>
 
                             <div style={{ flex: 1, textAlign: 'left' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem' }}>URL:</label>
                                 {isEditing ? (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                         <select
                                             value=""
                                             onChange={(e) => {
@@ -384,15 +386,20 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                                 borderRadius: '4px',
                                                 border: '1px solid var(--color-border)',
                                                 backgroundColor: 'var(--color-bg-primary)',
-                                                color: 'var(--color-text-primary)'
+                                                color: 'var(--color-text-primary)',
+                                                width: '100%'
                                             }}
                                         >
                                             <option value="">-- Select from BlobStore --</option>
-                                            {blobStoreFiles.map(fileName => (
-                                                <option key={fileName} value={fileName}>
-                                                    {fileName}
-                                                </option>
-                                            ))}
+                                            {blobStoreFiles.length > 0 ? (
+                                                blobStoreFiles.map(fileName => (
+                                                    <option key={fileName} value={fileName}>
+                                                        {fileName}
+                                                    </option>
+                                                ))
+                                            ) : (
+                                                <option value="" disabled>No files found</option>
+                                            )}
                                         </select>
                                         <input
                                             type="url"
@@ -404,7 +411,8 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                                 borderRadius: '4px',
                                                 border: '1px solid var(--color-border)',
                                                 backgroundColor: 'var(--color-bg-primary)',
-                                                color: 'var(--color-text-primary)'
+                                                color: 'var(--color-text-primary)',
+                                                width: '100%'
                                             }}
                                         />
                                     </div>

@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
+import { NotebookService } from '../services/NotebookService';
+import type { UserNotebook } from '../services/NotebookService';
+import { supabase } from '../lib/supabase';
 
 interface AIQueryRefinementModalProps {
     initialText: string;
@@ -15,6 +18,13 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
     const [apiKey, setApiKey] = useState('');
     const [grokApiKey, setGrokApiKey] = useState('');
     const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+
+    // NotebookLM State
+    const [notebooks, setNotebooks] = useState<UserNotebook[]>([]);
+    const [selectedNotebookId, setSelectedNotebookId] = useState('');
+    const [newNotebookId, setNewNotebookId] = useState('');
+    const [newNotebookDesc, setNewNotebookDesc] = useState('');
+    const [userId, setUserId] = useState<string | null>(null);
 
     // Core Parameters
     const [selectedAction, setSelectedAction] = useState('');
@@ -47,7 +57,7 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
         tone: { active: false, value: '' }
     });
 
-    // Load API Keys from localStorage
+    // Load API Keys from localStorage & Fetch User/Notebooks
     useEffect(() => {
         const storedGeminiKey = localStorage.getItem('gemini_api_key');
         if (storedGeminiKey) {
@@ -61,7 +71,24 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
         if (storedGrokKey) {
             setGrokApiKey(storedGrokKey);
         }
+
+        // Fetch User and Notebooks
+        const fetchUserAndNotebooks = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                setUserId(user.id);
+                try {
+                    const userNotebooks = await NotebookService.fetchNotebooks(user.id);
+                    setNotebooks(userNotebooks);
+                } catch (err) {
+                    console.error("Failed to fetch notebooks:", err);
+                }
+            }
+        };
+        fetchUserAndNotebooks();
     }, []);
+
+    // (Removed localStorage save effect for notebooks)
 
     // Check if key is missing when LLM changes or on mount
     useEffect(() => {
@@ -77,6 +104,36 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
         } else if (selectedLLM === 'Grok') {
             setGrokApiKey(key);
             localStorage.setItem('grok_api_key', key);
+        }
+    };
+
+    const handleAddNotebook = async () => {
+        if (!newNotebookId || !newNotebookDesc) {
+            alert('Please provide both ID and Description');
+            return;
+        }
+        if (!userId) {
+            alert('You must be logged in to save notebooks.');
+            return;
+        }
+
+        try {
+            const newNotebook = await NotebookService.addNotebook(userId, newNotebookId, newNotebookDesc);
+            setNotebooks(prev => [newNotebook, ...prev]);
+            setNewNotebookId('');
+            setNewNotebookDesc('');
+        } catch (err: any) {
+            alert('Failed to add notebook: ' + err.message);
+        }
+    };
+
+    const handleDeleteNotebook = async (id: string) => {
+        try {
+            await NotebookService.deleteNotebook(id);
+            setNotebooks(prev => prev.filter(n => n.id !== id));
+            if (selectedNotebookId === id) setSelectedNotebookId(''); // Note: checking against DB id now, might need adjustment if selectedNotebookId stores the actual notebook ID string
+        } catch (err: any) {
+            alert('Failed to delete notebook: ' + err.message);
         }
     };
 
@@ -159,6 +216,10 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
             setShowApiKeyInput(true);
             return;
         }
+        if (selectedLLM === 'NotebookLM' && !selectedNotebookId) {
+            alert("Please select a Notebook.");
+            return;
+        }
 
         setIsExecuting(true);
         setGeneratedResponse('');
@@ -230,6 +291,60 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
                 }
                 const text = data.choices?.[0]?.message?.content || "No response generated.";
                 setGeneratedResponse(text);
+            } else if (selectedLLM === 'NotebookLM') {
+                const selectedNotebook = notebooks.find(n => n.id === selectedNotebookId);
+                if (!selectedNotebook) {
+                    throw new Error("Selected notebook not found.");
+                }
+
+                const response = await fetch('/api/process_query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        notebooklm_url: `https://notebooklm.google.com/notebook/${selectedNotebook.notebook_id}`,
+                        query: fullPrompt,
+                        timeout: 300
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.statusText}`);
+                }
+
+                const reader = response.body?.getReader();
+                if (!reader) throw new Error("Response body is not readable");
+
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    buffer += chunk;
+
+                    const lines = buffer.split('\n\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                if (data.chunk) {
+                                    setGeneratedResponse(prev => prev + data.chunk);
+                                } else if (data.status) {
+                                    // Optional: You could add a status state to show what's happening
+                                    console.log("Status:", data.status, data.message);
+                                } else if (data.error) {
+                                    throw new Error(data.error);
+                                }
+                            } catch (e) {
+                                console.error("Error parsing SSE data:", e);
+                            }
+                        }
+                    }
+                }
             }
 
         } catch (err: any) {
@@ -328,6 +443,70 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
                             </div>
                         )}
 
+                        {/* NotebookLM Management */}
+                        {selectedLLM === 'NotebookLM' && (
+                            <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#2d2d2d', borderRadius: '8px', border: '1px solid #444' }}>
+                                <h3 style={{ color: '#fff', fontSize: '0.9rem', marginBottom: '0.5rem', marginTop: 0 }}>Select Notebook</h3>
+                                <select
+                                    value={selectedNotebookId}
+                                    onChange={(e) => setSelectedNotebookId(e.target.value)}
+                                    style={{
+                                        width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #444',
+                                        backgroundColor: '#1e1e1e', color: '#fff', marginBottom: '1rem'
+                                    }}
+                                >
+                                    <option value="">-- Select a Notebook --</option>
+                                    {notebooks.map(nb => (
+                                        <option key={nb.id} value={nb.id}>{nb.description} ({nb.id})</option>
+                                    ))}
+                                </select>
+
+                                <h3 style={{ color: '#fff', fontSize: '0.9rem', marginBottom: '0.5rem' }}>Manage Notebooks</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="Description (e.g. My Research)"
+                                        value={newNotebookDesc}
+                                        onChange={(e) => setNewNotebookDesc(e.target.value)}
+                                        style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #444', backgroundColor: '#1e1e1e', color: '#fff' }}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Notebook ID"
+                                        value={newNotebookId}
+                                        onChange={(e) => setNewNotebookId(e.target.value)}
+                                        style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #444', backgroundColor: '#1e1e1e', color: '#fff' }}
+                                    />
+                                    <button
+                                        onClick={handleAddNotebook}
+                                        style={{
+                                            padding: '0.4rem', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer'
+                                        }}
+                                    >
+                                        Add Notebook
+                                    </button>
+                                </div>
+                                {notebooks.length > 0 && (
+                                    <div style={{ marginTop: '1rem' }}>
+                                        <label style={{ color: '#aaa', fontSize: '0.8rem' }}>Saved Notebooks:</label>
+                                        <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0 0' }}>
+                                            {notebooks.map(nb => (
+                                                <li key={nb.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem', fontSize: '0.85rem', color: '#ddd' }}>
+                                                    <span>{nb.description}</span>
+                                                    <button
+                                                        onClick={() => handleDeleteNotebook(nb.id)}
+                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem' }}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {/* Quick Actions */}
                         <div style={{ marginBottom: '1.5rem' }}>
                             <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Quick Actions</h3>
@@ -358,9 +537,9 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
                         <div style={{ marginBottom: '1.5rem' }}>
                             <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Core Query Parameters</h3>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <ParamDropdown label="LLM" value={selectedLLM} onChange={setSelectedLLM} options={['Gemini', 'Grok', 'Manus']} disabledOptions={['Manus']} />
+                                <ParamDropdown label="LLM" value={selectedLLM} onChange={setSelectedLLM} options={['Gemini', 'Grok', 'NotebookLM', 'Manus']} disabledOptions={['Manus']} />
                                 <ParamDropdown label="Style" value={style} onChange={setStyle} options={['RFP response', 'Professional', 'Casual']} />
-                                <ParamDropdown label="Length" value={length} onChange={setLength} options={['30 words', '300 words', '1000 words']} />
+                                <ParamDropdown label="Length" value={length} onChange={setLength} options={['30 words', '300 words', '1,000 words']} />
                                 <ParamDropdown label="Sources" value={sources} onChange={setSources} options={['Yes', 'No']} />
                                 <ParamDropdown label="Format" value={format} onChange={setFormat} options={['Plain written text', 'Markdown']} />
                                 <ParamDropdown label="Language" value={language} onChange={setLanguage} options={['English', 'German', 'Japanese']} />

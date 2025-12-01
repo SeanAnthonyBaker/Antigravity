@@ -236,7 +236,7 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     {showSaveMessage && <span style={{ color: '#4ade80', fontWeight: 'bold', animation: 'fadeIn 0.3s ease-in-out' }}>Hierarchy Saved</span>}
                     <button onClick={onSave} disabled={isSaving || loading}>
-                        {isSaving ? 'Saving...' : 'Save Hierarchy'}
+                        {isSaving ? 'Saving...' : 'Save View'}
                     </button>
                     <button
                         onClick={onRefresh}

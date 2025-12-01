@@ -11,6 +11,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/xai-api/, ''),
       },
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
     },
   },
 })
