@@ -297,11 +297,14 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
                     throw new Error("Selected notebook not found.");
                 }
 
+                const notebookUrl = `https://notebooklm.google.com/notebook/${selectedNotebook.notebook_id}`;
+                console.log("Calling NotebookLM with URL:", notebookUrl);
+
                 const response = await fetch('/api/process_query', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        notebooklm_url: `https://notebooklm.google.com/notebook/${selectedNotebook.notebook_id}`,
+                        notebooklm_url: notebookUrl,
                         query: fullPrompt,
                         timeout: 300
                     })
@@ -457,7 +460,7 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
                                 >
                                     <option value="">-- Select a Notebook --</option>
                                     {notebooks.map(nb => (
-                                        <option key={nb.id} value={nb.id}>{nb.description} ({nb.id})</option>
+                                        <option key={nb.id} value={nb.id}>{nb.description} ({nb.notebook_id})</option>
                                     ))}
                                 </select>
 
