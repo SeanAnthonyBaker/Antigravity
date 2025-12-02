@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 
 export const StorageService = {
     async listFiles(bucketName: string = 'BlobStore', path: string = '') {
+        console.log(`StorageService: Listing files from bucket '${bucketName}' path '${path}'...`);
         const { data, error } = await supabase
             .storage
             .from(bucketName)
@@ -11,7 +12,11 @@ export const StorageService = {
                 sortBy: { column: 'name', order: 'asc' }
             });
 
-        if (error) throw error;
+        if (error) {
+            console.error(`StorageService: Error listing files from '${bucketName}':`, error);
+            throw error;
+        }
+        console.log(`StorageService: Found ${data?.length || 0} files in '${bucketName}'`);
         return data;
     },
 

@@ -15,6 +15,7 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
     const [promptText, setPromptText] = useState(initialText);
     const [generatedResponse, setGeneratedResponse] = useState('');
     const [isExecuting, setIsExecuting] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
     const [apiKey, setApiKey] = useState('');
     const [grokApiKey, setGrokApiKey] = useState('');
     const [showApiKeyInput, setShowApiKeyInput] = useState(false);
@@ -31,8 +32,10 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
     const [selectedAction, setSelectedAction] = useState('');
     const [selectedLLM, setSelectedLLM] = useState('Gemini');
     const [style, setStyle] = useState('Professional');
-    const [length, setLength] = useState('30 words');
-    const [sources, setSources] = useState('No');
+    const [length, setLength] = useState('Similar');
+    const [customLengthValue, setCustomLengthValue] = useState('100');
+    const [sources, setSources] = useState('No reference');
+    const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
     const [format, setFormat] = useState('Plain written text');
     const [language, setLanguage] = useState('English');
     const [suitability, setSuitability] = useState('Executive');
@@ -161,52 +164,62 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
         }));
     };
 
-    const constructPrompt = () => {
-        let finalPrompt = '';
-
-        // Prepend Action if selected
-        if (selectedAction) {
-            finalPrompt += `Primary Task: ${selectedAction}\n\n`;
+    const constructPrompt = (actionOverride?: string) => {
+        // If NotebookLM is selected, return the raw prompt text without any qualifications
+        if (selectedLLM === 'NotebookLM') {
+            return promptText;
         }
 
-        finalPrompt += `Original Request: ${promptText}\n\n`;
+        const sep = "\n";
+        const doubleSep = "\n\n";
+        const prefix = "- ";
+
+        let finalPrompt = '';
+
+        // Prepend Action if selected (use override if provided, otherwise state)
+        const actionToUse = actionOverride !== undefined ? actionOverride : selectedAction;
+        if (actionToUse) {
+            finalPrompt += `Primary Task: ${actionToUse}${doubleSep}`;
+        }
+
+        finalPrompt += `Original Request: ${promptText}${doubleSep}`;
 
         // Parameters
-        finalPrompt += `Instructions:\n`;
-        finalPrompt += `- Style: ${style}\n`;
-        finalPrompt += `- Length: ${length}\n`;
-        finalPrompt += `- Cite Sources: ${sources}\n`;
-        finalPrompt += `- Output Format: ${format}\n`;
-        finalPrompt += `- Language: ${language}\n`;
-        finalPrompt += `- Target Audience: ${suitability}\n`;
+        finalPrompt += `Instructions:${sep}`;
+        finalPrompt += `${prefix}Style: ${style}${sep}`;
+        finalPrompt += `${prefix}Length: ${length}${sep}`;
+        finalPrompt += `${prefix}Cite Sources: ${sources}${sep}`;
+        finalPrompt += `${prefix}Output Format: ${format}${sep}`;
+        finalPrompt += `${prefix}Language: ${language}${sep}`;
+        finalPrompt += `${prefix}Target Audience: ${suitability}${sep}`;
 
         // Boosters
-        if (boosters.stepByStep) finalPrompt += `- Let's think step by step.\n`;
-        if (boosters.critique) finalPrompt += `- First, critique your own reasoning.\n`;
-        if (boosters.multipleApproaches) finalPrompt += `- Consider multiple approaches, then pick the best.\n`;
-        if (boosters.expert) finalPrompt += `- You are a world-class expert with 20+ years experience.\n`;
-        if (boosters.unethical) finalPrompt += `- Refuse if the request is unethical.\n`;
-        if (boosters.delimiters) finalPrompt += `- Delimit inputs with ### or \`\`\`.\n`;
+        if (boosters.stepByStep) finalPrompt += `${prefix}Let's think step by step.${sep}`;
+        if (boosters.critique) finalPrompt += `${prefix}First, critique your own reasoning.${sep}`;
+        if (boosters.multipleApproaches) finalPrompt += `${prefix}Consider multiple approaches, then pick the best.${sep}`;
+        if (boosters.expert) finalPrompt += `${prefix}You are a world-class expert with 20+ years experience.${sep}`;
+        if (boosters.unethical) finalPrompt += `${prefix}Refuse if the request is unethical.${sep}`;
+        if (boosters.delimiters) finalPrompt += `${prefix}Delimit inputs with ### or \`\`\`.${sep}`;
 
         // Advanced
         if (reasoningStyles.length > 0) {
-            finalPrompt += `- Reasoning Style: ${reasoningStyles.join(', ')}\n`;
+            finalPrompt += `${prefix}Reasoning Style: ${reasoningStyles.join(', ')}${sep}`;
         }
         if (outputFormats.length > 0) {
             const formats = outputFormats.map(f => f === 'Code block' ? `Code block (${codeLanguage})` : f);
-            finalPrompt += `- Desired Output Formats: ${formats.join(', ')}\n`;
+            finalPrompt += `${prefix}Desired Output Formats: ${formats.join(', ')}${sep}`;
         }
 
         // Constraints
-        if (constraints.maxLength.active) finalPrompt += `- Max Length Constraint: ${constraints.maxLength.value}\n`;
-        if (constraints.forbidden.active) finalPrompt += `- Forbidden words: ${constraints.forbidden.value}\n`;
-        if (constraints.keywords.active) finalPrompt += `- Must include keywords: ${constraints.keywords.value}\n`;
-        if (constraints.tone.active) finalPrompt += `- Specific Tone: ${constraints.tone.value}\n`;
+        if (constraints.maxLength.active) finalPrompt += `${prefix}Max Length Constraint: ${constraints.maxLength.value}${sep}`;
+        if (constraints.forbidden.active) finalPrompt += `${prefix}Forbidden words: ${constraints.forbidden.value}${sep}`;
+        if (constraints.keywords.active) finalPrompt += `${prefix}Must include keywords: ${constraints.keywords.value}${sep}`;
+        if (constraints.tone.active) finalPrompt += `${prefix}Specific Tone: ${constraints.tone.value}${sep}`;
 
         return finalPrompt;
     };
 
-    const handleExecute = async () => {
+    const handleExecute = async (actionOverride?: string) => {
         if (selectedLLM === 'Gemini' && !apiKey) {
             alert("Please enter a Gemini API Key.");
             setShowApiKeyInput(true);
@@ -217,7 +230,7 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
             setShowApiKeyInput(true);
             return;
         }
-        if (selectedLLM === 'NotebookLM' && !selectedNotebookId) {
+        if ((selectedLLM === 'NotebookLM' || selectedLLM === 'Manus') && !selectedNotebookId) {
             alert("Please select a Notebook.");
             return;
         }
@@ -226,7 +239,7 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
         setGeneratedResponse('');
 
         try {
-            const fullPrompt = constructPrompt();
+            const fullPrompt = constructPrompt(actionOverride);
 
             if (selectedLLM === 'Gemini') {
                 const apiModelId = 'gemini-2.5-pro';
@@ -250,8 +263,13 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
                 setGeneratedResponse(text);
 
             } else if (selectedLLM === 'Grok') {
-                // Use proxy path to avoid CORS
-                const url = '/xai-api/chat/completions';
+                // Use backend proxy to avoid CORS
+                const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+
+                // In development, use the Vite proxy directly if no API base is configured
+                // This avoids needing to run the Python backend locally for Grok
+                const useLocalProxy = import.meta.env.DEV && !apiBase;
+                const url = useLocalProxy ? '/xai-api/chat/completions' : `${apiBase}/api/grok`;
 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -260,12 +278,13 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
                         'Authorization': `Bearer ${grokApiKey}`
                     },
                     body: JSON.stringify({
-                        model: "grok-beta",
+                        model: "grok-3",
                         messages: [
                             { role: "system", content: "You are a helpful AI assistant." },
                             { role: "user", content: fullPrompt }
                         ],
-                        stream: false
+                        stream: false,
+                        temperature: 0.7
                     })
                 });
 
@@ -273,9 +292,11 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
                 if (!response.ok) {
                     if (contentType && contentType.includes('application/json')) {
                         const errData = await response.json();
+                        console.error("Grok API Error Details:", JSON.stringify(errData, null, 2));
                         throw new Error(errData.error?.message || response.statusText);
                     } else {
                         const errText = await response.text();
+                        console.error("Grok API Error Text:", errText);
                         throw new Error(`API Error (${response.status}): ${errText.slice(0, 100)}...`);
                     }
                 }
@@ -292,16 +313,21 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
                 }
                 const text = data.choices?.[0]?.message?.content || "No response generated.";
                 setGeneratedResponse(text);
-            } else if (selectedLLM === 'NotebookLM') {
+            } else if (selectedLLM === 'NotebookLM' || selectedLLM === 'Manus') {
                 const selectedNotebook = notebooks.find(n => n.id === selectedNotebookId);
                 if (!selectedNotebook) {
                     throw new Error("Selected notebook not found.");
                 }
 
-                const notebookUrl = `https://notebooklm.google.com/notebook/${selectedNotebook.notebook_id}`;
+                let notebookUrl = selectedNotebook.notebook_id;
+                // Handle case where user saved the full URL as the ID
+                if (!notebookUrl.startsWith('http')) {
+                    notebookUrl = `https://notebooklm.google.com/notebook/${notebookUrl}`;
+                }
                 console.log("Calling NotebookLM with URL:", notebookUrl);
 
-                const response = await fetch('/api/process_query', {
+                const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+                const response = await fetch(`${apiBase}/api/process_query`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -358,6 +384,67 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
         }
     };
 
+    const handleGeneratePrompt = async () => {
+        if (!apiKey) {
+            alert("Please enter a Gemini API Key to use the Generator.");
+            setShowApiKeyInput(true);
+            return;
+        }
+
+        setIsGenerating(true);
+        try {
+            const metaPrompt = `
+You are an expert prompt engineer. Your goal is to rewrite the following "Original Request" into a highly effective prompt for an LLM, based on the specified parameters.
+
+Original Request: "${promptText}"
+
+Parameters:
+- Target LLM: ${selectedLLM}
+- Style: ${style}
+- Length: ${length}
+- Cite Sources: ${sources}
+- Output Format: ${format}
+- Language: ${language}
+- Target Audience: ${suitability}
+- Boosters: ${Object.entries(boosters).filter(([_, v]) => v).map(([k]) => k).join(', ')}
+- Reasoning Styles: ${reasoningStyles.join(', ')}
+- Constraints: ${JSON.stringify(constraints)}
+
+Instructions:
+1. Incorporate all the parameters above into the structure and tone of the new prompt.
+2. Do NOT just list the parameters; weave them into the instructions for the LLM.
+3. The output should be ONLY the refined prompt text, ready to be pasted into an LLM. Do not include explanations or markdown fences around the prompt unless requested by the parameters.
+`;
+
+            const apiModelId = 'gemini-2.5-pro';
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${apiModelId}:generateContent?key=${apiKey}`;
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: metaPrompt }] }]
+                })
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error?.message || response.statusText);
+            }
+
+            const data = await response.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+            if (text) {
+                setPromptText(text.trim());
+            }
+
+        } catch (err: any) {
+            alert(`Failed to generate prompt: ${err.message}`);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     const modalContent = (
         <div style={{
             position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
@@ -379,8 +466,58 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     backgroundColor: '#252526'
                 }}>
-                    <h2 style={{ margin: 0, color: '#fff', fontSize: '1.2rem' }}>AI Query Refinement</h2>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flex: 1 }}>
+                        <h2 style={{ margin: 0, color: '#fff', fontSize: '1.2rem', whiteSpace: 'nowrap' }}>AI Query Refinement</h2>
+
+                        {/* Action Buttons Moved to Header */}
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <button
+                                onClick={handleGeneratePrompt}
+                                disabled={isExecuting || isGenerating || !!selectedAction}
+                                style={{
+                                    padding: '0.4rem 1.2rem', backgroundColor: '#8b5cf6', color: '#fff',
+                                    border: 'none', borderRadius: '6px',
+                                    cursor: (isExecuting || isGenerating || !!selectedAction) ? 'not-allowed' : 'pointer',
+                                    fontWeight: 600,
+                                    opacity: (isExecuting || isGenerating || !!selectedAction) ? 0.5 : 1,
+                                    display: (isExecuting || isGenerating) ? 'none' : 'block',
+                                    fontSize: '0.9rem'
+                                }}
+                            >
+                                {isGenerating ? 'Generating...' : 'Generate'}
+                            </button>
+                            {!isGenerating && !isExecuting && (
+                                <button
+                                    onClick={() => handleExecute()}
+                                    disabled={isExecuting || !!selectedAction}
+                                    style={{
+                                        padding: '0.4rem 1.2rem', backgroundColor: '#3b82f6', color: '#fff',
+                                        border: 'none', borderRadius: '6px',
+                                        cursor: (isExecuting || !!selectedAction) ? 'not-allowed' : 'pointer',
+                                        fontWeight: 600,
+                                        opacity: (isExecuting || !!selectedAction) ? 0.5 : 1,
+                                        fontSize: '0.9rem'
+                                    }}
+                                >
+                                    {isExecuting ? 'Executing...' : 'Execute'}
+                                </button>
+                            )}
+                            <button
+                                onClick={() => onPaste(generatedResponse)}
+                                disabled={!generatedResponse}
+                                style={{
+                                    padding: '0.4rem 1.2rem', backgroundColor: generatedResponse ? '#10b981' : '#333', color: '#fff',
+                                    border: 'none', borderRadius: '6px', cursor: generatedResponse ? 'pointer' : 'not-allowed',
+                                    fontWeight: 600, opacity: generatedResponse ? 1 : 0.5,
+                                    fontSize: '0.9rem'
+                                }}
+                            >
+                                Paste Result & Close
+                            </button>
+                        </div>
+                    </div>
+
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer', marginLeft: '1rem' }}>×</button>
                 </div>
 
                 {/* Body */}
@@ -431,235 +568,307 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
                         backfaceVisibility: 'hidden'
                     }}>
 
-                        {/* API Key Warning */}
-                        {showApiKeyInput && (
-                            <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#3f1a1a', borderRadius: '8px', border: '1px solid #ef4444' }}>
-                                <label style={{ display: 'block', color: '#fca5a5', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                                    {selectedLLM} API Key Required
-                                </label>
-                                <input
-                                    type="password"
-                                    value={selectedLLM === 'Gemini' ? apiKey : grokApiKey}
-                                    onChange={(e) => handleSaveApiKey(e.target.value)}
-                                    placeholder={`Enter ${selectedLLM} API Key...`}
-                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: 'none', backgroundColor: '#1e1e1e', color: '#fff' }}
-                                />
-                            </div>
-                        )}
-
-                        {/* NotebookLM Management */}
-                        {selectedLLM === 'NotebookLM' && (
-                            <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#2d2d2d', borderRadius: '8px', border: '1px solid #444' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                    <h3 style={{ color: '#fff', fontSize: '0.9rem', margin: 0 }}>Select Notebook</h3>
-                                    <button
-                                        onClick={() => setShowNotebookMaintenance(!showNotebookMaintenance)}
-                                        style={{
-                                            background: 'none', border: 'none', color: '#3b82f6',
-                                            cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline'
-                                        }}
-                                    >
-                                        {showNotebookMaintenance ? 'Hide Maintenance' : 'Maintain Notebooks'}
-                                    </button>
-                                </div>
-                                <select
-                                    value={selectedNotebookId}
-                                    onChange={(e) => setSelectedNotebookId(e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #444',
-                                        backgroundColor: '#1e1e1e', color: '#fff', marginBottom: '0.5rem'
-                                    }}
-                                >
-                                    <option value="">-- Select a Notebook --</option>
-                                    {notebooks.map(nb => (
-                                        <option key={nb.id} value={nb.id}>{nb.description} ({nb.notebook_id})</option>
-                                    ))}
-                                </select>
-
-                                {showNotebookMaintenance && (
-                                    <div style={{ marginTop: '1rem', borderTop: '1px solid #444', paddingTop: '1rem' }}>
-                                        <h3 style={{ color: '#fff', fontSize: '0.9rem', marginBottom: '0.5rem' }}>Manage Notebooks</h3>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                            <input
-                                                type="text"
-                                                placeholder="Description (e.g. My Research)"
-                                                value={newNotebookDesc}
-                                                onChange={(e) => setNewNotebookDesc(e.target.value)}
-                                                style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #444', backgroundColor: '#1e1e1e', color: '#fff' }}
-                                            />
-                                            <input
-                                                type="text"
-                                                placeholder="Notebook ID"
-                                                value={newNotebookId}
-                                                onChange={(e) => setNewNotebookId(e.target.value)}
-                                                style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #444', backgroundColor: '#1e1e1e', color: '#fff' }}
-                                            />
+                        {!showAdvancedOptions ? (
+                            <>
+                                {/* API Key Management */}
+                                <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#2d2d2d', borderRadius: '8px', border: '1px solid #444' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                        <label style={{ color: '#fff', fontSize: '0.9rem', margin: 0 }}>
+                                            {selectedLLM} API Key
+                                        </label>
+                                        {(selectedLLM === 'Gemini' && apiKey) || (selectedLLM === 'Grok' && grokApiKey) ? (
                                             <button
-                                                onClick={handleAddNotebook}
+                                                onClick={() => {
+                                                    if (selectedLLM === 'Gemini') setApiKey('');
+                                                    if (selectedLLM === 'Grok') setGrokApiKey('');
+                                                    setShowApiKeyInput(true);
+                                                }}
                                                 style={{
-                                                    padding: '0.4rem', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer'
+                                                    background: 'none', border: 'none', color: '#3b82f6',
+                                                    cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline'
                                                 }}
                                             >
-                                                Add Notebook
+                                                Change Key
+                                            </button>
+                                        ) : null}
+                                    </div>
+
+                                    {(showApiKeyInput || (selectedLLM === 'Gemini' && !apiKey) || (selectedLLM === 'Grok' && !grokApiKey)) && (
+                                        <input
+                                            type="password"
+                                            value={selectedLLM === 'Gemini' ? apiKey : grokApiKey}
+                                            onChange={(e) => handleSaveApiKey(e.target.value)}
+                                            placeholder={`Enter ${selectedLLM} API Key...`}
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: 'none', backgroundColor: '#1e1e1e', color: '#fff' }}
+                                        />
+                                    )}
+
+                                    {/* Status Indicator */}
+                                    {((selectedLLM === 'Gemini' && apiKey) || (selectedLLM === 'Grok' && grokApiKey)) && !showApiKeyInput && (
+                                        <div style={{ fontSize: '0.8rem', color: '#4ade80' }}>
+                                            ✓ Key loaded
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* NotebookLM / Manus Management */}
+                                {(selectedLLM === 'NotebookLM' || selectedLLM === 'Manus') && (
+                                    <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#2d2d2d', borderRadius: '8px', border: '1px solid #444' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                            <h3 style={{ color: '#fff', fontSize: '0.9rem', margin: 0 }}>Select Notebook</h3>
+                                            <button
+                                                onClick={() => setShowNotebookMaintenance(!showNotebookMaintenance)}
+                                                style={{
+                                                    background: 'none', border: 'none', color: '#3b82f6',
+                                                    cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline'
+                                                }}
+                                            >
+                                                {showNotebookMaintenance ? 'Hide Maintenance' : 'Maintain Notebooks'}
                                             </button>
                                         </div>
-                                        {notebooks.length > 0 && (
-                                            <div style={{ marginTop: '1rem' }}>
-                                                <label style={{ color: '#aaa', fontSize: '0.8rem' }}>Saved Notebooks:</label>
-                                                <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0 0' }}>
-                                                    {notebooks.map(nb => (
-                                                        <li key={nb.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem', fontSize: '0.85rem', color: '#ddd' }}>
-                                                            <span>{nb.description}</span>
-                                                            <button
-                                                                onClick={() => handleDeleteNotebook(nb.id)}
-                                                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem' }}
-                                                            >
-                                                                Delete
-                                                            </button>
-                                                        </li>
-                                                    ))}
-                                                </ul>
+                                        <select
+                                            value={selectedNotebookId}
+                                            onChange={(e) => setSelectedNotebookId(e.target.value)}
+                                            style={{
+                                                width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #444',
+                                                backgroundColor: '#1e1e1e', color: '#fff', marginBottom: '0.5rem'
+                                            }}
+                                        >
+                                            <option value="">-- Select a Notebook --</option>
+                                            {notebooks.map(nb => (
+                                                <option key={nb.id} value={nb.id}>{nb.description} ({nb.notebook_id})</option>
+                                            ))}
+                                        </select>
+
+                                        {showNotebookMaintenance && (
+                                            <div style={{ marginTop: '1rem', borderTop: '1px solid #444', paddingTop: '1rem' }}>
+                                                <h3 style={{ color: '#fff', fontSize: '0.9rem', marginBottom: '0.5rem' }}>Manage Notebooks</h3>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Description (e.g. My Research)"
+                                                        value={newNotebookDesc}
+                                                        onChange={(e) => setNewNotebookDesc(e.target.value)}
+                                                        style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #444', backgroundColor: '#1e1e1e', color: '#fff' }}
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Notebook ID"
+                                                        value={newNotebookId}
+                                                        onChange={(e) => setNewNotebookId(e.target.value)}
+                                                        style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #444', backgroundColor: '#1e1e1e', color: '#fff' }}
+                                                    />
+                                                    <button
+                                                        onClick={handleAddNotebook}
+                                                        style={{
+                                                            padding: '0.4rem', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        Add Notebook
+                                                    </button>
+                                                </div>
+                                                {notebooks.length > 0 && (
+                                                    <div style={{ marginTop: '1rem' }}>
+                                                        <label style={{ color: '#aaa', fontSize: '0.8rem' }}>Saved Notebooks:</label>
+                                                        <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0 0' }}>
+                                                            {notebooks.map(nb => (
+                                                                <li key={nb.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem', fontSize: '0.85rem', color: '#ddd' }}>
+                                                                    <span>{nb.description}</span>
+                                                                    <button
+                                                                        onClick={() => handleDeleteNotebook(nb.id)}
+                                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem' }}
+                                                                    >
+                                                                        Delete
+                                                                    </button>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>
                                 )}
-                            </div>
-                        )}
 
-                        {/* Quick Actions */}
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Quick Actions</h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                                {['Clarify', 'Proofread', 'Explain the meaning', 'Rewrite'].map(action => (
-                                    <button
-                                        key={action}
-                                        onClick={() => setSelectedAction(selectedAction === action ? '' : action)}
-                                        style={{
-                                            padding: '0.5rem',
-                                            borderRadius: '6px',
-                                            border: '1px solid',
-                                            borderColor: selectedAction === action ? '#3b82f6' : '#444',
-                                            backgroundColor: selectedAction === action ? 'rgba(59, 130, 246, 0.2)' : '#333',
-                                            color: selectedAction === action ? '#3b82f6' : '#ccc',
-                                            cursor: 'pointer',
-                                            fontSize: '0.9rem',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        {action}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Core Parameters */}
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Core Query Parameters</h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <ParamDropdown label="LLM" value={selectedLLM} onChange={setSelectedLLM} options={['Gemini', 'Grok', 'NotebookLM', 'Manus']} disabledOptions={['Manus']} />
-                                <ParamDropdown label="Style" value={style} onChange={setStyle} options={['RFP response', 'Professional', 'Casual']} />
-                                <ParamDropdown label="Length" value={length} onChange={setLength} options={['30 words', '300 words', '1,000 words']} />
-                                <ParamDropdown label="Sources" value={sources} onChange={setSources} options={['Yes', 'No']} />
-                                <ParamDropdown label="Format" value={format} onChange={setFormat} options={['Plain written text', 'Markdown']} />
-                                <ParamDropdown label="Language" value={language} onChange={setLanguage} options={['English', 'German', 'Japanese']} />
-                                <ParamDropdown label="Suitability" value={suitability} onChange={setSuitability} options={['Executive', 'IT Director', 'SAP expert', 'Child']} />
-                            </div>
-                        </div>
-
-                        {/* Boosters */}
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Proven Booster Toggles</h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                <BoosterToggle label="Let's think step by step" checked={boosters.stepByStep} onChange={() => toggleBooster('stepByStep')} />
-                                <BoosterToggle label="First, critique your own reasoning" checked={boosters.critique} onChange={() => toggleBooster('critique')} />
-                                <BoosterToggle label="Consider multiple approaches" checked={boosters.multipleApproaches} onChange={() => toggleBooster('multipleApproaches')} />
-                                <BoosterToggle label="World-class expert (20+ years)" checked={boosters.expert} onChange={() => toggleBooster('expert')} />
-                                <BoosterToggle label="Refuse if unethical" checked={boosters.unethical} onChange={() => toggleBooster('unethical')} />
-                                <BoosterToggle label="Delimit inputs with ###" checked={boosters.delimiters} onChange={() => toggleBooster('delimiters')} />
-                            </div>
-                        </div>
-
-                        {/* Advanced */}
-                        <div style={{ marginBottom: '1rem' }}>
-                            <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Advanced Options</h3>
-
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ color: '#ccc', fontSize: '0.9rem', display: 'block', marginBottom: '0.5rem' }}>Reasoning Style</label>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                    {['Chain-of-Thought', 'Tree-of-Thought', 'Step-by-step', 'Self-Consistency'].map(opt => (
-                                        <CheckButton key={opt} label={opt} checked={reasoningStyles.includes(opt)} onChange={() => toggleReasoning(opt)} />
-                                    ))}
+                                {/* Quick Actions */}
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Quick Actions</h3>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                        {['Clarify', 'Proofread', 'Summarise', 'Rewrite'].map(action => (
+                                            <button
+                                                key={action}
+                                                onClick={() => {
+                                                    const newAction = selectedAction === action ? '' : action;
+                                                    setSelectedAction(newAction);
+                                                    // If selecting a new action (not deselecting), trigger execution immediately
+                                                    if (newAction) {
+                                                        handleExecute(newAction);
+                                                    }
+                                                }}
+                                                disabled={isExecuting || isGenerating}
+                                                style={{
+                                                    padding: '0.5rem',
+                                                    borderRadius: '6px',
+                                                    border: '1px solid',
+                                                    borderColor: selectedAction === action ? '#3b82f6' : '#444',
+                                                    backgroundColor: selectedAction === action ? 'rgba(59, 130, 246, 0.2)' : '#333',
+                                                    color: selectedAction === action ? '#3b82f6' : '#ccc',
+                                                    cursor: (isExecuting || isGenerating) ? 'not-allowed' : 'pointer',
+                                                    fontSize: '0.9rem',
+                                                    transition: 'all 0.2s',
+                                                    opacity: (isExecuting || isGenerating) ? 0.6 : 1
+                                                }}
+                                            >
+                                                {action}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ color: '#ccc', fontSize: '0.9rem', display: 'block', marginBottom: '0.5rem' }}>Output Format</label>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                    {['Plain text', 'JSON', 'YAML', 'Markdown', 'Table', 'XML'].map(opt => (
-                                        <CheckButton key={opt} label={opt} checked={outputFormats.includes(opt)} onChange={() => toggleOutputFormat(opt)} />
-                                    ))}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <CheckButton label="Code block" checked={outputFormats.includes('Code block')} onChange={() => toggleOutputFormat('Code block')} />
-                                        {outputFormats.includes('Code block') && (
-                                            <input
-                                                type="text" placeholder="lang" value={codeLanguage} onChange={e => setCodeLanguage(e.target.value)}
-                                                style={{ width: '60px', padding: '0.2rem', borderRadius: '4px', border: 'none', backgroundColor: '#333', color: '#fff', fontSize: '0.8rem' }}
-                                            />
-                                        )}
+                                <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Core Query Parameters</h3>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <ParamDropdown label="LLM" value={selectedLLM} onChange={setSelectedLLM} options={['Gemini', 'Grok', 'NotebookLM', 'Manus']} />
+                                    <ParamDropdown label="Style" value={style} onChange={setStyle} options={['RFP response', 'Professional', 'Casual', '3rd Person', 'Personal']} />
+
+                                    {/* Custom Length UI */}
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <label style={{ fontSize: '0.8rem', color: '#aaa', marginBottom: '0.2rem' }}>Length</label>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <select
+                                                value={length === 'Similar' ? 'Similar' : 'Custom'}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (val === 'Similar') {
+                                                        setLength('Similar');
+                                                    } else {
+                                                        setLength(`${customLengthValue} words`);
+                                                    }
+                                                }}
+                                                style={{
+                                                    padding: '0.4rem', borderRadius: '4px', border: '1px solid #444',
+                                                    backgroundColor: '#333', color: '#fff', fontSize: '0.9rem',
+                                                    flex: 1
+                                                }}
+                                            >
+                                                <option value="Similar">Similar</option>
+                                                <option value="Custom">Custom</option>
+                                            </select>
+                                            {length !== 'Similar' && (
+                                                <input
+                                                    type="number"
+                                                    value={customLengthValue}
+                                                    onChange={(e) => {
+                                                        setCustomLengthValue(e.target.value);
+                                                        setLength(`${e.target.value} words`);
+                                                    }}
+                                                    placeholder="#"
+                                                    style={{
+                                                        width: '60px', padding: '0.4rem', borderRadius: '4px',
+                                                        border: '1px solid #444', backgroundColor: '#333', color: '#fff',
+                                                        fontSize: '0.9rem'
+                                                    }}
+                                                />
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <ParamDropdown label="Sources" value={sources} onChange={setSources} options={['No reference', 'References']} />
+                                    <ParamDropdown label="Format" value={format} onChange={setFormat} options={['Plain written text', 'Markdown']} />
+                                    <ParamDropdown label="Language" value={language} onChange={setLanguage} options={['English', 'German', 'Japanese', 'Spanish', 'French']} />
+                                    <ParamDropdown label="Suitability" value={suitability} onChange={setSuitability} options={['Executive', 'Casual', 'Technical']} />
+                                </div>
+
+                                {/* More Options Toggle */}
+                                <div
+                                    onClick={() => setShowAdvancedOptions(true)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                        marginTop: '1rem', cursor: 'pointer', color: '#3b82f6',
+                                        fontSize: '0.9rem', userSelect: 'none', justifyContent: 'flex-end'
+                                    }}
+                                >
+                                    <span>More Options &gt;</span>
+                                </div>
+                            </>
+                        ) : (
+                            <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
+                                <div
+                                    onClick={() => setShowAdvancedOptions(false)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                        marginBottom: '1rem', cursor: 'pointer', color: '#3b82f6',
+                                        fontSize: '0.9rem', userSelect: 'none'
+                                    }}
+                                >
+                                    <span>&lt; Back to Basic Options</span>
+                                </div>
+
+                                {/* Boosters */}
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <h3 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: '0.8rem', fontWeight: '600' }}>Proven Booster Toggles</h3>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem 1rem' }}>
+                                        <BoosterToggle label="Step-by-step thinking" checked={boosters.stepByStep} onChange={() => toggleBooster('stepByStep')} />
+                                        <BoosterToggle label="Critique reasoning" checked={boosters.critique} onChange={() => toggleBooster('critique')} />
+                                        <BoosterToggle label="Multiple approaches" checked={boosters.multipleApproaches} onChange={() => toggleBooster('multipleApproaches')} />
+                                        <BoosterToggle label="Expert persona" checked={boosters.expert} onChange={() => toggleBooster('expert')} />
+                                        <BoosterToggle label="Ethical filter" checked={boosters.unethical} onChange={() => toggleBooster('unethical')} />
+                                        <BoosterToggle label="Delimit inputs" checked={boosters.delimiters} onChange={() => toggleBooster('delimiters')} />
+                                    </div>
+                                </div>
+
+                                {/* Advanced */}
+                                <div>
+                                    <h3 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: '0.8rem', fontWeight: '600' }}>Advanced Options</h3>
+
+                                    <div style={{ marginBottom: '1.2rem' }}>
+                                        <label style={{ color: '#aaa', fontSize: '0.85rem', display: 'block', marginBottom: '0.5rem' }}>Reasoning Style</label>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                            {['Chain-of-Thought', 'Tree-of-Thought', 'Step-by-step', 'Self-Consistency'].map(opt => (
+                                                <CheckButton key={opt} label={opt} checked={reasoningStyles.includes(opt)} onChange={() => toggleReasoning(opt)} />
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div style={{ marginBottom: '1.2rem' }}>
+                                        <label style={{ color: '#aaa', fontSize: '0.85rem', display: 'block', marginBottom: '0.5rem' }}>Output Format</label>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                            {['Plain text', 'JSON', 'YAML', 'Markdown', 'Table', 'XML'].map(opt => (
+                                                <CheckButton key={opt} label={opt} checked={outputFormats.includes(opt)} onChange={() => toggleOutputFormat(opt)} />
+                                            ))}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <CheckButton label="Code block" checked={outputFormats.includes('Code block')} onChange={() => toggleOutputFormat('Code block')} />
+                                                {outputFormats.includes('Code block') && (
+                                                    <input
+                                                        type="text" placeholder="lang" value={codeLanguage} onChange={e => setCodeLanguage(e.target.value)}
+                                                        style={{ width: '60px', padding: '0.2rem', borderRadius: '4px', border: 'none', backgroundColor: '#333', color: '#fff', fontSize: '0.8rem' }}
+                                                    />
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', backgroundColor: '#2d2d2d', padding: '0.8rem', borderRadius: '6px' }}>
+                                        <ConstraintRow label="Max length" active={constraints.maxLength.active} value={constraints.maxLength.value}
+                                            onToggle={v => handleConstraintChange('maxLength', 'active', v)}
+                                            onChange={v => handleConstraintChange('maxLength', 'value', v)} placeholder="e.g. 500 words" />
+                                        <ConstraintRow label="Forbidden words" active={constraints.forbidden.active} value={constraints.forbidden.value}
+                                            onToggle={v => handleConstraintChange('forbidden', 'active', v)}
+                                            onChange={v => handleConstraintChange('forbidden', 'value', v)} placeholder="e.g. confidential" />
+                                        <ConstraintRow label="Keywords" active={constraints.keywords.active} value={constraints.keywords.value}
+                                            onToggle={v => handleConstraintChange('keywords', 'active', v)}
+                                            onChange={v => handleConstraintChange('keywords', 'value', v)} placeholder="Must include..." />
+                                        <ConstraintRow label="Tone" active={constraints.tone.active} value={constraints.tone.value}
+                                            onToggle={v => handleConstraintChange('tone', 'active', v)}
+                                            onChange={v => handleConstraintChange('tone', 'value', v)} placeholder="e.g. Sarcastic" />
                                     </div>
                                 </div>
                             </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                <ConstraintRow label="Max length" active={constraints.maxLength.active} value={constraints.maxLength.value}
-                                    onToggle={v => handleConstraintChange('maxLength', 'active', v)}
-                                    onChange={v => handleConstraintChange('maxLength', 'value', v)} placeholder="e.g. 500 words" />
-                                <ConstraintRow label="Forbidden words" active={constraints.forbidden.active} value={constraints.forbidden.value}
-                                    onToggle={v => handleConstraintChange('forbidden', 'active', v)}
-                                    onChange={v => handleConstraintChange('forbidden', 'value', v)} placeholder="e.g. confidential" />
-                                <ConstraintRow label="Keywords" active={constraints.keywords.active} value={constraints.keywords.value}
-                                    onToggle={v => handleConstraintChange('keywords', 'active', v)}
-                                    onChange={v => handleConstraintChange('keywords', 'value', v)} placeholder="Must include..." />
-                                <ConstraintRow label="Tone" active={constraints.tone.active} value={constraints.tone.value}
-                                    onToggle={v => handleConstraintChange('tone', 'active', v)}
-                                    onChange={v => handleConstraintChange('tone', 'value', v)} placeholder="e.g. Sarcastic" />
-                            </div>
-                        </div>
-
+                        )}
                     </div>
                 </div>
-
-                {/* Footer */}
-                <div style={{
-                    padding: '1rem', borderTop: '1px solid #333',
-                    display: 'flex', justifyContent: 'flex-end', gap: '1rem',
-                    backgroundColor: '#252526',
-                    transform: 'translateZ(0)', willChange: 'transform', backfaceVisibility: 'hidden'
-                }}>
-                    <button
-                        onClick={handleExecute}
-                        disabled={isExecuting}
-                        style={{
-                            padding: '0.6rem 2rem', backgroundColor: '#3b82f6', color: '#fff',
-                            border: 'none', borderRadius: '6px', cursor: 'pointer',
-                            fontWeight: 600, opacity: isExecuting ? 0.7 : 1
-                        }}
-                    >
-                        {isExecuting ? 'Executing...' : 'Execute'}
-                    </button>
-                    <button
-                        onClick={() => onPaste(generatedResponse)}
-                        disabled={!generatedResponse}
-                        style={{
-                            padding: '0.6rem 2rem', backgroundColor: generatedResponse ? '#10b981' : '#333', color: '#fff',
-                            border: 'none', borderRadius: '6px', cursor: generatedResponse ? 'pointer' : 'not-allowed',
-                            fontWeight: 600, opacity: generatedResponse ? 1 : 0.5
-                        }}
-                    >
-                        Paste Result & Close
-                    </button>
-                </div>
             </div>
+
+
         </div>
     );
 

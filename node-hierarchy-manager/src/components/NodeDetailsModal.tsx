@@ -50,7 +50,22 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
     useEffect(() => {
         const fetchFiles = async () => {
             try {
-                const files = await StorageService.listFiles('BlobStore');
+                // Try 'BlobStore' first
+                let files = await StorageService.listFiles('BlobStore');
+
+                // If empty or error, try 'blobstore' (lowercase)
+                if (!files || files.length === 0) {
+                    console.log("BlobStore empty, trying 'blobstore'...");
+                    try {
+                        const lowerFiles = await StorageService.listFiles('blobstore');
+                        if (lowerFiles && lowerFiles.length > 0) {
+                            files = lowerFiles;
+                        }
+                    } catch (e) {
+                        console.log("Failed to fetch from 'blobstore' as well.");
+                    }
+                }
+
                 const fileNames = files.map(file => file.name).filter(name => name); // Filter out empty names
                 setBlobStoreFiles(fileNames);
             } catch (err) {
@@ -298,8 +313,79 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
 
                 <div className="modal-body">
 
+                    <div className="detail-section">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            {/* Label removed as requested */}
+                            {isEditing && (
+                                <button
+                                    onClick={() => {
+                                        if (textareaRef.current) {
+                                            const start = textareaRef.current.selectionStart;
+                                            const end = textareaRef.current.selectionEnd;
+                                            if (start !== end) {
+                                                const selection = textareaRef.current.value.substring(start, end);
+                                                setSelectedText(selection);
+                                                setSelectionRange({ start, end });
+                                            } else {
+                                                setSelectedText('');
+                                                setSelectionRange(null);
+                                            }
+                                        }
+                                        setShowRefinementModal(true);
+                                    }}
+                                    style={{
+                                        fontSize: '0.85rem',
+                                        padding: '0.3rem 0.8rem',
+                                        backgroundColor: '#8b5cf6',
+                                        color: 'white',
+                                        border: 'none',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.3rem',
+                                        cursor: 'pointer',
+                                        borderRadius: '4px',
+                                        transition: 'background-color 0.2s',
+                                        marginLeft: 'auto' // Push to right since label is gone
+                                    }}
+                                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#7c3aed'}
+                                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#8b5cf6'}
+                                >
+                                    ✨ AI Refine
+                                </button>
+                            )}
+                        </div>
 
-                    <div className="detail-row" style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+                        {isEditing ? (
+                            <div style={{ position: 'relative' }}>
+                                <textarea
+                                    ref={textareaRef}
+                                    value={editedText}
+                                    onChange={(e) => setEditedText(e.target.value)}
+                                    className="text-editor"
+                                    placeholder="Type here..."
+                                    rows={15}
+                                    style={{ width: '100%' }}
+                                />
+                                {showRefinementModal && (
+                                    <AIQueryRefinementModal
+                                        initialText={selectedText} // Use full text if no selection
+                                        onClose={() => setShowRefinementModal(false)}
+                                        onPaste={handlePasteRefinement}
+                                    />
+                                )}
+                            </div>
+                        ) : (
+                            <div className="rich-text-display markdown-content" style={{ marginTop: '0.5rem' }}>
+                                {editedText ? (
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{editedText}</ReactMarkdown>
+                                ) : (
+                                    <span style={{ fontStyle: 'italic', color: '#9ca3af' }}>No content</span>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="detail-row" style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', marginTop: '1.5rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
                         <div style={{ flex: 1, display: 'flex', gap: '1rem' }}>
                             <div style={{ flex: '0 0 auto' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem' }}>URL Type:</label>
@@ -460,77 +546,6 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                             </audio>
                         </div>
                     )}
-
-                    <div className="detail-section">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                            <label style={{ marginBottom: 0 }}>Text Content:</label>
-                            {isEditing && (
-                                <button
-                                    onClick={() => {
-                                        if (textareaRef.current) {
-                                            const start = textareaRef.current.selectionStart;
-                                            const end = textareaRef.current.selectionEnd;
-                                            if (start !== end) {
-                                                const selection = textareaRef.current.value.substring(start, end);
-                                                setSelectedText(selection);
-                                                setSelectionRange({ start, end });
-                                            } else {
-                                                setSelectedText('');
-                                                setSelectionRange(null);
-                                            }
-                                        }
-                                        setShowRefinementModal(true);
-                                    }}
-                                    style={{
-                                        fontSize: '0.85rem',
-                                        padding: '0.3rem 0.8rem',
-                                        backgroundColor: '#8b5cf6',
-                                        color: 'white',
-                                        border: 'none',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.3rem',
-                                        cursor: 'pointer',
-                                        borderRadius: '4px',
-                                        transition: 'background-color 0.2s'
-                                    }}
-                                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#7c3aed'}
-                                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#8b5cf6'}
-                                >
-                                    ✨ AI Refine
-                                </button>
-                            )}
-                        </div>
-
-                        {isEditing ? (
-                            <div style={{ position: 'relative' }}>
-                                <textarea
-                                    ref={textareaRef}
-                                    value={editedText}
-                                    onChange={(e) => setEditedText(e.target.value)}
-                                    className="text-editor"
-                                    placeholder="Type here..."
-                                    rows={15}
-                                    style={{ width: '100%' }}
-                                />
-                                {showRefinementModal && (
-                                    <AIQueryRefinementModal
-                                        initialText={selectedText || editedText} // Use full text if no selection
-                                        onClose={() => setShowRefinementModal(false)}
-                                        onPaste={handlePasteRefinement}
-                                    />
-                                )}
-                            </div>
-                        ) : (
-                            <div className="rich-text-display markdown-content" style={{ marginTop: '0.5rem' }}>
-                                {editedText ? (
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{editedText}</ReactMarkdown>
-                                ) : (
-                                    <span style={{ fontStyle: 'italic', color: '#9ca3af' }}>No content</span>
-                                )}
-                            </div>
-                        )}
-                    </div>
                 </div>
             </div>
         </div>
