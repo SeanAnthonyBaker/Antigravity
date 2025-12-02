@@ -39,6 +39,8 @@ services:
     environment:
       # This is the GCS path the entrypoint script will use to download the profile
       - CHROME_PROFILE_GCS_PATH=${CHROME_PROFILE_GCS_PATH}
+      - SE_SCREEN_WIDTH=1920
+      - SE_SCREEN_HEIGHT=1080
     volumes:
       # This line mounts the local gcloud credentials to the read-only path expected
       # by the entrypoint-selenium.sh script. The script will then copy these to the
