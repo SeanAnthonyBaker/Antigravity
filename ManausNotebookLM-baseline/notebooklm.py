@@ -70,6 +70,8 @@ def initialize_browser():
     chrome_options.add_argument('--disable-blink-features=AutomationControlled')
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     
+    chrome_options.add_argument("--start-maximized")
+    
     # Using a realistic or slightly future-dated User-Agent helps avoid bot detection.
     # This is configurable via the CHROME_USER_AGENT environment variable.
     default_user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/138.0.7204.157 Safari/537.36'
@@ -86,6 +88,7 @@ def initialize_browser():
             options=chrome_options
         )
         browser_instance.set_page_load_timeout(60)
+        browser_instance.maximize_window()
         logger.info("WebDriver initialized successfully and connected to Selenium Hub.")
         return True
     except Exception as e:
