@@ -230,7 +230,7 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
             setShowApiKeyInput(true);
             return;
         }
-        if ((selectedLLM === 'NotebookLM' || selectedLLM === 'Deepseek') && !selectedNotebookId) {
+        if (selectedLLM === 'NotebookLM' && !selectedNotebookId) {
             alert("Please select a Notebook.");
             return;
         }
@@ -313,7 +313,7 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
                 }
                 const text = data.choices?.[0]?.message?.content || "No response generated.";
                 setGeneratedResponse(text);
-            } else if (selectedLLM === 'NotebookLM' || selectedLLM === 'Deepseek') {
+            } else if (selectedLLM === 'NotebookLM') {
                 const selectedNotebook = notebooks.find(n => n.id === selectedNotebookId);
                 if (!selectedNotebook) {
                     throw new Error("Selected notebook not found.");
@@ -611,8 +611,8 @@ Instructions:
                                     )}
                                 </div>
 
-                                {/* NotebookLM / Deepseek Management */}
-                                {(selectedLLM === 'NotebookLM' || selectedLLM === 'Deepseek') && (
+                                {/* NotebookLM Management */}
+                                {(selectedLLM === 'NotebookLM') && (
                                     <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#2d2d2d', borderRadius: '8px', border: '1px solid #444' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                                             <h3 style={{ color: '#fff', fontSize: '0.9rem', margin: 0 }}>Select Notebook</h3>
@@ -727,7 +727,7 @@ Instructions:
 
                                 <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Core Query Parameters</h3>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    <ParamDropdown label="LLM" value={selectedLLM} onChange={setSelectedLLM} options={['Gemini', 'Grok', 'NotebookLM', 'Deepseek']} />
+                                    <ParamDropdown label="LLM" value={selectedLLM} onChange={setSelectedLLM} options={['Gemini', 'Grok', 'NotebookLM']} />
                                     <ParamDropdown label="Style" value={style} onChange={setStyle} options={['RFP response', 'Professional', 'Casual', '3rd Person', 'Personal']} />
 
                                     {/* Custom Length UI */}
