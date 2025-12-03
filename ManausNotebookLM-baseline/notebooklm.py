@@ -11,8 +11,9 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException, InvalidSessionIdException
 from selenium import webdriver
+import urllib3
 
 notebooklm_bp = Blueprint('notebooklm', __name__)
 logger = logging.getLogger(__name__)
@@ -46,6 +47,20 @@ NOTEBOOKLM_LOAD_INDICATORS = [
     (By.XPATH, "//*[contains(text(), 'New notebook')]") # "New notebook" button
 ]
 
+
+def reset_browser():
+    """
+    Safely quits the current browser instance and resets the global variable to None.
+    """
+    global browser_instance
+    try:
+        if browser_instance:
+            browser_instance.quit()
+            logger.info("Browser instance quit successfully.")
+    except Exception as e:
+        logger.warning(f"Error quitting browser instance (likely already dead): {e}")
+    finally:
+        browser_instance = None
 
 def initialize_browser():
     """
@@ -83,6 +98,10 @@ def initialize_browser():
     chrome_options.add_argument("--profile-directory=Default")
 
     try:
+        # Ensure any existing instance is cleaned up
+        if browser_instance:
+            reset_browser()
+
         browser_instance = webdriver.Remote(
             command_executor=selenium_hub_url,
             options=chrome_options
@@ -93,7 +112,7 @@ def initialize_browser():
         return True
     except Exception as e:
         logger.error(f"Failed to initialize WebDriver: {e}", exc_info=True)
-        browser_instance = None
+        reset_browser()
         return False
 
 def start_browser_initialization_thread():
@@ -140,10 +159,20 @@ def process_query():
         
         # 1. Initialize and Open
         with browser_lock:
+            # Ensure we have a valid browser instance
             if not browser_instance:
                 if not initialize_browser():
                      yield f'data: {json.dumps({"error": "Failed to initialize browser."})}\n\n'
                      return
+            else:
+                # Validate existing session
+                try:
+                    _ = browser_instance.current_url
+                except Exception as e:
+                    logger.warning(f"Found stale browser session during process_query: {e}. Re-initializing...")
+                    if not initialize_browser():
+                        yield f'data: {json.dumps({"error": "Failed to re-initialize browser."})}\n\n'
+                        return
             
             try:
                 logger.info(f"Navigating to {url}...")
@@ -242,72 +271,111 @@ def process_query():
                 logger.info("Query submitted.")
                 yield f'data: {json.dumps({"status": "waiting_for_response"})}\n\n'
 
-                def find_new_response_with_text(driver, initial_count, selector):
-                    try:
-                        response_elements = driver.find_elements(*selector)
-                        if len(response_elements) > initial_count:
-                            new_response_element = response_elements[-1]
-                            if new_response_element.is_displayed() and new_response_element.text.strip():
-                                return new_response_element
-                    except StaleElementReferenceException:
-                        return False
-                    return False
-
-                try:
-                    response_element = WebDriverWait(browser_instance, 50).until(
-                        lambda d: find_new_response_with_text(d, initial_response_count, RESPONSE_CONTENT_SELECTOR)
-                    )
-                    logger.info("Response started.")
-                    yield f'data: {json.dumps({"status": "streaming"})}\n\n'
-                except TimeoutException:
-                    logger.error("Timeout waiting for response generation.")
-                    yield f'data: {json.dumps({"error": "NotebookLM did not start generating response."})}\n\n'
-                    return
-
+                # Streaming Mode with Silence Detection
+                # We stream chunks as they arrive.
+                # Completion is defined as: Text has started arriving AND no new text for 5 seconds.
+                
+                logger.info("Waiting for response to start streaming...")
+                
                 last_text = ""
+                last_change_time = time.time()
+                SILENCE_THRESHOLD = 5.0  # Seconds of silence to consider complete
                 end_time = time.time() + timeout
+                
+                has_started = False
                 stream_completed = False
-                last_data_time = time.time()
-                INACTIVITY_TIMEOUT = 6
+                
+                # Known "thinking" phrases to ignore
+                THINKING_PHRASES = [
+                    "Thinking", "Sifting through pages", "Reading documents", 
+                    "Analyzing", "Checking sources", "Gathering info",
+                    "Working on it", "Just a sec"
+                ]
+                
+                # Debug: Track if we've logged the "no elements" message to avoid spamming
+                logged_no_elements = False
 
                 while time.time() < end_time:
                     try:
-                        current_text = response_element.text
-                    except StaleElementReferenceException:
-                        logger.warning("Stale element detected during streaming. Attempting to re-acquire...")
-                        try:
-                            # Give DOM a moment to settle
-                            time.sleep(0.5)
-                            elements = browser_instance.find_elements(*RESPONSE_CONTENT_SELECTOR)
-                            if elements:
-                                response_element = elements[-1]
-                                current_text = response_element.text
-                            else:
-                                logger.warning("Could not find any response elements during recovery.")
-                                current_text = last_text
-                        except Exception as e:
-                            logger.warning(f"Failed to re-acquire element or get text: {e}")
-                            current_text = last_text
+                        # Try primary selector
+                        elements = browser_instance.find_elements(*RESPONSE_CONTENT_SELECTOR)
+                        
+                        # Fallback: Try a more generic selector if primary fails
+                        if not elements:
+                            elements = browser_instance.find_elements(By.XPATH, "//div[contains(@class, 'model-response') or contains(@class, 'response-text')]")
+                        
+                        if elements:
+                            current_response = elements[-1]
+                            current_text = current_response.text
+                            
+                            # Check if this is just a thinking phrase
+                            is_thinking = any(phrase in current_text for phrase in THINKING_PHRASES)
+                            
+                            # Debug log (only once per length change to avoid spam)
+                            if len(current_text) != len(last_text):
+                                logger.info(f"Text update detected. Old len: {len(last_text)}, New len: {len(current_text)}")
+                                logger.debug(f"Current text snippet: {current_text[:50]}...")
 
-                    if len(current_text) > len(last_text):
-                        new_text = current_text[len(last_text):]
-                        yield f'data: {json.dumps({"chunk": new_text})}\n\n'
-                        last_text = current_text
-                        last_data_time = time.time()
-
-                    if time.time() - last_data_time > INACTIVITY_TIMEOUT:
-                        stream_completed = True
-                        break
+                            # Check if we have new text
+                            if len(current_text) > len(last_text):
+                                # Calculate the new chunk
+                                new_chunk = current_text[len(last_text):]
+                                
+                                # Yield the chunk
+                                yield f'data: {json.dumps({"chunk": new_chunk})}\n\n'
+                                
+                                # Update state
+                                last_text = current_text
+                                last_change_time = time.time()
+                                
+                                if not has_started:
+                                    logger.info("Response started streaming (first chunk detected).")
+                                    has_started = True
+                            
+                            # Check for silence (completion)
+                            # ONLY if we have started AND we are not currently "thinking"
+                            if has_started:
+                                if is_thinking:
+                                    # Reset the timer if we are still in a thinking state
+                                    # This handles cases where it switches from one thinking phrase to another
+                                    last_change_time = time.time()
+                                else:
+                                    time_since_last_change = time.time() - last_change_time
+                                    if time_since_last_change >= SILENCE_THRESHOLD:
+                                        logger.info(f"No new text for {SILENCE_THRESHOLD} seconds and not thinking. Assuming completion.")
+                                        stream_completed = True
+                                        break
+                        else:
+                            if not logged_no_elements:
+                                logger.warning("No response elements found yet.")
+                                logged_no_elements = True
+                                    
+                    except Exception as e:
+                        # Ignore transient errors during polling but log them once
+                        logger.debug(f"Transient error in loop: {e}")
+                        pass
                     
-                    time.sleep(0.2)
+                    time.sleep(0.5) # Poll frequently for smooth streaming
                 
-                final_text = response_element.text
-                if len(final_text) > len(last_text):
-                    new_text = final_text[len(last_text):]
-                    yield f'data: {json.dumps({"chunk": new_text})}\n\n'
-
-                status_message = "timeout" if not stream_completed else "complete"
-                yield f'data: {json.dumps({"status": status_message})}\n\n'
+                if stream_completed:
+                    yield f'data: {json.dumps({"status": "complete"})}\n\n'
+                elif has_started:
+                     # If we hit the global timeout but had started, we consider it done-ish
+                     logger.warning("Global timeout reached, but stream had started.")
+                     yield f'data: {json.dumps({"status": "complete"})}\n\n'
+                else:
+                    # Debug: Dump page source if we failed completely
+                    try:
+                        src = browser_instance.page_source
+                        debug_file = "/app/debug_page_source.html"
+                        with open(debug_file, "w", encoding="utf-8") as f:
+                            f.write(src)
+                        logger.error(f"Timed out. Page source saved to {debug_file}")
+                    except Exception as e:
+                        logger.error(f"Failed to save debug source: {e}")
+                    
+                    logger.error("Timed out. No text ever appeared.")
+                    yield f'data: {json.dumps({"status": "timeout", "error": "No response text detected."})}\n\n'
 
             except Exception as e:
                 logger.error(f"Error in process_query: {e}", exc_info=True)
@@ -315,14 +383,8 @@ def process_query():
             
             finally:
                 # 3. Close Browser
-                if browser_instance:
-                    try:
-                        browser_instance.quit()
-                        logger.info("Browser closed.")
-                        browser_instance = None
-                        yield f'data: {json.dumps({"status": "browser_closed"})}\n\n'
-                    except Exception as e:
-                        logger.error(f"Error closing browser: {e}")
+                reset_browser()
+                yield f'data: {json.dumps({"status": "browser_closed"})}\n\n'
 
     return Response(stream_with_context(generate_full_process_response()), mimetype='text/event-stream')
 
@@ -422,55 +484,114 @@ def query_notebooklm():
                         return False
                     return False
 
-                try:
-                    response_element = WebDriverWait(browser_instance, 50).until(
-                        lambda d: find_new_response_with_text(d, initial_response_count, RESPONSE_CONTENT_SELECTOR)
-                    )
-                    logger.info("First text chunk detected. Starting to stream content.")
-                    yield f'data: {json.dumps({"status": "streaming"})}\n\n'
-                except TimeoutException:
-                    logger.error("Timed out waiting for a response from NotebookLM to start generating.")
-                    yield f'data: {json.dumps({"error": "NotebookLM did not start generating a response in time."})}\n\n'
-                    return
-
+                # Streaming Mode with Silence Detection
+                # We stream chunks as they arrive.
+                # Completion is defined as: Text has started arriving AND no new text for 5 seconds.
+                
+                logger.info("Waiting for response to start streaming...")
+                
                 last_text = ""
+                last_change_time = time.time()
+                SILENCE_THRESHOLD = 5.0  # Seconds of silence to consider complete
                 end_time = time.time() + timeout
+                
+                has_started = False
                 stream_completed = False
-                last_data_time = time.time()
-                INACTIVITY_TIMEOUT = 10
+                
+                # Known "thinking" phrases to ignore
+                THINKING_PHRASES = [
+                    "Thinking", "Sifting through pages", "Reading documents", 
+                    "Analyzing", "Checking sources", "Gathering info",
+                    "Working on it", "Just a sec"
+                ]
+                
+                # Debug: Track if we've logged the "no elements" message to avoid spamming
+                logged_no_elements = False
 
                 while time.time() < end_time:
                     try:
-                        current_text = response_element.text
-                    except StaleElementReferenceException:
-                        logger.warning("Response element became stale. Re-finding...")
-                        response_element = browser_instance.find_elements(*RESPONSE_CONTENT_SELECTOR)[-1]
-                        current_text = response_element.text
-                        last_text = ""
+                        # Try primary selector
+                        elements = browser_instance.find_elements(*RESPONSE_CONTENT_SELECTOR)
+                        
+                        # Fallback: Try a more generic selector if primary fails
+                        if not elements:
+                            elements = browser_instance.find_elements(By.XPATH, "//div[contains(@class, 'model-response') or contains(@class, 'response-text')]")
+                        
+                        if elements:
+                            current_response = elements[-1]
+                            current_text = current_response.text
+                            
+                            # Check if this is just a thinking phrase
+                            is_thinking = any(phrase in current_text for phrase in THINKING_PHRASES)
+                            
+                            # Debug log (only once per length change to avoid spam)
+                            if len(current_text) != len(last_text):
+                                logger.info(f"Text update detected. Old len: {len(last_text)}, New len: {len(current_text)}")
+                                logger.debug(f"Current text snippet: {current_text[:50]}...")
 
-                    if len(current_text) > len(last_text):
-                        new_text = current_text[len(last_text):]
-                        yield f'data: {json.dumps({"chunk": new_text})}\n\n'
-                        last_text = current_text
-                        last_data_time = time.time()
-
-                    if time.time() - last_data_time > INACTIVITY_TIMEOUT:
-                        logger.info(f"Stream complete: No new data for {INACTIVITY_TIMEOUT} seconds.")
-                        stream_completed = True
-                        break
+                            # Check if we have new text
+                            if len(current_text) > len(last_text):
+                                # Calculate the new chunk
+                                new_chunk = current_text[len(last_text):]
+                                
+                                # Yield the chunk
+                                yield f'data: {json.dumps({"chunk": new_chunk})}\n\n'
+                                
+                                # Update state
+                                last_text = current_text
+                                last_change_time = time.time()
+                                
+                                if not has_started:
+                                    logger.info("Response started streaming (first chunk detected).")
+                                    has_started = True
+                            
+                            # Check for silence (completion)
+                            # ONLY if we have started AND we are not currently "thinking"
+                            if has_started:
+                                if is_thinking:
+                                    # Reset the timer if we are still in a thinking state
+                                    # This handles cases where it switches from one thinking phrase to another
+                                    last_change_time = time.time()
+                                else:
+                                    time_since_last_change = time.time() - last_change_time
+                                    if time_since_last_change >= SILENCE_THRESHOLD:
+                                        logger.info(f"No new text for {SILENCE_THRESHOLD} seconds and not thinking. Assuming completion.")
+                                        stream_completed = True
+                                        break
+                        else:
+                            if not logged_no_elements:
+                                logger.warning("No response elements found yet.")
+                                logged_no_elements = True
+                                    
+                    except Exception as e:
+                        # Ignore transient errors during polling but log them once
+                        logger.debug(f"Transient error in loop: {e}")
+                        pass
                     
-                    time.sleep(0.2)
-
-                final_text = response_element.text
-                if len(final_text) > len(last_text):
-                    new_text = final_text[len(last_text):]
-                    yield f'data: {json.dumps({"chunk": new_text})}\n\n'
-
-                status_message = "timeout" if not stream_completed else "complete"
-                yield f'data: {json.dumps({"status": status_message})}\n\n'
+                    time.sleep(0.5) # Poll frequently for smooth streaming
+                
+                if stream_completed:
+                    yield f'data: {json.dumps({"status": "complete"})}\n\n'
+                elif has_started:
+                     # If we hit the global timeout but had started, we consider it done-ish
+                     logger.warning("Global timeout reached, but stream had started.")
+                     yield f'data: {json.dumps({"status": "complete"})}\n\n'
+                else:
+                    # Debug: Dump page source if we failed completely
+                    try:
+                        src = browser_instance.page_source
+                        debug_file = "/app/debug_page_source.html"
+                        with open(debug_file, "w", encoding="utf-8") as f:
+                            f.write(src)
+                        logger.error(f"Timed out. Page source saved to {debug_file}")
+                    except Exception as e:
+                        logger.error(f"Failed to save debug source: {e}")
+                    
+                    logger.error("Timed out. No text ever appeared.")
+                    yield f'data: {json.dumps({"status": "timeout", "error": "No response text detected."})}\n\n'
 
             except Exception as e:
-                logger.error(f"An unexpected error occurred during the query stream: {e}", exc_info=True)
+                logger.error(f"An unexpected error occurred during the query process: {e}", exc_info=True)
                 yield f'data: {json.dumps({"error": str(e)})}\n\n'
 
     return Response(stream_with_context(generate_response()), mimetype='text/event-stream')
@@ -495,6 +616,8 @@ def get_status():
                 })
             except Exception as e:
                 logger.error(f"Error getting browser status: {e}")
+                # IMPORTANT: If we can't get status, the session is likely dead. Reset it.
+                reset_browser()
                 return jsonify({'browser_active': False, 'status': 'error', 'error': str(e)}), 500
         else:
             return jsonify({'browser_active': False, 'status': 'inactive'})
@@ -502,16 +625,6 @@ def get_status():
 @notebooklm_bp.route('/close_browser', methods=['POST'])
 def close_browser():
     """Endpoint 3: Closes the browser instance."""
-    global browser_instance
     with browser_lock:
-        if browser_instance:
-            try:
-                browser_instance.quit()
-                logger.info("Browser instance closed by API call.")
-            except Exception as e:
-                logger.error(f"Error closing browser: {e}")
-            finally:
-                browser_instance = None
-            return jsonify({'success': True, 'message': 'Browser closed successfully.'})
-        else:
-            return jsonify({'success': False, 'message': 'Browser was not active.'})
+        reset_browser()
+        return jsonify({'success': True, 'message': 'Browser closed successfully.'})

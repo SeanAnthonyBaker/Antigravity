@@ -6,7 +6,7 @@ from flask import Flask, send_from_directory
 from flask_cors import CORS
 from models import db
 from user import user_bp
-from notebooklm import notebooklm_bp, browser_instance, browser_lock, start_browser_initialization_thread
+from notebooklm import notebooklm_bp, browser_lock, start_browser_initialization_thread, reset_browser
 from grok import grok_bp
 
 # Configure logging for the application
@@ -47,12 +47,7 @@ def graceful_shutdown(signum, frame):
     """Ensures the browser is closed cleanly on app termination."""
     logging.info("Shutdown signal received. Closing browser instance...")
     with browser_lock:
-        if browser_instance:
-            try:
-                browser_instance.quit()
-                logging.info("Browser instance closed successfully.")
-            except Exception as e:
-                logging.error(f"Error during browser cleanup: {e}")
+        reset_browser()
     exit(0)
 
 signal.signal(signal.SIGINT, graceful_shutdown)
