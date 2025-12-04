@@ -62,9 +62,10 @@ def reset_browser():
     finally:
         browser_instance = None
 
-def initialize_browser():
+def initialize_browser(retries=3, delay=5):
     """
-    Initializes the shared browser instance. This should be called once at application startup.
+    Initializes the shared browser instance with retry logic.
+    Returns: (success: bool, error_message: str|None)
     """
     global browser_instance
     
@@ -97,23 +98,30 @@ def initialize_browser():
     chrome_options.add_argument("--user-data-dir=/data")
     chrome_options.add_argument("--profile-directory=Default")
 
-    try:
-        # Ensure any existing instance is cleaned up
-        if browser_instance:
-            reset_browser()
+    last_error = None
 
-        browser_instance = webdriver.Remote(
-            command_executor=selenium_hub_url,
-            options=chrome_options
-        )
-        browser_instance.set_page_load_timeout(60)
-        browser_instance.maximize_window()
-        logger.info("WebDriver initialized successfully and connected to Selenium Hub.")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to initialize WebDriver: {e}", exc_info=True)
-        reset_browser()
-        return False
+    for attempt in range(retries):
+        try:
+            # Ensure any existing instance is cleaned up
+            if browser_instance:
+                reset_browser()
+
+            browser_instance = webdriver.Remote(
+                command_executor=selenium_hub_url,
+                options=chrome_options
+            )
+            browser_instance.set_page_load_timeout(60)
+            browser_instance.maximize_window()
+            logger.info("WebDriver initialized successfully and connected to Selenium Hub.")
+            return True, None
+        except Exception as e:
+            last_error = e
+            logger.warning(f"Attempt {attempt + 1}/{retries} failed to initialize WebDriver: {e}")
+            time.sleep(delay)
+
+    logger.error(f"Failed to initialize WebDriver after {retries} attempts: {last_error}", exc_info=True)
+    reset_browser()
+    return False, str(last_error)
 
 def start_browser_initialization_thread():
     """Starts the browser initialization in a background thread to not block app startup."""
@@ -161,8 +169,9 @@ def process_query():
         with browser_lock:
             # Ensure we have a valid browser instance
             if not browser_instance:
-                if not initialize_browser():
-                     yield f'data: {json.dumps({"error": "Failed to initialize browser."})}\n\n'
+                success, error_msg = initialize_browser()
+                if not success:
+                     yield f'data: {json.dumps({"error": f"Failed to initialize browser: {error_msg}"})}\n\n'
                      return
             else:
                 # Validate existing session
@@ -170,8 +179,9 @@ def process_query():
                     _ = browser_instance.current_url
                 except Exception as e:
                     logger.warning(f"Found stale browser session during process_query: {e}. Re-initializing...")
-                    if not initialize_browser():
-                        yield f'data: {json.dumps({"error": "Failed to re-initialize browser."})}\n\n'
+                    success, error_msg = initialize_browser()
+                    if not success:
+                        yield f'data: {json.dumps({"error": f"Failed to re-initialize browser: {error_msg}"})}\n\n'
                         return
             
             try:
