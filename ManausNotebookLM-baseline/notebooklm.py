@@ -342,19 +342,14 @@ def process_query():
                                     logger.info("Response started streaming (first chunk detected).")
                                     has_started = True
                             
-                            # Check for silence (completion)
-                            # ONLY if we have started AND we are not currently "thinking"
+                            # Check for silence (completion) based purely on length stability
+                            # ONLY if we have started
                             if has_started:
-                                if is_thinking:
-                                    # Reset the timer if we are still in a thinking state
-                                    # This handles cases where it switches from one thinking phrase to another
-                                    last_change_time = time.time()
-                                else:
-                                    time_since_last_change = time.time() - last_change_time
-                                    if time_since_last_change >= SILENCE_THRESHOLD:
-                                        logger.info(f"No new text for {SILENCE_THRESHOLD} seconds and not thinking. Assuming completion.")
-                                        stream_completed = True
-                                        break
+                                time_since_last_change = time.time() - last_change_time
+                                if time_since_last_change >= SILENCE_THRESHOLD:
+                                    logger.info(f"Text length has been stable for {SILENCE_THRESHOLD} seconds. Assuming completion.")
+                                    stream_completed = True
+                                    break
                         else:
                             if not logged_no_elements:
                                 logger.warning("No response elements found yet.")
