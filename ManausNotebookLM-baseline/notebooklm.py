@@ -289,7 +289,7 @@ def process_query():
                 
                 last_text = ""
                 last_change_time = time.time()
-                SILENCE_THRESHOLD = 5.0  # Seconds of silence to consider complete
+                SILENCE_THRESHOLD = 15.0  # Seconds of silence to consider complete
                 end_time = time.time() + timeout
                 
                 has_started = False
