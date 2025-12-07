@@ -37,12 +37,15 @@ data: {"status": "browser_closed"}
    ```json
    {"status": "waiting_for_response"}
    ```
+   *(Note: "Thinking" phases are internally filtered and do not produce specific status messages)*
 
-3. **Streaming** (multiple chunks)
+3. **Buffered Streaming** (multiple chunks)
    ```json
    {"status": "streaming"}
-   {"chunk": "Content here..."}
+   {"chunk": "This is a substantial chunk of text..."}
+   {"chunk": "...that has been buffered to ensure quality."}
    ```
+   *(Note: Chunks are typically >10 words to prevent jitter)*
 
 4. **Completion**
    ```json

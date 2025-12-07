@@ -248,7 +248,9 @@ This endpoint handles the entire automation lifecycle in a single request: **Loa
     1.  **Initialize:** Starts the headless Chrome browser (if not already active).
     2.  **Navigate:** Opens the specified NotebookLM URL.
     3.  **Interact:** Locates the chat input, types the user's query, and submits it.
+    3.  **Interact:** Locates the chat input, types the user's query, and submits it.
     4.  **Stream:** Streams the response back to the client in real-time using Server-Sent Events (SSE).
+        *   **Note:** Content is **buffered** and only sent in meaningful chunks (>10 words) to prevent visual jitter. "Thinking" phrases are stripped automatically.
     5.  **Cleanup:** Automatically closes the browser session upon completion (or error) to release resources.
 
 **Request Body:**
@@ -266,7 +268,7 @@ The response is a text/event-stream that yields JSON chunks:
 -   `{"status": "browser_ready", ...}`
 -   `{"status": "waiting_for_response"}`
 -   `{"status": "streaming"}`
--   `{"chunk": "The key points are..."}`
+-   `{"chunk": "The key points are..."}` (Buffered Content)
 -   `{"status": "complete"}` (or `timeout`)
 -   `{"status": "browser_closed"}`
 
@@ -591,14 +593,14 @@ Operational security procedures include regular security updates, vulnerability 
 
 ### Automated Deployment Script (Windows)
 
-To simplify the process of updating the backend code, a PowerShell script `deploy_to_vm.ps1` is provided in the project root. This script handles:
-1.  Uploading the updated `notebooklm.py` file using `gcloud`.
-2.  Moving the file to the correct application directory on the VM.
-3.  Restarting the Docker container to apply changes.
+To simplify the process of checking out codes and updating the backend, a PowerShell script `deploy_full_update.ps1` is provided in the project root. This script handles:
+1.  Uploading all updated source files (`.py`, `Dockerfile`, etc.) using `gcloud`.
+2.  Moving files to the correct application partition on the VM.
+3.  Rebuilding and restarting the Docker services to apply changes.
 
 **Usage:**
 ```powershell
-.\deploy_to_vm.ps1
+.\deploy_full_update.ps1
 ```
 
 ### Manual Update Procedure

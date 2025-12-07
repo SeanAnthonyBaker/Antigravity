@@ -10,7 +10,30 @@ interface AIQueryRefinementModalProps {
     onPaste: (text: string) => void;
 }
 
-export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initialText, onClose, onPaste }) => {
+const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initialText, onClose, onPaste }) => {
+    // Helper to load from localStorage with fallback
+    const usePersistedState = <T,>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] => {
+        const [state, setState] = useState<T>(() => {
+            try {
+                const stored = localStorage.getItem(key);
+                return stored ? JSON.parse(stored) : initialValue;
+            } catch (e) {
+                console.warn(`Failed to parse stored value for ${key}`, e);
+                return initialValue;
+            }
+        });
+
+        useEffect(() => {
+            try {
+                localStorage.setItem(key, JSON.stringify(state));
+            } catch (e) {
+                console.warn(`Failed to save value for ${key}`, e);
+            }
+        }, [key, state]);
+
+        return [state, setState];
+    };
+
     // --- State ---
     const [promptText, setPromptText] = useState(initialText);
     const [generatedResponse, setGeneratedResponse] = useState('');
@@ -18,30 +41,32 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
     const [isGenerating, setIsGenerating] = useState(false);
     const [apiKey, setApiKey] = useState('');
     const [grokApiKey, setGrokApiKey] = useState('');
+    const [deepSeekApiKey, setDeepSeekApiKey] = useState('');
     const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
     // NotebookLM State
     const [notebooks, setNotebooks] = useState<UserNotebook[]>([]);
-    const [selectedNotebookId, setSelectedNotebookId] = useState('');
+    const [selectedNotebookId, setSelectedNotebookId] = usePersistedState('last_selected_notebook', '');
     const [newNotebookId, setNewNotebookId] = useState('');
     const [newNotebookDesc, setNewNotebookDesc] = useState('');
     const [userId, setUserId] = useState<string | null>(null);
     const [showNotebookMaintenance, setShowNotebookMaintenance] = useState(false);
 
-    // Core Parameters
+    // Core Parameters - Persisted
     const [selectedAction, setSelectedAction] = useState('');
-    const [selectedLLM, setSelectedLLM] = useState('Gemini');
-    const [style, setStyle] = useState('Professional');
-    const [length, setLength] = useState('Similar');
-    const [customLengthValue, setCustomLengthValue] = useState('100');
-    const [sources, setSources] = useState('No reference');
+    const [selectedLLM, setSelectedLLM] = usePersistedState('last_selected_llm', 'Gemini');
+    const [style, setStyle] = usePersistedState('last_style', 'Professional');
+    const [length, setLength] = usePersistedState('last_length', 'Similar');
+    const [customLengthValue, setCustomLengthValue] = usePersistedState('last_custom_length_value', '100');
+    const [sources, setSources] = usePersistedState('last_sources', 'No reference');
+    const [useBulletList, setUseBulletList] = usePersistedState('last_use_bullet_list', false);
     const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
-    const [format, setFormat] = useState('Plain written text');
-    const [language, setLanguage] = useState('English');
-    const [suitability, setSuitability] = useState('Executive');
+    const [format, setFormat] = usePersistedState('last_format', 'Plain written text');
+    const [language, setLanguage] = usePersistedState('last_language', 'English');
+    const [suitability, setSuitability] = usePersistedState('last_suitability', 'Executive');
 
-    // Boosters
-    const [boosters, setBoosters] = useState({
+    // Boosters - Persisted
+    const [boosters, setBoosters] = usePersistedState('last_boosters', {
         stepByStep: false,
         critique: false,
         multipleApproaches: false,
@@ -50,11 +75,11 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
         delimiters: false
     });
 
-    // Advanced
-    const [reasoningStyles, setReasoningStyles] = useState<string[]>([]);
-    const [outputFormats, setOutputFormats] = useState<string[]>([]);
-    const [codeLanguage, setCodeLanguage] = useState('');
-    const [constraints, setConstraints] = useState({
+    // Advanced - Persisted
+    const [reasoningStyles, setReasoningStyles] = usePersistedState<string[]>('last_reasoning_styles', []);
+    const [outputFormats, setOutputFormats] = usePersistedState<string[]>('last_output_formats', []);
+    const [codeLanguage, setCodeLanguage] = usePersistedState('last_code_language', '');
+    const [constraints, setConstraints] = usePersistedState('last_constraints', {
         maxLength: { active: false, value: '' },
         forbidden: { active: false, value: '' },
         keywords: { active: false, value: '' },
@@ -74,6 +99,11 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
         const storedGrokKey = localStorage.getItem('grok_api_key');
         if (storedGrokKey) {
             setGrokApiKey(storedGrokKey);
+        }
+
+        const storedDeepSeekKey = localStorage.getItem('deepseek_api_key');
+        if (storedDeepSeekKey) {
+            setDeepSeekApiKey(storedDeepSeekKey);
         }
 
         // Fetch User and Notebooks
@@ -98,8 +128,9 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
     useEffect(() => {
         if (selectedLLM === 'Gemini' && !apiKey) setShowApiKeyInput(true);
         else if (selectedLLM === 'Grok' && !grokApiKey) setShowApiKeyInput(true);
+        else if (selectedLLM === 'DeepSeek' && !deepSeekApiKey) setShowApiKeyInput(true);
         else setShowApiKeyInput(false);
-    }, [selectedLLM, apiKey, grokApiKey]);
+    }, [selectedLLM, apiKey, grokApiKey, deepSeekApiKey]);
 
     const handleSaveApiKey = (key: string) => {
         if (selectedLLM === 'Gemini') {
@@ -108,6 +139,9 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
         } else if (selectedLLM === 'Grok') {
             setGrokApiKey(key);
             localStorage.setItem('grok_api_key', key);
+        } else if (selectedLLM === 'DeepSeek') {
+            setDeepSeekApiKey(key);
+            localStorage.setItem('deepseek_api_key', key);
         }
     };
 
@@ -190,6 +224,7 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
         finalPrompt += `${prefix}Length: ${length}${sep}`;
         finalPrompt += `${prefix}Cite Sources: ${sources}${sep}`;
         finalPrompt += `${prefix}Output Format: ${format}${sep}`;
+        if (useBulletList) finalPrompt += `${prefix}Format as a bulleted list (approx 6 words per bullet, one per line).${sep}`;
         finalPrompt += `${prefix}Language: ${language}${sep}`;
         finalPrompt += `${prefix}Target Audience: ${suitability}${sep}`;
 
@@ -227,6 +262,11 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
         }
         if (selectedLLM === 'Grok' && !grokApiKey) {
             alert("Please enter a Grok API Key.");
+            setShowApiKeyInput(true);
+            return;
+        }
+        if (selectedLLM === 'DeepSeek' && !deepSeekApiKey) {
+            alert("Please enter a DeepSeek API Key.");
             setShowApiKeyInput(true);
             return;
         }
@@ -313,6 +353,7 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
                 }
                 const text = data.choices?.[0]?.message?.content || "No response generated.";
                 setGeneratedResponse(text);
+
             } else if (selectedLLM === 'NotebookLM') {
                 const selectedNotebook = notebooks.find(n => n.id === selectedNotebookId);
                 if (!selectedNotebook) {
@@ -375,6 +416,55 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
                         }
                     }
                 }
+            } else if (selectedLLM === 'DeepSeek') {
+                // Use backend proxy to avoid CORS
+                const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+
+                // In development, use the Vite proxy directly if no API base is configured
+                const useLocalProxy = import.meta.env.DEV && !apiBase;
+                const url = useLocalProxy ? '/deepseek-api/chat/completions' : `${apiBase}/api/deepseek`;
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${deepSeekApiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [
+                            { role: "system", content: "You are a helpful AI assistant." },
+                            { role: "user", content: fullPrompt }
+                        ],
+                        stream: false
+                    })
+                });
+
+                const contentType = response.headers.get('content-type');
+                if (!response.ok) {
+                    if (contentType && contentType.includes('application/json')) {
+                        const errData = await response.json();
+                        console.error("DeepSeek API Error Details:", JSON.stringify(errData, null, 2));
+                        throw new Error(errData.error?.message || response.statusText);
+                    } else {
+                        const errText = await response.text();
+                        console.error("DeepSeek API Error Text:", errText);
+                        throw new Error(`API Error (${response.status}): ${errText.slice(0, 100)}...`);
+                    }
+                }
+
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error("Received HTML instead of JSON. This usually means the API proxy is not working.");
+                }
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    throw new Error("Failed to parse DeepSeek API response.");
+                }
+                const text = data.choices?.[0]?.message?.content || "No response generated.";
+                setGeneratedResponse(text);
             }
 
         } catch (err: any) {
@@ -385,6 +475,52 @@ export const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ 
     };
 
     const handleGeneratePrompt = async () => {
+        if (selectedLLM === 'NotebookLM') {
+            setIsGenerating(true);
+            try {
+                // For NotebookLM, we just append instructions to the current prompt text
+                let newPrompt = promptText.trim();
+                const sep = " "; // Space separator to keep everything on the same line
+
+                // Append separator if there is existing text
+                if (newPrompt) newPrompt += sep;
+
+                // Add sentences for each parameter
+                if (style) newPrompt += `Please write this in a ${style} style.${sep}`;
+                if (length) newPrompt += `Keep the length approximately ${length}.${sep}`;
+                if (sources && sources !== 'No reference') newPrompt += `Please cite sources: ${sources}.${sep}`;
+                if (format) newPrompt += `Format the output as ${format}.${sep}`;
+                if (useBulletList) newPrompt += `Format as a bulleted list with approx 6 words per bullet, each on its own line.${sep}`;
+                if (language && language !== 'English') newPrompt += `Please write in ${language}.${sep}`;
+                if (suitability) newPrompt += `Target audience is ${suitability}.${sep}`;
+
+                // Boosters
+                if (boosters.stepByStep) newPrompt += `Let's think step by step.${sep}`;
+                if (boosters.critique) newPrompt += `Critique your own reasoning first.${sep}`;
+                if (boosters.multipleApproaches) newPrompt += `Consider multiple approaches.${sep}`;
+                if (boosters.expert) newPrompt += `Act as a world-class expert.${sep}`;
+                if (boosters.unethical) newPrompt += `Refuse unethical requests.${sep}`;
+                if (boosters.delimiters) newPrompt += `Use delimiters for inputs.${sep}`;
+
+                // Advanced
+                if (reasoningStyles.length > 0) newPrompt += `Use these reasoning styles: ${reasoningStyles.join(', ')}.${sep}`;
+                if (outputFormats.length > 0) newPrompt += `Desired output formats: ${outputFormats.join(', ')}.${sep}`;
+
+                // Constraints
+                if (constraints.maxLength.active) newPrompt += `Max length: ${constraints.maxLength.value}.${sep}`;
+                if (constraints.forbidden.active) newPrompt += `Do not use: ${constraints.forbidden.value}.${sep}`;
+                if (constraints.keywords.active) newPrompt += `Must include: ${constraints.keywords.value}.${sep}`;
+                if (constraints.tone.active) newPrompt += `Tone: ${constraints.tone.value}.${sep}`;
+
+                setPromptText(newPrompt);
+            } catch (err: any) {
+                alert('Failed to generate prompt: ' + err.message);
+            } finally {
+                setIsGenerating(false);
+            }
+            return;
+        }
+
         if (!apiKey) {
             alert("Please enter a Gemini API Key to use the Generator.");
             setShowApiKeyInput(true);
@@ -484,7 +620,7 @@ Instructions:
                                     fontSize: '0.9rem'
                                 }}
                             >
-                                {isGenerating ? 'Generating...' : 'Generate'}
+                                {isGenerating ? 'Generating...' : 'Generate Prompt'}
                             </button>
                             {!isGenerating && !isExecuting && (
                                 <button
@@ -540,7 +676,7 @@ Instructions:
                                 cursor: 'pointer'
                             }}
                         >
-                            {['Gemini', 'Grok', 'NotebookLM'].map(opt => (
+                            {['Gemini', 'Grok', 'NotebookLM', 'DeepSeek'].map(opt => (
                                 <option key={opt} value={opt}>{opt}</option>
                             ))}
                         </select>
@@ -605,11 +741,12 @@ Instructions:
                                         <label style={{ color: '#fff', fontSize: '0.9rem', margin: 0 }}>
                                             {selectedLLM} API Key
                                         </label>
-                                        {(selectedLLM === 'Gemini' && apiKey) || (selectedLLM === 'Grok' && grokApiKey) ? (
+                                        {(selectedLLM === 'Gemini' && apiKey) || (selectedLLM === 'Grok' && grokApiKey) || (selectedLLM === 'DeepSeek' && deepSeekApiKey) ? (
                                             <button
                                                 onClick={() => {
                                                     if (selectedLLM === 'Gemini') setApiKey('');
                                                     if (selectedLLM === 'Grok') setGrokApiKey('');
+                                                    if (selectedLLM === 'DeepSeek') setDeepSeekApiKey('');
                                                     setShowApiKeyInput(true);
                                                 }}
                                                 style={{
@@ -622,10 +759,10 @@ Instructions:
                                         ) : null}
                                     </div>
 
-                                    {(showApiKeyInput || (selectedLLM === 'Gemini' && !apiKey) || (selectedLLM === 'Grok' && !grokApiKey)) && (
+                                    {(showApiKeyInput || (selectedLLM === 'Gemini' && !apiKey) || (selectedLLM === 'Grok' && !grokApiKey) || (selectedLLM === 'DeepSeek' && !deepSeekApiKey)) && (
                                         <input
                                             type="password"
-                                            value={selectedLLM === 'Gemini' ? apiKey : grokApiKey}
+                                            value={selectedLLM === 'Gemini' ? apiKey : selectedLLM === 'Grok' ? grokApiKey : deepSeekApiKey}
                                             onChange={(e) => handleSaveApiKey(e.target.value)}
                                             placeholder={`Enter ${selectedLLM} API Key...`}
                                             style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: 'none', backgroundColor: '#1e1e1e', color: '#fff' }}
@@ -633,7 +770,7 @@ Instructions:
                                     )}
 
                                     {/* Status Indicator */}
-                                    {((selectedLLM === 'Gemini' && apiKey) || (selectedLLM === 'Grok' && grokApiKey)) && !showApiKeyInput && (
+                                    {((selectedLLM === 'Gemini' && apiKey) || (selectedLLM === 'Grok' && grokApiKey) || (selectedLLM === 'DeepSeek' && deepSeekApiKey)) && !showApiKeyInput && (
                                         <div style={{ fontSize: '0.8rem', color: '#4ade80' }}>
                                             ✓ Key loaded
                                         </div>
@@ -759,6 +896,23 @@ Instructions:
                                 <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Core Query Parameters</h3>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                     <ParamDropdown label="Style" value={style} onChange={setStyle} options={['RFP response', 'Professional', 'Casual', '3rd Person', 'Personal']} />
+
+                                    {/* Bullet List Toggle */}
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <label style={{ fontSize: '0.8rem', color: '#aaa', marginBottom: '0.2rem' }}>Structure</label>
+                                        <div
+                                            onClick={() => setUseBulletList(!useBulletList)}
+                                            style={{
+                                                padding: '0.4rem', borderRadius: '4px', border: '1px solid #444',
+                                                backgroundColor: useBulletList ? '#3b82f6' : '#333',
+                                                color: '#fff', fontSize: '0.9rem',
+                                                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                userSelect: 'none', transition: 'background-color 0.2s'
+                                            }}
+                                        >
+                                            {useBulletList ? '✓ Bullet List' : 'Standard Text'}
+                                        </div>
+                                    </div>
 
                                     {/* Custom Length UI */}
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1010,3 +1164,5 @@ const ConstraintRow: React.FC<ConstraintRowProps> = ({ label, active, value, onT
         />
     </div>
 );
+
+export default AIQueryRefinementModal;

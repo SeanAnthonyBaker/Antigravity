@@ -9,6 +9,7 @@ from models import db
 from user import user_bp
 from notebooklm import notebooklm_bp, browser_lock, start_browser_initialization_thread, reset_browser
 from grok import grok_bp
+from deepseek import deepseek_bp
 
 # Configure logging for the application
 # Set up log directory
@@ -59,6 +60,7 @@ else:
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(notebooklm_bp, url_prefix='/api')
 app.register_blueprint(grok_bp, url_prefix='/api')
+app.register_blueprint(deepseek_bp, url_prefix='/api')
 
 # Ensure the database directory exists
 db_path = os.path.join(os.path.dirname(__file__), 'database')

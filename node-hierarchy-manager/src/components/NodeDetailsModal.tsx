@@ -6,7 +6,7 @@ import tulkahLogo from '../assets/tulkah-logo.png';
 import { NodeService } from '../services/NodeService';
 import { StorageService } from '../services/StorageService';
 import { openMarkdownWindow } from '../utils/markdownUtils';
-import { AIQueryRefinementModal } from './AIQueryRefinementModal';
+import AIQueryRefinementModal from './AIQueryRefinementModal';
 
 interface NodeDetailsModalProps {
     node: DocumentNode;

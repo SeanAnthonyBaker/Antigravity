@@ -37,13 +37,29 @@ NotebookLM streams responses dynamically without sending completion signals. Cha
   - False positives during brief pauses in generation
   - Frequent crashes due to stale element exceptions
 
-### ✅ Current: Suggestion Chip Detection (PRODUCTION)
+### ❌ Attempt 3: Raw Streaming
+- **Approach:** Stream every text change immediately
+- **Problems:**
+  - "Thinking..." phrases were sent to the client
+  - Tiny updates (single words) caused visual jitter
+  - Overwriting glitches when "Thinking" text was replaced by "Answer"
 
-**Date Implemented:** December 6, 2025
+### ✅ Current: Hybrid Detection + Buffering (PRODUCTION)
 
-#### Core Concept
+**Date Implemented:** December 7, 2025
 
-NotebookLM displays follow-up question suggestions (suggestion chips) **only after** a response is fully generated. By monitoring for the appearance of new suggestion chips, we can instantly and reliably detect completion.
+#### Core Concepts
+
+1.  **Clean-Text Buffering (Stream Quality):**
+    - **Problem:** "Thinking..." phases and tiny updates caused visual "overwriting" glitches.
+    - **Solution:** We explicitly strip "Thinking" phrases and **buffer** the response. Content is only sent to the client when the buffer reaches **10 words** (or completion).
+
+2.  **Suggestion Chip Detection (Completion):**
+    - **Problem:** Silence detection is unreliable during "Thinking" pauses.
+    - **Solution:** We rely on the appearance of **Suggestion Chips** as the primary signal that generation is done.
+
+3.  **Material Content Fallback:**
+    - **Safety Net:** We still use silence detection, but it *only starts* after **Material Content** (valid, non-thinking text) has been detected.
 
 #### Implementation Strategy
 
@@ -129,7 +145,15 @@ logger.info(f"BASELINE: {initial_suggestion_count} suggestion chips found before
 
 **Why:** In a session with multiple queries, previous queries will have suggestion chips. We need to know the starting count to detect *new* chips from the current query.
 
-### During Streaming (Lines 448-454)
+### Clean-Text Buffering Logic
+
+This mechanism ensures high-quality output by filtering noise:
+
+1.  **Strip Thinking:** `strip_thinking_phrase()` removes "Gathering facts...", "Thinking...", etc.
+2.  **Discontinuity Check:** Detects if text was replaced (e.g., "Thinking" -> "Answer") and resets the tracker.
+3.  **10-Word Threshold:** The `chunk_buffer` accumulates text and only yields when `len(buffer.split()) >= 10`. This prevents jittery updates.
+
+### During Streaming (Lines 448+ approx)
 ```python
 # PRIMARY COMPLETION DETECTION: New suggestion chips appeared
 current_suggestion_count = count_all_suggestions(browser_instance)

@@ -4,7 +4,7 @@ $ZONE = "us-central1-a"
 $REMOTE_USER = "seanb"
 $APP_DIR = "/home/ubuntu/notebooklm-backend"
 
-$FILES = @("Dockerfile", "Dockerfile.selenium", "entrypoint-selenium.sh", "notebooklm.py", "main.py", "grok.py", "user.py", "models.py", "requirements.txt", "docker-compose.yml")
+$FILES = @("Dockerfile", "Dockerfile.selenium", "entrypoint-selenium.sh", "notebooklm.py", "main.py", "grok.py", "deepseek.py", "user.py", "models.py", "requirements.txt", "docker-compose.yml")
 
 Write-Host "🚀 Deploying updates to $VM_NAME..." -ForegroundColor Cyan
 
