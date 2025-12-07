@@ -517,6 +517,35 @@ Instructions:
                         </div>
                     </div>
 
+                    {/* LLM Selection Moved to Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', marginRight: '1rem' }}>
+                        {(isExecuting || isGenerating) && (
+                            <div style={{
+                                width: '20px', height: '20px',
+                                border: '3px solid rgba(59, 130, 246, 0.3)',
+                                borderTop: '3px solid #3b82f6',
+                                borderRadius: '50%',
+                                marginRight: '0.8rem',
+                                animation: 'spin 1s linear infinite',
+                                boxShadow: '0 0 8px rgba(59, 130, 246, 0.5)'
+                            }} />
+                        )}
+                        <span style={{ color: '#aaa', fontSize: '0.9rem', marginRight: '0.5rem' }}>LLM:</span>
+                        <select
+                            value={selectedLLM}
+                            onChange={(e) => setSelectedLLM(e.target.value)}
+                            style={{
+                                padding: '0.3rem 0.5rem', borderRadius: '4px', border: '1px solid #444',
+                                backgroundColor: '#333', color: '#fff', fontSize: '0.9rem',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            {['Gemini', 'Grok', 'NotebookLM'].map(opt => (
+                                <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                        </select>
+                    </div>
+
                     <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer', marginLeft: '1rem' }}>×</button>
                 </div>
 
@@ -545,7 +574,7 @@ Instructions:
                         <div style={{ marginTop: '1rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
                             <label style={{ color: '#4ade80', marginBottom: '0.5rem' }}>Generated Response</label>
                             <textarea
-                                value={generatedResponse}
+                                value={generatedResponse || (isExecuting ? "Generating query - this may take a little time ,  please wait....." : "")}
                                 readOnly
                                 placeholder="Response will appear here..."
                                 style={{
@@ -690,44 +719,45 @@ Instructions:
                                     </div>
                                 )}
 
-                                {/* Quick Actions */}
-                                <div style={{ marginBottom: '1.5rem' }}>
-                                    <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Quick Actions</h3>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                                        {['Clarify', 'Proofread', 'Summarise', 'Rewrite'].map(action => (
-                                            <button
-                                                key={action}
-                                                onClick={() => {
-                                                    const newAction = selectedAction === action ? '' : action;
-                                                    setSelectedAction(newAction);
-                                                    // If selecting a new action (not deselecting), trigger execution immediately
-                                                    if (newAction) {
-                                                        handleExecute(newAction);
-                                                    }
-                                                }}
-                                                disabled={isExecuting || isGenerating}
-                                                style={{
-                                                    padding: '0.5rem',
-                                                    borderRadius: '6px',
-                                                    border: '1px solid',
-                                                    borderColor: selectedAction === action ? '#3b82f6' : '#444',
-                                                    backgroundColor: selectedAction === action ? 'rgba(59, 130, 246, 0.2)' : '#333',
-                                                    color: selectedAction === action ? '#3b82f6' : '#ccc',
-                                                    cursor: (isExecuting || isGenerating) ? 'not-allowed' : 'pointer',
-                                                    fontSize: '0.9rem',
-                                                    transition: 'all 0.2s',
-                                                    opacity: (isExecuting || isGenerating) ? 0.6 : 1
-                                                }}
-                                            >
-                                                {action}
-                                            </button>
-                                        ))}
+                                {/* Quick Actions - Hidden for NotebookLM */}
+                                {selectedLLM !== 'NotebookLM' && (
+                                    <div style={{ marginBottom: '1.5rem' }}>
+                                        <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Quick Actions</h3>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                            {['Clarify', 'Proofread', 'Summarise', 'Rewrite'].map(action => (
+                                                <button
+                                                    key={action}
+                                                    onClick={() => {
+                                                        const newAction = selectedAction === action ? '' : action;
+                                                        setSelectedAction(newAction);
+                                                        // If selecting a new action (not deselecting), trigger execution immediately
+                                                        if (newAction) {
+                                                            handleExecute(newAction);
+                                                        }
+                                                    }}
+                                                    disabled={isExecuting || isGenerating}
+                                                    style={{
+                                                        padding: '0.5rem',
+                                                        borderRadius: '6px',
+                                                        border: '1px solid',
+                                                        borderColor: selectedAction === action ? '#3b82f6' : '#444',
+                                                        backgroundColor: selectedAction === action ? 'rgba(59, 130, 246, 0.2)' : '#333',
+                                                        color: selectedAction === action ? '#3b82f6' : '#ccc',
+                                                        cursor: (isExecuting || isGenerating) ? 'not-allowed' : 'pointer',
+                                                        fontSize: '0.9rem',
+                                                        transition: 'all 0.2s',
+                                                        opacity: (isExecuting || isGenerating) ? 0.6 : 1
+                                                    }}
+                                                >
+                                                    {action}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
 
                                 <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Core Query Parameters</h3>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    <ParamDropdown label="LLM" value={selectedLLM} onChange={setSelectedLLM} options={['Gemini', 'Grok', 'NotebookLM']} />
                                     <ParamDropdown label="Style" value={style} onChange={setStyle} options={['RFP response', 'Professional', 'Casual', '3rd Person', 'Personal']} />
 
                                     {/* Custom Length UI */}
@@ -778,17 +808,19 @@ Instructions:
                                     <ParamDropdown label="Suitability" value={suitability} onChange={setSuitability} options={['Executive', 'Casual', 'Technical']} />
                                 </div>
 
-                                {/* More Options Toggle */}
-                                <div
-                                    onClick={() => setShowAdvancedOptions(true)}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: '0.5rem',
-                                        marginTop: '1rem', cursor: 'pointer', color: '#3b82f6',
-                                        fontSize: '0.9rem', userSelect: 'none', justifyContent: 'flex-end'
-                                    }}
-                                >
-                                    <span>More Options &gt;</span>
-                                </div>
+                                {/* More Options Toggle - Hidden for NotebookLM */}
+                                {selectedLLM !== 'NotebookLM' && (
+                                    <div
+                                        onClick={() => setShowAdvancedOptions(true)}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                            marginTop: '1rem', cursor: 'pointer', color: '#3b82f6',
+                                            fontSize: '0.9rem', userSelect: 'none', justifyContent: 'flex-end'
+                                        }}
+                                    >
+                                        <span>More Options &gt;</span>
+                                    </div>
+                                )}
                             </>
                         ) : (
                             <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>

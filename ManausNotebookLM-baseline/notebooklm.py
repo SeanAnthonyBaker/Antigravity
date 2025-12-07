@@ -265,8 +265,6 @@ def is_only_thinking_phrase(text):
     if not text or not text.strip():
         return False
     
-    # logger.debug(f"Checking is_only_thinking_phrase: '{text}'")
-    
     # Remove common punctuation and whitespace
     cleaned = text.strip().rstrip('.').rstrip('...')
     
@@ -493,41 +491,28 @@ def process_query():
                 last_dom_snapshot_time = time.time()
                 DOM_SNAPSHOT_INTERVAL = 3  # Take a snapshot every 3 seconds during streaming
                 streaming_snapshot_count = 0
-
                 while time.time() < end_time:
                     # Safely get current text with retry logic
                     current_text = safe_get_element_text(browser_instance, RESPONSE_CONTENT_SELECTOR)
                     
-                    # Detect if current text is ONLY a thinking phrase
-                    current_is_thinking = is_only_thinking_phrase(current_text)
-                    
-                    # Detect if this is a fragment (likely from phrase removal)
-                    # Heuristic: Very short (<5) OR (Short <15 AND contains dots/ellipsis)
-                    # This avoids skipping short real answers like "Yes." or "No."
-                    is_fragment = (len(current_text.strip()) < 5 or (len(current_text.strip()) < 15 and "..." in current_text)) and not current_is_thinking
-                    
-                    # CRITICAL: If we previously had a thinking phrase and now:
-                    # 1. Have real content, OR
-                    # 2. Text got SHORTER (thinking phrase being removed), OR
-                    # 3. We see a fragment
-                    # Reset last_text to capture the full real response
-                    if last_text and is_only_thinking_phrase(last_text):
-                        if not current_is_thinking or len(current_text) < len(last_text) or is_fragment:
-                            logger.info(f"Thinking phrase transition detected - resetting tracking (was: {len(last_text)} chars, now: {len(current_text)} chars)")
-                            last_text = ""
-                    
-                    # If we have a fragment after any tracked text, also reset
-                    if is_fragment and last_text:
-                        logger.debug(f"Fragment detected ('{current_text.strip()}') - resetting to capture full content")
+                    # --- CONTINUITY CHECK (The Robust Fix) ---
+                    # If the new text doesn't start with the old text, it means the content 
+                    # was REPLACED (e.g., "Thinking..." -> "Actual Answer").
+                    # We must reset last_text to capture the full new content.
+                    if last_text and not current_text.startswith(last_text):
+                        logger.info(f"Content discontinuity detected (Replacement). Resetting tracking. (Old: '{last_text[:20]}...', New: '{current_text[:20]}...')")
                         last_text = ""
-                    
+
+                    # Detect if current text is a thinking phrase (to suppress it)
+                    current_is_thinking = is_only_thinking_phrase(current_text)
+
                     # Detect text growth
                     if len(current_text) > len(last_text):
                         new_chunk = current_text[len(last_text):]
                         chunk_size = len(new_chunk)
                         
-                        # Skip sending thinking phrases AND fragments as chunks
-                        if not current_is_thinking and not is_fragment:
+                        # Skip sending thinking phrases
+                        if not current_is_thinking:
                             # Check if this is a material chunk
                             if chunk_size >= MATERIAL_CHUNK_SIZE and not material_started:
                                 logger.info(f"Material content detected (chunk: {chunk_size} chars). Starting silence timer.")
@@ -535,18 +520,14 @@ def process_query():
                             
                             yield f'data: {json.dumps({"chunk": new_chunk})}\n\n'
                             
-                            # ONLY update last_text if we sent the chunk (or if it's real content)
+                            # Update last_text ONLY if we sent the chunk
                             last_text = current_text
                             last_change_time = time.time()
                         else:
-                            logger.debug(f"Skipping thinking/fragment chunk: {new_chunk[:50]}...")
-                            # If it's a thinking phrase, we MUST update last_text to track it
-                            if current_is_thinking:
-                                last_text = current_text
-                                last_change_time = time.time()
-                            # If it's a fragment, DO NOT update last_text
-                            # This ensures we don't use the fragment as the baseline for the next real chunk
-                    
+                            logger.debug(f"Skipping thinking phrase chunk: {new_chunk[:50]}...")
+                            # Track thinking phrases so we can detect the transition later
+                            last_text = current_text
+                            last_change_time = time.time()
 
 
                     # PRIMARY COMPLETION DETECTION: New suggestion chips appeared
