@@ -466,97 +466,175 @@ def process_query():
                         return False
                     return False
 
+                # 3. Stream the response
+                # STRATEGY: Robust Clean-Text Streaming
+                # 1. Get raw text from DOM
+                # 2. Strip any "Thinking" phrases from the start of the text
+                # 3. Calculate chunks based on the CLEAN text (ignoring the raw thinking prefix)
+                # 4. If clean text is empty => status="thinking"
+                # 5. If clean text has content => status="streaming"
+
+                def find_new_response_with_text(driver, initial_count, selector):
+                    try:
+                        response_elements = driver.find_elements(*selector)
+                        if len(response_elements) > initial_count:
+                            new_response_element = response_elements[-1]
+                            if new_response_element.is_displayed() and new_response_element.text.strip():
+                                return new_response_element
+                    except StaleElementReferenceException:
+                        return False
+                    return False
+
+                def strip_thinking_phrase(text):
+                    """
+                    Removes any leading thinking phrase from the text.
+                    Returns the clean text.
+                    """
+                    text_lower = text.lower().strip()
+                    best_match_len = 0
+                    
+                    for phrase in THINKING_PHRASES:
+                        # Check keys: startswith phrase
+                        # We handle "..." and punctuation flexibly
+                        clean_phrase = phrase.lower().rstrip('.').strip()
+                        
+                        if text_lower.startswith(clean_phrase):
+                            # Ensure we don't match "Thinking" inside "ThinkingAbout"
+                            # Match if full string OR followed by punctuation/space
+                            match_len = len(clean_phrase)
+                            
+                            # Check what follows the match in the original text
+                            # We want to consume the phrase PLUS any trailing dots/whitespace
+                            
+                            # Original case insensitive match check
+                            if text[:match_len].lower() == clean_phrase:
+                                # Look ahead for dots/spaces
+                                remaining = text[match_len:]
+                                stripped_len = match_len
+                                
+                                # Consume ... and spaces
+                                while remaining and (remaining[0] == '.' or remaining[0].isspace()):
+                                    remaining = remaining[1:]
+                                    stripped_len += 1
+                                
+                                # Updates best match (greedy)
+                                if stripped_len > best_match_len:
+                                    best_match_len = stripped_len
+
+                    if best_match_len > 0:
+                        return text[best_match_len:]
+                    
+                    # Heuristic fallback for "Verbing..."
+                    if len(text) < 60:
+                         THINKING_VERBS = [
+                            "Finding", "Checking", "Scanning", "Reading", "Getting", 
+                            "Thinking", "Working", "Parsing", "Sifting", "Analyzing", 
+                            "Assessing", "Refining", "Reviewing", "Exploring", "Examining",
+                            "Gathering", "Consulting"
+                        ]
+                         for verb in THINKING_VERBS:
+                             if text.strip().startswith(verb):
+                                 # If it looks like a short thinking sentence, treat as empty
+                                 return ""
+                    
+                    return text
+
                 try:
                     response_element = WebDriverWait(browser_instance, 50).until(
                         lambda d: find_new_response_with_text(d, initial_response_count, RESPONSE_CONTENT_SELECTOR)
                     )
                     logger.info("Response element detected. Starting to stream.")
-                    yield f'data: {json.dumps({"status": "streaming"})}\n\n'
+                    # Don't send "streaming" yet, wait for actual content
                 except TimeoutException:
                     logger.error("Timed out waiting for a response from NotebookLM.")
                     yield f'data: {json.dumps({"error": "NotebookLM did not start generating a response in time."})}\n\n'
                     return
 
-                last_text = ""
+                last_clean_text = ""
                 end_time = time.time() + timeout
                 stream_completed = False
                 last_change_time = time.time()
-                SILENCE_TIMEOUT = 6  # Seconds of no growth to complete
-                MATERIAL_CHUNK_SIZE = 30  # Chunk size that indicates real content (lowered for reliability)
+                SILENCE_TIMEOUT = 6
                 
-                # State: have we seen material chunks yet?
                 material_started = False
                 
-                # DOM logging during streaming
-                last_dom_snapshot_time = time.time()
-                DOM_SNAPSHOT_INTERVAL = 3  # Take a snapshot every 3 seconds during streaming
-                streaming_snapshot_count = 0
+                # Buffer for small chunks to ensure we don't send "thinking" blips
+                # or tiny updates that cause jitter.
+                chunk_buffer = ""
+                MIN_WORD_COUNT = 10 
+
                 while time.time() < end_time:
-                    # Safely get current text with retry logic
-                    current_text = safe_get_element_text(browser_instance, RESPONSE_CONTENT_SELECTOR)
+                    # 1. Get Raw Text
+                    raw_text = safe_get_element_text(browser_instance, RESPONSE_CONTENT_SELECTOR)
                     
-                    # --- CONTINUITY CHECK (The Robust Fix) ---
-                    # If the new text doesn't start with the old text, it means the content 
-                    # was REPLACED (e.g., "Thinking..." -> "Actual Answer").
-                    # We must reset last_text to capture the full new content.
-                    if last_text and not current_text.startswith(last_text):
-                        logger.info(f"Content discontinuity detected (Replacement). Resetting tracking. (Old: '{last_text[:20]}...', New: '{current_text[:20]}...')")
-                        last_text = ""
-
-                    # Detect if current text is a thinking phrase (to suppress it)
-                    current_is_thinking = is_only_thinking_phrase(current_text)
-
-                    # Detect text growth
-                    if len(current_text) > len(last_text):
-                        new_chunk = current_text[len(last_text):]
-                        chunk_size = len(new_chunk)
+                    # 2. Clean Text (Strip Thinking)
+                    current_clean_text = strip_thinking_phrase(raw_text)
+                    
+                    # 3. Handle Thinking State - Just swallow it, don't report status="thinking"
+                    if not current_clean_text.strip():
+                        time.sleep(0.2)
+                        continue
+                    
+                    # 4. Handle Content Streaming
+                    # Check for replacement (Discontinuity)
+                    if last_clean_text and not current_clean_text.startswith(last_clean_text):
+                         logger.info(f"Discontinuity in CLEAN text. Resetting. (Old: '{last_clean_text[:20]}...', New: '{current_clean_text[:20]}...')")
+                         last_clean_text = ""
+                         chunk_buffer = "" # Reset buffer on discontinuity
+                    
+                    # Calculate Chunk
+                    if len(current_clean_text) > len(last_clean_text):
+                        new_fragment = current_clean_text[len(last_clean_text):]
+                        chunk_buffer += new_fragment
                         
-                        # Skip sending thinking phrases
-                        if not current_is_thinking:
-                            # Check if this is a material chunk
-                            if chunk_size >= MATERIAL_CHUNK_SIZE and not material_started:
-                                logger.info(f"Material content detected (chunk: {chunk_size} chars). Starting silence timer.")
+                        # Only yield if we have enough words in the buffer OR it's been a while?
+                        # User requested: "replay back ... with data chunks that are greated than 10 words"
+                        
+                        buffer_word_count = len(chunk_buffer.split())
+                        
+                        if buffer_word_count >= MIN_WORD_COUNT:
+                             if not material_started:
+                                logger.info("Material content started (buffer threshold met).")
+                                yield f'data: {json.dumps({"status": "streaming"})}\n\n'
                                 material_started = True
-                            
-                            yield f'data: {json.dumps({"chunk": new_chunk})}\n\n'
-                            
-                            # Update last_text ONLY if we sent the chunk
-                            last_text = current_text
-                            last_change_time = time.time()
-                        else:
-                            logger.debug(f"Skipping thinking phrase chunk: {new_chunk[:50]}...")
-                            # Track thinking phrases so we can detect the transition later
-                            last_text = current_text
-                            last_change_time = time.time()
-
-
-                    # PRIMARY COMPLETION DETECTION: New suggestion chips appeared
+                             
+                             # Yield the whole buffer
+                             yield f'data: {json.dumps({"chunk": chunk_buffer})}\n\n'
+                             chunk_buffer = "" # Clear buffer
+                        
+                        last_clean_text = current_clean_text
+                        last_change_time = time.time()
+                    
+                    # 5. Completion Detection
                     current_suggestion_count = count_all_suggestions(browser_instance)
                     if current_suggestion_count > initial_suggestion_count:
-                        logger.info(f"🎯 COMPLETION DETECTED: Suggestion chips increased from {initial_suggestion_count} to {current_suggestion_count}")
+                        logger.info(f"🎯 COMPLETION DETECTED: Suggestion chips increased.")
                         stream_completed = True
                         break
 
-                    # FALLBACK COMPLETION: Silence detection (only if material content started)
-                    # Completion logic
-                    # ONLY complete if we've seen material content AND there's been silence
                     if material_started:
                         silence_duration = time.time() - last_change_time
                         if silence_duration > SILENCE_TIMEOUT:
-                            logger.info(f"Stream complete: {SILENCE_TIMEOUT}s silence after material content.")
-                            stream_completed = True
-                            break
+                             logger.info(f"Stream complete: Silence timeout.")
+                             stream_completed = True
+                             break
                     
                     time.sleep(0.2)
-
-                # Final flush - safely get any remaining text
-                final_text = safe_get_element_text(browser_instance, RESPONSE_CONTENT_SELECTOR)
-                if len(final_text) > len(last_text):
-                    new_chunk = final_text[len(last_text):]
-                    yield f'data: {json.dumps({"chunk": new_chunk})}\n\n'
-
-                logger.info("Query completed successfully")
-
+                
+                # Final flush - safely get any remaining text AND flush buffer
+                final_raw = safe_get_element_text(browser_instance, RESPONSE_CONTENT_SELECTOR)
+                final_clean = strip_thinking_phrase(final_raw)
+                
+                # If there's new text we haven't seen in chunks checks
+                if len(final_clean) > len(last_clean_text):
+                    new_fragment = final_clean[len(last_clean_text):]
+                    chunk_buffer += new_fragment
+                
+                # Flush any remaining buffer
+                if chunk_buffer:
+                    if not material_started:
+                         yield f'data: {json.dumps({"status": "streaming"})}\n\n'
+                    yield f'data: {json.dumps({"chunk": chunk_buffer})}\n\n'
 
                 status_message = "timeout" if not stream_completed else "complete"
                 yield f'data: {json.dumps({"status": status_message})}\n\n'
