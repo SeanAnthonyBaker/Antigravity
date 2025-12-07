@@ -235,43 +235,79 @@ Production configuration implements stricter security policies, optimized resour
 
 ## API Documentation
 
-### Endpoint Overview and Architecture
+### Consolidated API Architecture
 
-The NotebookLM Automation System provides a comprehensive REST API designed to enable programmatic control of Google NotebookLM through browser automation. The API follows RESTful design principles and provides four primary endpoints that cover the complete automation workflow from browser initialization to content extraction and cleanup. Each endpoint is designed to handle specific aspects of the automation process while maintaining consistency in request and response formats.
+The NotebookLM Automation System has been streamlined to use a single, consolidated endpoint for the primary automation workflow. This design simplifies client integration and ensures a reliable, stateless operation model.
 
-The API architecture implements stateful session management, where a single browser instance is maintained across multiple requests to provide efficient operation and consistent user experience. This approach allows users to open a NotebookLM session once and perform multiple queries without the overhead of repeated browser initialization. The session management includes proper cleanup mechanisms to prevent resource leaks and ensure system stability.
+#### Primary Endpoint: `/api/process_query`
 
-Authentication and authorization are handled through the underlying Google authentication system, with the API detecting and reporting authentication requirements when users are redirected to Google's sign-in pages. The system does not attempt to bypass Google's security mechanisms but rather works within the established authentication framework to provide automation capabilities for properly authenticated users.
+This endpoint handles the entire automation lifecycle in a single request: **Load -> Query -> Unload**.
 
-Error handling throughout the API is comprehensive and consistent, providing detailed error messages and appropriate HTTP status codes for different failure scenarios. The API distinguishes between different types of errors, including configuration issues, network problems, authentication requirements, and automation failures, providing specific guidance for resolution in each case.
+-   **Method:** `POST`
+-   **Functionality:**
+    1.  **Initialize:** Starts the headless Chrome browser (if not already active).
+    2.  **Navigate:** Opens the specified NotebookLM URL.
+    3.  **Interact:** Locates the chat input, types the user's query, and submits it.
+    4.  **Stream:** Streams the response back to the client in real-time using Server-Sent Events (SSE).
+    5.  **Cleanup:** Automatically closes the browser session upon completion (or error) to release resources.
 
-### Open NotebookLM Endpoint
+**Request Body:**
+```json
+{
+  "query": "Summarize the key points of this notebook.",
+  "notebooklm_url": "https://notebooklm.google.com/notebook/YOUR_NOTEBOOK_ID",
+  "timeout": 180
+}
+```
 
-The `/api/open_notebooklm` endpoint serves as the entry point for all automation sessions, responsible for initializing the browser environment and navigating to the specified NotebookLM instance. This endpoint accepts POST requests with a JSON payload containing the target NotebookLM URL and returns detailed status information about the initialization process.
+**Response:**
+The response is a text/event-stream that yields JSON chunks:
+-   `{"status": "opening_browser", ...}`
+-   `{"status": "browser_ready", ...}`
+-   `{"status": "waiting_for_response"}`
+-   `{"status": "streaming"}`
+-   `{"chunk": "The key points are..."}`
+-   `{"status": "complete"}` (or `timeout`)
+-   `{"status": "browser_closed"}`
 
-The endpoint implements sophisticated browser initialization logic that includes anti-detection measures designed to bypass Google's automation detection systems. These measures include custom Chrome options, user agent configuration, and JavaScript execution to remove automation indicators. The implementation is carefully designed to operate within ethical boundaries and comply with Google's terms of service while providing reliable automation capabilities.
+#### Status Endpoint: `/api/status`
 
-URL validation is performed to ensure that the provided NotebookLM URL is properly formatted and points to a valid NotebookLM instance. The validation process includes checking the URL structure, domain verification, and basic accessibility testing. Invalid URLs are rejected with appropriate error messages to guide users in providing correct input.
+-   **Method:** `GET`
+-   **Functionality:** Returns the current health and state of the browser instance (e.g., `ready`, `active`, `inactive`). Useful for monitoring if a session is currently running.
 
-The endpoint includes comprehensive error handling for various failure scenarios, including network connectivity issues, invalid URLs, authentication redirects, and browser initialization failures. Each error condition is properly categorized and reported with specific error messages and suggested resolution steps. The endpoint also provides detailed logging for troubleshooting and monitoring purposes.
+---
 
-Response format includes success indicators, status messages, current URL information, and operational status codes that enable client applications to determine the appropriate next steps. The response structure is consistent across all success and error scenarios, providing predictable behavior for client applications and automated systems.
+### Endpoint Architecture
 
-### Query NotebookLM Endpoint
+The API follows RESTful design principles and provides comprehensive error handling. Authentication and authorization are handled through the underlying Google authentication system.
 
-The `/api/query_notebooklm` endpoint represents the core functionality of the automation system, handling the submission of queries to NotebookLM and managing the complex process of waiting for complete response generation. This endpoint implements sophisticated content monitoring logic that can detect when NotebookLM has finished generating responses, even for complex queries that may take 30-60 seconds to complete.
+### Process Query Endpoint Details
 
-Query submission involves locating the appropriate input elements on the NotebookLM interface, clearing any existing content, and entering the user-provided query text. The implementation includes multiple fallback strategies for element location to handle variations in the NotebookLM interface and ensure reliable operation across different versions and configurations.
+The `/api/process_query` endpoint represents the core functionality of the automation system. It implements sophisticated content monitoring logic to detect when NotebookLM has finished generating responses, even for complex queries.
 
-The content monitoring system represents one of the most sophisticated aspects of the automation system, implementing intelligent algorithms to detect when content generation is complete. The system monitors the page for dynamic content changes, tracking content length and structure over time to identify when generation has stabilized. The monitoring process includes configurable parameters for stability detection, allowing fine-tuning for different types of queries and response patterns.
+**Key Features & Advanced Logic:**
 
-Copy button detection and activation is handled automatically once content generation is complete. The system searches for copy buttons using multiple selection strategies and attempts to activate the most recently created copy button to capture the complete response. The implementation includes fallback mechanisms for extracting content directly from the page when copy button activation is not successful.
+1.  **Smart "Thinking" Detection:**
+    -   NotebookLM often displays temporary phrases like *"Thinking"*, *"Reading documents"*, or *"Gathering facts"* before generating the actual answer.
+    -   **Logic:** The system explicitly checks for these phrases (defined in `THINKING_PHRASES`). If detected, it **ignores** them and resets the silence timer, ensuring the stream doesn't close prematurely while the AI is still "thinking".
 
-Response extraction and formatting ensures that the captured content is properly processed and returned in a usable format. The system handles various content types and formats that may be generated by NotebookLM, including text responses, structured data, and formatted content. The extraction process preserves formatting where appropriate while ensuring compatibility with standard text processing systems.
+2.  **Silence Detection (Completion Logic):**
+    -   Unlike simple APIs that send a "done" signal, NotebookLM streams text dynamically.
+    -   **Logic:** The system considers a response "complete" ONLY when:
+        -   Real text (not a thinking phrase) has started arriving.
+        -   **AND** no new text has been added for **5.0 seconds** (`SILENCE_THRESHOLD`).
+    -   This ensures that pauses in generation (e.g., while fetching a citation) do not cut off the response.
 
-### Browser Management and Status Endpoints
+3.  **Anti-Detection:** Uses custom Chrome options and user agent configurations to bypass automation detection.
+4.  **Error Handling:** Robustly handles navigation errors, element not found exceptions, and timeouts, ensuring the browser is always closed properly.
 
-The `/api/close_browser` endpoint provides essential cleanup functionality, ensuring that browser resources are properly released when automation sessions are complete. This endpoint implements comprehensive cleanup logic that handles both normal shutdown scenarios and error recovery situations where the browser may be in an inconsistent state.
+### Browser Management
+
+Browser resource management is handled automatically by the `process_query` endpoint. It ensures that:
+-   A new browser instance is created when needed.
+-   The session is cleaned up immediately after the query is processed.
+-   Resources are released even in the event of an error or timeout.
+
 
 Resource cleanup includes terminating the browser process, releasing memory and file handles, and cleaning up temporary files and data created during the automation session. The cleanup process is designed to be robust and handle various failure scenarios, ensuring that resources are properly released even when the browser is unresponsive or has encountered errors.
 
@@ -497,6 +533,37 @@ Network connectivity problems can affect communication between system components
 
 Performance issues may manifest as slow response times, timeout errors, or resource exhaustion. Troubleshooting procedures include performance profiling, resource utilization analysis, and configuration optimization to identify and resolve performance bottlenecks.
 
+### Selenium Permission Issues (EACCES / Supervisord Failures)
+
+**Symptom:**
+The Selenium container fails to start or enters a "FATAL" state. Docker logs show errors like:
+- `selenium-standalone entered FATAL state, too many start retries too quickly`
+- `spawnerr: unknown error making dispatchers for 'selenium-standalone': EACCES`
+- Permission denied errors when accessing `/data` or `/home/seluser`.
+
+**Cause:**
+This issue typically arises from incorrect user context or file permissions within the container, specifically:
+1.  The entrypoint script attempting to use `gosu` to switch users when the container is already running as `seluser`.
+2.  The mounted `/data` volume (mapped to `chrome-data` on the host) being owned by `root`, preventing the `seluser` from writing to it.
+
+**Solution:**
+1.  **Dockerfile Configuration:** Ensure `Dockerfile.selenium` switches to `USER seluser` *before* the `ENTRYPOINT` instruction.
+2.  **Entrypoint Script:** The `entrypoint-selenium.sh` script should:
+    -   Run as `seluser` (do not use `gosu` to switch *to* seluser if already running as it).
+    -   Use `sudo` for privileged operations like fixing ownership of the `/data` directory (`sudo chown -R seluser:seluser /data`). The `selenium/standalone-chrome` image allows passwordless sudo for `seluser`.
+    -   Execute the original entrypoint directly or via `exec`.
+
+**Example Fix (entrypoint-selenium.sh):**
+```bash
+# Fix ownership using sudo (since /data might be root-owned from the mount)
+sudo chown -R seluser:seluser "$PROFILE_DIR"
+
+# ... (other setup steps) ...
+
+# Start original entrypoint directly
+exec /opt/bin/entry_point.sh
+```
+
 ### Appendix D: Security Best Practices
 
 This appendix provides comprehensive security guidance for deploying and operating the NotebookLM Automation System in production environments. The security recommendations address multiple layers of the system architecture and operational procedures.
@@ -508,6 +575,45 @@ Network security recommendations include implementing proper firewall rules, net
 Application security measures include input validation, output encoding, and protection against common web application vulnerabilities. Security headers should be configured to provide additional protection against client-side attacks, and sensitive data should be properly protected throughout the system.
 
 Operational security procedures include regular security updates, vulnerability assessments, and security monitoring to maintain system security over time. Incident response procedures should be established to ensure rapid response to security incidents and minimize potential impact.
+
+---
+
+## Operational Guide: Updates & Access
+
+### SSH Access and Key Management
+
+**CRITICAL NOTE:** When accessing the Google Cloud VM or transferring files, **ALWAYS use the `gcloud` CLI tools**. Do NOT use standard `ssh` or `scp` commands directly.
+
+-   **Why?** Google Cloud manages SSH keys automatically. Standard tools require manual management of private key files (`.pem`), which can lead to "Permission denied (publickey)" errors if keys are lost or not properly configured.
+-   **Correct Usage:**
+    -   **SSH:** `gcloud compute ssh [INSTANCE_NAME] --zone=[ZONE]`
+    -   **SCP (Upload):** `gcloud compute scp [LOCAL_FILE] [INSTANCE_NAME]:[REMOTE_PATH] --zone=[ZONE]`
+
+### Automated Deployment Script (Windows)
+
+To simplify the process of updating the backend code, a PowerShell script `deploy_to_vm.ps1` is provided in the project root. This script handles:
+1.  Uploading the updated `notebooklm.py` file using `gcloud`.
+2.  Moving the file to the correct application directory on the VM.
+3.  Restarting the Docker container to apply changes.
+
+**Usage:**
+```powershell
+.\deploy_to_vm.ps1
+```
+
+### Manual Update Procedure
+
+If you need to manually update the application, follow this reliable workflow using `gcloud`:
+
+1.  **Upload the file** (to your user's home directory first):
+    ```powershell
+    gcloud compute scp "local\path\to\file" instance-name:~/filename --zone=us-central1-a
+    ```
+
+2.  **Move and Restart** (using a single SSH command):
+    ```powershell
+    gcloud compute ssh instance-name --zone=us-central1-a --command="sudo mv ~/filename /home/ubuntu/notebooklm-backend/ && sudo docker compose restart app"
+    ```
 
 ---
 

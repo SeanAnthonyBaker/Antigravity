@@ -8,7 +8,15 @@ GCLOUD_WRITABLE_CONFIG_DIR="/home/seluser/.config/gcloud"
 # The directory where the Chrome profile is stored inside the container.
 PROFILE_DIR="/data"
 
-echo "Custom Selenium Entrypoint: Setting up Google Cloud credentials..."
+echo "Custom Selenium Entrypoint: Setting up..."
+
+# Fix ownership of the /data directory.
+# Since /data is a mounted volume, it might be owned by root initially.
+# We use sudo (passwordless for seluser) to fix this.
+echo "Fixing ownership of $PROFILE_DIR..."
+sudo chown -R seluser:seluser "$PROFILE_DIR"
+
+echo "Setting up Google Cloud credentials..."
 
 # First, check that the gcloud credentials directory was mounted successfully from the host.
 if [ ! -f "$GCLOUD_RO_CREDS_DIR/application_default_credentials.json" ]; then
@@ -27,8 +35,9 @@ else
   # from the host mount to a writable location inside the container.
   echo "Found credentials. Setting up writable gcloud config directory..."
   mkdir -p "$GCLOUD_WRITABLE_CONFIG_DIR"
-  cp -rL "$GCLOUD_RO_CREDS_DIR/." "$GCLOUD_WRITABLE_CONFIG_DIR/"
-  chown -R seluser:seluser "$GCLOUD_WRITABLE_CONFIG_DIR"
+  # Use sudo to copy because source might be root-owned (bind mount)
+  sudo cp -rL "$GCLOUD_RO_CREDS_DIR/." "$GCLOUD_WRITABLE_CONFIG_DIR/"
+  sudo chown -R seluser:seluser "$GCLOUD_WRITABLE_CONFIG_DIR"
   echo "Credentials copied to $GCLOUD_WRITABLE_CONFIG_DIR."
 fi
 
@@ -50,12 +59,6 @@ if [ -n "$CHROME_PROFILE_GCS_PATH" ]; then
     echo "Profile successfully downloaded and extracted."
 fi
 
-echo "Fixing ownership of the /data directory for user 'seluser'..."
-# This is crucial because bind mounts from the host are owned by root, which
-# prevents the non-root 'seluser' from writing the Chrome profile.
-chown -R seluser:seluser "$PROFILE_DIR"
-echo "Ownership fixed."
-
 # Clean up stale Chrome lock files from the profile directory.
 # This prevents "user data directory is already in use" errors after an unclean shutdown.
 echo "Checking for and removing stale Chrome lock files from profile directory: $PROFILE_DIR"
@@ -66,4 +69,5 @@ echo "Stale lock files removed."
 
 
 echo "Starting original Selenium entrypoint..."
+# We are already seluser, so just exec the script.
 exec /opt/bin/entry_point.sh

@@ -1,0 +1,38 @@
+# deploy_full_update.ps1
+$VM_NAME = "notebooklm-backend-vm"
+$ZONE = "us-central1-a"
+$REMOTE_USER = "seanb"
+$APP_DIR = "/home/ubuntu/notebooklm-backend"
+
+$FILES = @("Dockerfile.selenium", "entrypoint-selenium.sh", "notebooklm.py")
+
+Write-Host "🚀 Deploying updates to $VM_NAME..." -ForegroundColor Cyan
+
+foreach ($file in $FILES) {
+    Write-Host "Uploading $file..." -ForegroundColor Yellow
+    gcloud compute scp $file "$($VM_NAME):/home/$REMOTE_USER/$file" --zone=$ZONE
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "❌ Upload of $file failed!"
+        exit 1
+    }
+}
+
+Write-Host "Moving files and rebuilding Docker services..." -ForegroundColor Yellow
+# We need to rebuild selenium because we changed Dockerfile.selenium and entrypoint-selenium.sh
+$CMD = "sudo mv /home/$REMOTE_USER/Dockerfile.selenium $APP_DIR/ && " +
+"sudo mv /home/$REMOTE_USER/entrypoint-selenium.sh $APP_DIR/ && " +
+"sudo mv /home/$REMOTE_USER/notebooklm.py $APP_DIR/ && " +
+"sudo chown ubuntu:ubuntu $APP_DIR/* && " +
+"cd $APP_DIR && " +
+"sudo docker compose build selenium && " +
+"sudo docker compose up -d selenium && " +
+"sudo docker compose restart app"
+
+gcloud compute ssh $VM_NAME --zone=$ZONE --command=$CMD
+
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "✅ Deployment and Rebuild Complete!" -ForegroundColor Green
+}
+else {
+    Write-Error "❌ Remote command failed!"
+}

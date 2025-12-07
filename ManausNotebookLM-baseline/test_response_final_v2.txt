@@ -1,0 +1,18 @@
+data: {"status": "opening_browser", "message": "Navigating to https://notebooklm.google.com/notebook/76e3b771-785e-4003-abfe-994666cfd3c2"}
+
+data: {"status": "browser_ready", "message": "NotebookLM interface loaded."}
+
+data: {"status": "waiting_for_response"}
+
+data: {"status": "streaming"}
+
+data: {"chunk": "Consulting your sources..."}
+
+data: {"chunk": "vion\u2019s expertise as a data transformation specialist, focusing heavily on its Data Conversion Suite (DCS) products and transformation services12.\nNatuvion Services and Product Suite\nNatuvion offers extensive Transformation Services, including migrations to SAP S/4HANA, SAP EWM, SAP GTS, SAP HCM / SuccessFactors, and transformations to/from platforms like Oracle, Salesforce, and Microsoft1.... They also specialize in Data Management Services, such as Carve-out/in (Merger & Acquisitions), Data Quality Management, System Decommissioning, and Test Data Anonymization35.\nThe core of Natuvion\u2019s product offering is the Data Conversion Suite (DCS), which includes tools like DCS Migrate, DCS Watch, DCS Protect, DCS Validate, DCS Test, DCS Retire, DCS Compose, DCS Safeguard, and the primary analysis tool, DCS Analyze1.... Natuvion focuses its services across industries such as Utilities, Automotive, Healthcare, and Public Business16."}
+
+data: {"chunk": "\nDCS Analyze and Natuvion SOPHIA\nDCS Analyze, also referenced as Natuvion SOPHIA (powered by Natuvion DCS)8, is described as a powerful, customizable, system"}
+
+data: {"status": "complete"}
+
+data: {"status": "browser_closed"}
+

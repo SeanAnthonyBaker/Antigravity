@@ -2,6 +2,7 @@ import os
 import threading
 import signal
 import logging
+from logging.handlers import RotatingFileHandler
 from flask import Flask, send_from_directory
 from flask_cors import CORS
 from models import db
@@ -10,7 +11,34 @@ from notebooklm import notebooklm_bp, browser_lock, start_browser_initialization
 from grok import grok_bp
 
 # Configure logging for the application
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# Set up log directory
+LOG_DIR = os.environ.get('LOG_DIR', './logs')
+os.makedirs(LOG_DIR, exist_ok=True)
+LOG_FILE = os.path.join(LOG_DIR, 'notebooklm.log')
+
+# Create formatter
+log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# Console handler
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(log_formatter)
+
+# File handler with rotation (10MB max size, keep 5 backups)
+file_handler = RotatingFileHandler(
+    LOG_FILE,
+    maxBytes=10 * 1024 * 1024,  # 10MB
+    backupCount=5,
+    encoding='utf-8'
+)
+file_handler.setFormatter(log_formatter)
+
+# Configure root logger
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+root_logger.addHandler(console_handler)
+root_logger.addHandler(file_handler)
+
+logging.info(f"Logging initialized. Log file: {LOG_FILE}")
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 

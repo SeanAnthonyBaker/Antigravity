@@ -41,11 +41,59 @@ SUBMIT_BUTTON_SELECTORS = [
 
 RESPONSE_CONTENT_SELECTOR = (By.CSS_SELECTOR, '.message-content')
 
+# Suggestion chip selectors - these appear when response is complete
+SUGGESTION_CHIP_SELECTORS = [
+    (By.CSS_SELECTOR, '.suggestion-chip'),
+    (By.CSS_SELECTOR, 'button.follow-up'),
+    (By.CSS_SELECTOR, '[class*="suggestion"]'),
+    (By.CSS_SELECTOR, '.follow-up-question'),
+    (By.XPATH, "//button[contains(@class, 'suggestion')]")
+]
+
 NOTEBOOKLM_LOAD_INDICATORS = [
     (By.CSS_SELECTOR, '[data-testid="chat-input"]'), # Chat input is a good sign of readiness
     (By.CSS_SELECTOR, 'div[aria-label="Sources"]'), # Sources panel
     (By.XPATH, "//*[contains(text(), 'New notebook')]") # "New notebook" button
 ]
+
+THINKING_PHRASES = [
+    "Thinking",
+    "Reading documents",
+    "Gathering facts",
+    "Parsing the data",
+    "Sifting through pages",
+    "Working on it",
+    "Analyzing",
+    "Checking sources",
+    "Gathering info",
+    "Just a sec",
+    "Assessing relevance",
+    "Searching your docs",
+    "Refining the answer",
+    "Scanning the text",
+    "Scanning your sources",
+    "Finding relevant info",
+    "Finding key words",
+    "Finding connections",
+    "Opening your notes",
+    "Reviewing the content",
+    "Exploring your material",
+    "Checking the scope",
+    "Checking your uploads",
+    "Examining the specifics",
+    "Checking the scope...",
+    "Checking your uploads...",
+    "Examining the specifics...",
+    "Finding key words...",
+    "Finding relevant info...",
+    "Getting the gist",
+    "Getting the gist...",
+    "Reading full chapters",
+    "Reading full chapters..."
+]
+
+
+
 
 
 def reset_browser():
@@ -147,12 +195,126 @@ def find_element_by_priority(driver, selectors, condition=EC.presence_of_element
     logger.debug(f"Element not found using any selector within the {timeout}s timeout.")
     return None
 
+def count_all_suggestions(driver):
+    """
+    Counts all suggestion chip elements using multiple selectors.
+    Returns the total count of unique suggestion elements.
+    """
+    suggestion_elements = set()
+    for by, value in SUGGESTION_CHIP_SELECTORS:
+        try:
+            elements = driver.find_elements(by, value)
+            for elem in elements:
+                # Use element ID to avoid counting duplicates
+                try:
+                    suggestion_elements.add(elem.id)
+                except:
+                    pass
+        except Exception as e:
+            logger.debug(f"Could not find suggestions with selector {value}: {e}")
+            pass
+    
+    return len(suggestion_elements)
+
+def safe_get_element_text(driver, selector, max_retries=15):
+    """
+    Safely retrieves text from an element that may go stale during NotebookLM's rapid DOM updates.
+    
+    Args:
+        driver: Selenium WebDriver instance
+        selector: Tuple of (By, value) for locating element
+        max_retries: Maximum number of retry attempts (default 15)
+    
+    Returns:
+        str: The element's text content
+        
+    Raises:
+        StaleElementReferenceException: If element remains stale after all retries
+    """
+    for attempt in range(max_retries):
+        try:
+            # Find the latest response element
+            elements = driver.find_elements(*selector)
+            if not elements:
+                return ""
+            
+            element = elements[-1]  # Get the most recent one
+            text = element.text  # This line often triggers stale element
+            return text
+            
+        except StaleElementReferenceException:
+            if attempt < max_retries - 1:
+                # Wait a tiny bit for DOM to stabilize
+                time.sleep(0.05)  # 50ms
+                continue
+            else:
+                # Final attempt failed
+                logger.error(f"Element remained stale after {max_retries} attempts")
+                raise
+        except Exception as e:
+            logger.debug(f"Unexpected error reading element text: {e}")
+            return ""
+    
+    return ""
+
+def is_only_thinking_phrase(text):
+    """
+    Checks if the given text contains ONLY thinking phrases (and nothing else).
+    Returns True if yes, False if there's actual content.
+    """
+    if not text or not text.strip():
+        return False
+    
+    # logger.debug(f"Checking is_only_thinking_phrase: '{text}'")
+    
+    # Remove common punctuation and whitespace
+    cleaned = text.strip().rstrip('.').rstrip('...')
+    
+    # Check if the entire text matches any thinking phrase
+    for phrase in THINKING_PHRASES:
+        # 1. Exact match of cleaned text vs cleaned phrase
+        clean_phrase = phrase.lower().rstrip('.').rstrip('...')
+        if cleaned.lower() == clean_phrase:
+            # logger.debug(f"Thinking phrase match (exact): '{text}'")
+            return True
+            
+        # 2. Check if it starts with the phrase and is short enough
+        if cleaned.lower().startswith(clean_phrase) and len(cleaned) <= len(clean_phrase) + 5:
+            # logger.debug(f"Thinking phrase match (startswith): '{text}'")
+            return True
+            
+        # 3. Direct match against raw phrase (in case list has dots)
+        if text.strip().lower() == phrase.lower():
+            # logger.debug(f"Thinking phrase match (raw): '{text}'")
+            return True
+            
+    # 4. Heuristic: Check for common thinking verbs in short text
+    # This catches variations like "Finding key words...", "Finding connections...", etc.
+    # We use 'in' instead of 'startswith' to handle potential invisible characters at the start
+    THINKING_VERBS = [
+        "Finding", "Checking", "Scanning", "Reading", "Getting", 
+        "Thinking", "Working", "Parsing", "Sifting", "Analyzing", 
+        "Assessing", "Refining", "Reviewing", "Exploring", "Examining",
+        "Gathering", "Consulting"
+    ]
+    
+    if len(text) < 60:  # Increased to 60
+        text_lower = text.lower()
+        for verb in THINKING_VERBS:
+            if verb.lower() in text_lower:
+                logger.info(f"Heuristic thinking phrase match: '{text}' (contains {verb})")
+                return True
+                
+    return False
+
+
 
 @notebooklm_bp.route('/process_query', methods=['POST'])
 def process_query():
     """
     Consolidated Endpoint: Opens NotebookLM, submits a query, streams the response, and closes the browser.
     """
+    logger.info("VERSION: STRICT_THINKING_LOGIC_V2 - Starting process_query")
     data = request.get_json()
     if not data or 'query' not in data:
         return jsonify({'error': 'Missing "query" in request body'}), 400
@@ -258,6 +420,13 @@ def process_query():
                      yield f'data: {json.dumps({"error": "Not on a NotebookLM page."})}\n\n'
                      return
                 
+                # Track baseline for completion detection
+                response_elements_before = browser_instance.find_elements(*RESPONSE_CONTENT_SELECTOR)
+                
+                # BASELINE: Count suggestion chips before query
+                initial_suggestion_count = count_all_suggestions(browser_instance)
+                logger.info(f"BASELINE: {initial_suggestion_count} suggestion chips found before query")
+                
                 initial_response_count = len(browser_instance.find_elements(*RESPONSE_CONTENT_SELECTOR))
                 
                 logger.info("Attempting to find the chat input field...")
@@ -281,202 +450,12 @@ def process_query():
                 logger.info("Query submitted.")
                 yield f'data: {json.dumps({"status": "waiting_for_response"})}\n\n'
 
-                # Streaming Mode with Silence Detection
-                # We stream chunks as they arrive.
-                # Completion is defined as: Text has started arriving AND no new text for 5 seconds.
-                
-                logger.info("Waiting for response to start streaming...")
-                
-                last_text = ""
-                last_change_time = time.time()
-                SILENCE_THRESHOLD = 15.0  # Seconds of silence to consider complete
-                end_time = time.time() + timeout
-                
-                has_started = False
-                stream_completed = False
-                
-                # Known "thinking" phrases to ignore
-                THINKING_PHRASES = [
-                    "Thinking", "Sifting through pages", "Reading documents", 
-                    "Analyzing", "Checking sources", "Gathering info",
-                    "Working on it", "Just a sec"
-                ]
-                
-                # Debug: Track if we've logged the "no elements" message to avoid spamming
-                logged_no_elements = False
-
-                while time.time() < end_time:
-                    try:
-                        # Try primary selector
-                        elements = browser_instance.find_elements(*RESPONSE_CONTENT_SELECTOR)
-                        
-                        # Fallback: Try a more generic selector if primary fails
-                        if not elements:
-                            elements = browser_instance.find_elements(By.XPATH, "//div[contains(@class, 'model-response') or contains(@class, 'response-text')]")
-                        
-                        if elements:
-                            current_response = elements[-1]
-                            current_text = current_response.text
-                            
-                            # Check if this is just a thinking phrase
-                            is_thinking = any(phrase in current_text for phrase in THINKING_PHRASES)
-                            
-                            # Debug log (only once per length change to avoid spam)
-                            if len(current_text) != len(last_text):
-                                logger.info(f"Text update detected. Old len: {len(last_text)}, New len: {len(current_text)}")
-                                logger.debug(f"Current text snippet: {current_text[:50]}...")
-
-                            # Check if we have new text
-                            if len(current_text) > len(last_text):
-                                # Calculate the new chunk
-                                new_chunk = current_text[len(last_text):]
-                                
-                                # Yield the chunk
-                                yield f'data: {json.dumps({"chunk": new_chunk})}\n\n'
-                                
-                                # Update state
-                                last_text = current_text
-                                last_change_time = time.time()
-                                
-                                if not has_started:
-                                    logger.info("Response started streaming (first chunk detected).")
-                                    has_started = True
-                            
-                            # Check for silence (completion) based purely on length stability
-                            # ONLY if we have started
-                            if has_started:
-                                time_since_last_change = time.time() - last_change_time
-                                if time_since_last_change >= SILENCE_THRESHOLD:
-                                    logger.info(f"Text length has been stable for {SILENCE_THRESHOLD} seconds. Assuming completion.")
-                                    stream_completed = True
-                                    break
-                        else:
-                            if not logged_no_elements:
-                                logger.warning("No response elements found yet.")
-                                logged_no_elements = True
-                                    
-                    except Exception as e:
-                        # Ignore transient errors during polling but log them once
-                        logger.debug(f"Transient error in loop: {e}")
-                        pass
-                    
-                    time.sleep(0.5) # Poll frequently for smooth streaming
-                
-                if stream_completed:
-                    yield f'data: {json.dumps({"status": "complete"})}\n\n'
-                elif has_started:
-                     # If we hit the global timeout but had started, we consider it done-ish
-                     logger.warning("Global timeout reached, but stream had started.")
-                     yield f'data: {json.dumps({"status": "complete"})}\n\n'
-                else:
-                    # Debug: Dump page source if we failed completely
-                    try:
-                        src = browser_instance.page_source
-                        debug_file = "/app/debug_page_source.html"
-                        with open(debug_file, "w", encoding="utf-8") as f:
-                            f.write(src)
-                        logger.error(f"Timed out. Page source saved to {debug_file}")
-                    except Exception as e:
-                        logger.error(f"Failed to save debug source: {e}")
-                    
-                    logger.error("Timed out. No text ever appeared.")
-                    yield f'data: {json.dumps({"status": "timeout", "error": "No response text detected."})}\n\n'
-
-            except Exception as e:
-                logger.error(f"Error in process_query: {e}", exc_info=True)
-                yield f'data: {json.dumps({"error": str(e)})}\n\n'
-            
-            finally:
-                # 3. Close Browser
-                reset_browser()
-                yield f'data: {json.dumps({"status": "browser_closed"})}\n\n'
-
-    return Response(stream_with_context(generate_full_process_response()), mimetype='text/event-stream')
-
-@notebooklm_bp.route('/open_notebooklm', methods=['POST'])
-def open_notebooklm():
-    """
-    Endpoint 1: Navigates to a specific NotebookLM URL. This endpoint is ASYNCHRONOUS.
-    It will start loading the page in the background and return immediately.
-    """
-    data = request.get_json() or {}
-    url = data.get('notebooklm_url', "https://notebooklm.google.com/")
-    logger.info(f"Request received to open URL: {url}")
-
-    # Start the page load in a background thread
-    thread = threading.Thread(target=_perform_open_notebook, args=(url,))
-    thread.daemon = True
-    thread.start()
-
-    return jsonify({'status': 'loading', 'message': f'Page load initiated for {url}'}), 202
-
-def _perform_open_notebook(url):
-    """
-    Helper function to contain the browser navigation and validation logic.
-    This runs in a background thread and does not return a direct response to the client.
-    """
-    with browser_lock:
-        if not browser_instance:
-            logger.error("Browser not initialized.")
-            return
-        try:
-            logger.info(f"Navigating to {url} and waiting for it to become interactive...")
-            browser_instance.get(url)
-
-            load_indicator = find_element_by_priority(browser_instance, NOTEBOOKLM_LOAD_INDICATORS, timeout=20)
-
-            current_url = browser_instance.current_url
-            if 'accounts.google.com' in current_url or 'signin' in current_url.lower():
-                logger.warning(f"Redirected to Google sign-in page for URL: {url}")
-            elif not load_indicator:
-                logger.error(f"Timed out waiting for NotebookLM interface to load at {url}.")
-            else:
-                logger.info(f"Successfully navigated to {url} and the interface is ready.")
-        except Exception as e:
-            logger.error(f"Error during open of {url}: {e}", exc_info=True)
-
-@notebooklm_bp.route('/query_notebooklm', methods=['POST'])
-def query_notebooklm():
-    """
-    Endpoint 2: Submits a query to NotebookLM and streams the response back.
-    """
-    data = request.get_json()
-    if not data or 'query' not in data:
-        return jsonify({'error': 'Missing "query" in request body'}), 400
-    query_text = data['query']
-    timeout = data.get('timeout', 180) # Allow configurable timeout
-
-    def generate_response():
-        with browser_lock:
-            if not browser_instance:
-                yield f'data: {json.dumps({"error": "Browser not initialized."})}\n\n'
-                return
-
-            try:
-                # Check if we are on a valid NotebookLM page
-                if "notebooklm.google.com" not in browser_instance.current_url:
-                    yield f'data: {json.dumps({"error": "Not on a NotebookLM page. Please use /open_notebooklm first."})}\n\n'
-                    return
-
-                initial_response_count = len(browser_instance.find_elements(*RESPONSE_CONTENT_SELECTOR))
-                
-                logger.info("Attempting to find the chat input field...")
-                input_field = find_element_by_priority(browser_instance, CHAT_INPUT_SELECTORS, condition=EC.element_to_be_clickable, timeout=10)
-                if not input_field:
-                    raise NoSuchElementException("Could not find the chat input field.")
-                
-                input_field.clear()
-                input_field.send_keys(query_text)
-                
-                submit_button = find_element_by_priority(browser_instance, SUBMIT_BUTTON_SELECTORS, condition=EC.element_to_be_clickable, timeout=5)
-                if submit_button:
-                    submit_button.click()
-                else:
-                    from selenium.webdriver.common.keys import Keys
-                    input_field.send_keys(Keys.RETURN)
-                
-                logger.info("Query submitted, waiting for response from NotebookLM...")
-                yield f'data: {json.dumps({"status": "waiting_for_response"})}\n\n'
+                # 3. Stream the response
+                # STRATEGY: Simple and reliable
+                # 1. Wait for a NEW response element to appear
+                # 2. Stream ALL text changes (ignore content, just detect changes)
+                # 3. Stop when text hasn't changed for 6 seconds
+                # This ignores "Thinking" phrases entirely - we just stream what we see
 
                 def find_new_response_with_text(driver, initial_count, selector):
                     try:
@@ -489,121 +468,136 @@ def query_notebooklm():
                         return False
                     return False
 
-                # Streaming Mode with Silence Detection
-                # We stream chunks as they arrive.
-                # Completion is defined as: Text has started arriving AND no new text for 5 seconds.
-                
-                logger.info("Waiting for response to start streaming...")
-                
+                try:
+                    response_element = WebDriverWait(browser_instance, 50).until(
+                        lambda d: find_new_response_with_text(d, initial_response_count, RESPONSE_CONTENT_SELECTOR)
+                    )
+                    logger.info("Response element detected. Starting to stream.")
+                    yield f'data: {json.dumps({"status": "streaming"})}\n\n'
+                except TimeoutException:
+                    logger.error("Timed out waiting for a response from NotebookLM.")
+                    yield f'data: {json.dumps({"error": "NotebookLM did not start generating a response in time."})}\n\n'
+                    return
+
                 last_text = ""
-                last_change_time = time.time()
-                SILENCE_THRESHOLD = 5.0  # Seconds of silence to consider complete
                 end_time = time.time() + timeout
-                
-                has_started = False
                 stream_completed = False
+                last_change_time = time.time()
+                SILENCE_TIMEOUT = 6  # Seconds of no growth to complete
+                MATERIAL_CHUNK_SIZE = 30  # Chunk size that indicates real content (lowered for reliability)
                 
-                # Known "thinking" phrases to ignore
-                THINKING_PHRASES = [
-                    "Thinking", "Sifting through pages", "Reading documents", 
-                    "Analyzing", "Checking sources", "Gathering info",
-                    "Working on it", "Just a sec"
-                ]
+                # State: have we seen material chunks yet?
+                material_started = False
                 
-                # Debug: Track if we've logged the "no elements" message to avoid spamming
-                logged_no_elements = False
+                # DOM logging during streaming
+                last_dom_snapshot_time = time.time()
+                DOM_SNAPSHOT_INTERVAL = 3  # Take a snapshot every 3 seconds during streaming
+                streaming_snapshot_count = 0
 
                 while time.time() < end_time:
-                    try:
-                        # Try primary selector
-                        elements = browser_instance.find_elements(*RESPONSE_CONTENT_SELECTOR)
+                    # Safely get current text with retry logic
+                    current_text = safe_get_element_text(browser_instance, RESPONSE_CONTENT_SELECTOR)
+                    
+                    # Detect if current text is ONLY a thinking phrase
+                    current_is_thinking = is_only_thinking_phrase(current_text)
+                    
+                    # Detect if this is a fragment (likely from phrase removal)
+                    # Heuristic: Very short (<5) OR (Short <15 AND contains dots/ellipsis)
+                    # This avoids skipping short real answers like "Yes." or "No."
+                    is_fragment = (len(current_text.strip()) < 5 or (len(current_text.strip()) < 15 and "..." in current_text)) and not current_is_thinking
+                    
+                    # CRITICAL: If we previously had a thinking phrase and now:
+                    # 1. Have real content, OR
+                    # 2. Text got SHORTER (thinking phrase being removed), OR
+                    # 3. We see a fragment
+                    # Reset last_text to capture the full real response
+                    if last_text and is_only_thinking_phrase(last_text):
+                        if not current_is_thinking or len(current_text) < len(last_text) or is_fragment:
+                            logger.info(f"Thinking phrase transition detected - resetting tracking (was: {len(last_text)} chars, now: {len(current_text)} chars)")
+                            last_text = ""
+                    
+                    # If we have a fragment after any tracked text, also reset
+                    if is_fragment and last_text:
+                        logger.debug(f"Fragment detected ('{current_text.strip()}') - resetting to capture full content")
+                        last_text = ""
+                    
+                    # Detect text growth
+                    if len(current_text) > len(last_text):
+                        new_chunk = current_text[len(last_text):]
+                        chunk_size = len(new_chunk)
                         
-                        # Fallback: Try a more generic selector if primary fails
-                        if not elements:
-                            elements = browser_instance.find_elements(By.XPATH, "//div[contains(@class, 'model-response') or contains(@class, 'response-text')]")
-                        
-                        if elements:
-                            current_response = elements[-1]
-                            current_text = current_response.text
+                        # Skip sending thinking phrases AND fragments as chunks
+                        if not current_is_thinking and not is_fragment:
+                            # Check if this is a material chunk
+                            if chunk_size >= MATERIAL_CHUNK_SIZE and not material_started:
+                                logger.info(f"Material content detected (chunk: {chunk_size} chars). Starting silence timer.")
+                                material_started = True
                             
-                            # Check if this is just a thinking phrase
-                            is_thinking = any(phrase in current_text for phrase in THINKING_PHRASES)
+                            yield f'data: {json.dumps({"chunk": new_chunk})}\n\n'
                             
-                            # Debug log (only once per length change to avoid spam)
-                            if len(current_text) != len(last_text):
-                                logger.info(f"Text update detected. Old len: {len(last_text)}, New len: {len(current_text)}")
-                                logger.debug(f"Current text snippet: {current_text[:50]}...")
-
-                            # Check if we have new text
-                            if len(current_text) > len(last_text):
-                                # Calculate the new chunk
-                                new_chunk = current_text[len(last_text):]
-                                
-                                # Yield the chunk
-                                yield f'data: {json.dumps({"chunk": new_chunk})}\n\n'
-                                
-                                # Update state
+                            # ONLY update last_text if we sent the chunk (or if it's real content)
+                            last_text = current_text
+                            last_change_time = time.time()
+                        else:
+                            logger.debug(f"Skipping thinking/fragment chunk: {new_chunk[:50]}...")
+                            # If it's a thinking phrase, we MUST update last_text to track it
+                            if current_is_thinking:
                                 last_text = current_text
                                 last_change_time = time.time()
-                                
-                                if not has_started:
-                                    logger.info("Response started streaming (first chunk detected).")
-                                    has_started = True
-                            
-                            # Check for silence (completion)
-                            # ONLY if we have started AND we are not currently "thinking"
-                            if has_started:
-                                if is_thinking:
-                                    # Reset the timer if we are still in a thinking state
-                                    # This handles cases where it switches from one thinking phrase to another
-                                    last_change_time = time.time()
-                                else:
-                                    time_since_last_change = time.time() - last_change_time
-                                    if time_since_last_change >= SILENCE_THRESHOLD:
-                                        logger.info(f"No new text for {SILENCE_THRESHOLD} seconds and not thinking. Assuming completion.")
-                                        stream_completed = True
-                                        break
-                        else:
-                            if not logged_no_elements:
-                                logger.warning("No response elements found yet.")
-                                logged_no_elements = True
-                                    
-                    except Exception as e:
-                        # Ignore transient errors during polling but log them once
-                        logger.debug(f"Transient error in loop: {e}")
-                        pass
+                            # If it's a fragment, DO NOT update last_text
+                            # This ensures we don't use the fragment as the baseline for the next real chunk
                     
-                    time.sleep(0.5) # Poll frequently for smooth streaming
-                
-                if stream_completed:
-                    yield f'data: {json.dumps({"status": "complete"})}\n\n'
-                elif has_started:
-                     # If we hit the global timeout but had started, we consider it done-ish
-                     logger.warning("Global timeout reached, but stream had started.")
-                     yield f'data: {json.dumps({"status": "complete"})}\n\n'
-                else:
-                    # Debug: Dump page source if we failed completely
-                    try:
-                        src = browser_instance.page_source
-                        debug_file = "/app/debug_page_source.html"
-                        with open(debug_file, "w", encoding="utf-8") as f:
-                            f.write(src)
-                        logger.error(f"Timed out. Page source saved to {debug_file}")
-                    except Exception as e:
-                        logger.error(f"Failed to save debug source: {e}")
+
+
+                    # PRIMARY COMPLETION DETECTION: New suggestion chips appeared
+                    current_suggestion_count = count_all_suggestions(browser_instance)
+                    if current_suggestion_count > initial_suggestion_count:
+                        logger.info(f"🎯 COMPLETION DETECTED: Suggestion chips increased from {initial_suggestion_count} to {current_suggestion_count}")
+                        stream_completed = True
+                        break
+
+                    # FALLBACK COMPLETION: Silence detection (only if material content started)
+                    # Completion logic
+                    # ONLY complete if we've seen material content AND there's been silence
+                    if material_started:
+                        silence_duration = time.time() - last_change_time
+                        if silence_duration > SILENCE_TIMEOUT:
+                            logger.info(f"Stream complete: {SILENCE_TIMEOUT}s silence after material content.")
+                            stream_completed = True
+                            break
                     
-                    logger.error("Timed out. No text ever appeared.")
-                    yield f'data: {json.dumps({"status": "timeout", "error": "No response text detected."})}\n\n'
+                    time.sleep(0.2)
+
+                # Final flush - safely get any remaining text
+                final_text = safe_get_element_text(browser_instance, RESPONSE_CONTENT_SELECTOR)
+                if len(final_text) > len(last_text):
+                    new_chunk = final_text[len(last_text):]
+                    yield f'data: {json.dumps({"chunk": new_chunk})}\n\n'
+
+                logger.info("Query completed successfully")
+
+
+                status_message = "timeout" if not stream_completed else "complete"
+                yield f'data: {json.dumps({"status": status_message})}\n\n'
+
+
+
+
 
             except Exception as e:
-                logger.error(f"An unexpected error occurred during the query process: {e}", exc_info=True)
+                logger.error(f"An unexpected error occurred during the query stream: {e}", exc_info=True)
                 yield f'data: {json.dumps({"error": str(e)})}\n\n'
+            
+            finally:
+                # 3. Close Browser
+                reset_browser()
+                yield f'data: {json.dumps({"status": "browser_closed"})}\n\n'
 
-    return Response(stream_with_context(generate_response()), mimetype='text/event-stream')
+    return Response(stream_with_context(generate_full_process_response()), mimetype='text/event-stream')
 
 @notebooklm_bp.route('/status', methods=['GET'])
 def get_status():
-    """Endpoint 4: Checks the status of the browser instance."""
+    """Endpoint 2: Checks the status of the browser instance."""
     with browser_lock:
         if browser_instance:
             try:
@@ -627,9 +621,3 @@ def get_status():
         else:
             return jsonify({'browser_active': False, 'status': 'inactive'})
 
-@notebooklm_bp.route('/close_browser', methods=['POST'])
-def close_browser():
-    """Endpoint 3: Closes the browser instance."""
-    with browser_lock:
-        reset_browser()
-        return jsonify({'success': True, 'message': 'Browser closed successfully.'})
