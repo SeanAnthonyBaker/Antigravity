@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { NotebookService } from '../services/NotebookService';
 import type { UserNotebook } from '../services/NotebookService';
+import { ApiKeyService } from '../services/ApiKeyService';
 import { supabase } from '../lib/supabase';
 
 interface AIQueryRefinementModalProps {
@@ -88,38 +89,41 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
 
     // Load API Keys from localStorage & Fetch User/Notebooks
     useEffect(() => {
-        const storedGeminiKey = localStorage.getItem('gemini_api_key');
-        if (storedGeminiKey) {
-            setApiKey(storedGeminiKey);
-        } else {
-            const envKey = import.meta.env.VITE_GEMINI_API_KEY;
-            if (envKey) setApiKey(envKey);
-        }
-
-        const storedGrokKey = localStorage.getItem('grok_api_key');
-        if (storedGrokKey) {
-            setGrokApiKey(storedGrokKey);
-        }
-
-        const storedDeepSeekKey = localStorage.getItem('deepseek_api_key');
-        if (storedDeepSeekKey) {
-            setDeepSeekApiKey(storedDeepSeekKey);
-        }
-
-        // Fetch User and Notebooks
-        const fetchUserAndNotebooks = async () => {
+        // Fetch User, API Keys, and Notebooks
+        const fetchUserData = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
                 setUserId(user.id);
+
                 try {
+                    // Fetch API keys from Supabase
+                    const apiKeys = await ApiKeyService.fetchApiKeys(user.id);
+
+                    // Set API keys from database, fallback to env vars if not found
+                    if (apiKeys.gemini) {
+                        setApiKey(apiKeys.gemini);
+                    } else {
+                        const envKey = import.meta.env.VITE_GEMINI_API_KEY;
+                        if (envKey) setApiKey(envKey);
+                    }
+
+                    if (apiKeys.grok) {
+                        setGrokApiKey(apiKeys.grok);
+                    }
+
+                    if (apiKeys.deepseek) {
+                        setDeepSeekApiKey(apiKeys.deepseek);
+                    }
+
+                    // Fetch notebooks
                     const userNotebooks = await NotebookService.fetchNotebooks(user.id);
                     setNotebooks(userNotebooks);
                 } catch (err) {
-                    console.error("Failed to fetch notebooks:", err);
+                    console.error("Failed to fetch user data:", err);
                 }
             }
         };
-        fetchUserAndNotebooks();
+        fetchUserData();
     }, []);
 
     // (Removed localStorage save effect for notebooks)
@@ -132,16 +136,26 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
         else setShowApiKeyInput(false);
     }, [selectedLLM, apiKey, grokApiKey, deepSeekApiKey]);
 
-    const handleSaveApiKey = (key: string) => {
-        if (selectedLLM === 'Gemini') {
-            setApiKey(key);
-            localStorage.setItem('gemini_api_key', key);
-        } else if (selectedLLM === 'Grok') {
-            setGrokApiKey(key);
-            localStorage.setItem('grok_api_key', key);
-        } else if (selectedLLM === 'DeepSeek') {
-            setDeepSeekApiKey(key);
-            localStorage.setItem('deepseek_api_key', key);
+    const handleSaveApiKey = async (key: string) => {
+        if (!userId) {
+            console.error("Cannot save API key: User not logged in");
+            return;
+        }
+
+        try {
+            if (selectedLLM === 'Gemini') {
+                setApiKey(key);
+                await ApiKeyService.saveApiKey(userId, 'gemini', key);
+            } else if (selectedLLM === 'Grok') {
+                setGrokApiKey(key);
+                await ApiKeyService.saveApiKey(userId, 'grok', key);
+            } else if (selectedLLM === 'DeepSeek') {
+                setDeepSeekApiKey(key);
+                await ApiKeyService.saveApiKey(userId, 'deepseek', key);
+            }
+        } catch (error) {
+            console.error("Failed to save API key:", error);
+            alert("Failed to save API key. Please try again.");
         }
     };
 
@@ -743,11 +757,26 @@ Instructions:
                                         </label>
                                         {(selectedLLM === 'Gemini' && apiKey) || (selectedLLM === 'Grok' && grokApiKey) || (selectedLLM === 'DeepSeek' && deepSeekApiKey) ? (
                                             <button
-                                                onClick={() => {
-                                                    if (selectedLLM === 'Gemini') setApiKey('');
-                                                    if (selectedLLM === 'Grok') setGrokApiKey('');
-                                                    if (selectedLLM === 'DeepSeek') setDeepSeekApiKey('');
-                                                    setShowApiKeyInput(true);
+                                                onClick={async () => {
+                                                    if (!userId) return;
+
+                                                    try {
+                                                        if (selectedLLM === 'Gemini') {
+                                                            await ApiKeyService.deleteApiKey(userId, 'gemini');
+                                                            setApiKey('');
+                                                        }
+                                                        if (selectedLLM === 'Grok') {
+                                                            await ApiKeyService.deleteApiKey(userId, 'grok');
+                                                            setGrokApiKey('');
+                                                        }
+                                                        if (selectedLLM === 'DeepSeek') {
+                                                            await ApiKeyService.deleteApiKey(userId, 'deepseek');
+                                                            setDeepSeekApiKey('');
+                                                        }
+                                                        setShowApiKeyInput(true);
+                                                    } catch (error) {
+                                                        console.error("Failed to delete API key:", error);
+                                                    }
                                                 }}
                                                 style={{
                                                     background: 'none', border: 'none', color: '#3b82f6',

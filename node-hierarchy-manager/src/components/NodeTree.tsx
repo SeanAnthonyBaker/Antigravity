@@ -222,7 +222,7 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
         }
     };
 
-    const [showActions, setShowActions] = useState(true);
+    const [showActions, setShowActions] = useState(false);
 
     const treeData = buildTree(nodes);
 
