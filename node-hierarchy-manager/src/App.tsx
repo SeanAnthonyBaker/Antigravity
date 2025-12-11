@@ -130,9 +130,7 @@ function App() {
     ));
   };
 
-  const handleNodeDeleted = (nodeId: number) => {
-    setNodes(prev => prev.filter(node => node.nodeID !== nodeId));
-  };
+
 
   const handleNodesUpdated = (updatedNodes: DocumentNode[]) => {
     const updateMap = new Map(updatedNodes.map(node => [node.nodeID, node]));
@@ -271,7 +269,6 @@ function App() {
         onRefresh={() => loadNodes(true)}
         onNodeAdded={handleNodeAdded}
         onNodeUpdated={handleNodeUpdated}
-        onNodeDeleted={handleNodeDeleted}
         onNodesUpdated={handleNodesUpdated}
         onSave={handleSaveHierarchy}
         isSaving={isSaving}

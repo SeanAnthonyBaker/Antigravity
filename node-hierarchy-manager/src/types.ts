@@ -12,7 +12,8 @@ export interface DocumentNode {
     visible: boolean;
     children: boolean;
     url: string;
-    urltype?: 'video' | 'audio' | 'image' | 'markdown' | 'pdf' | 'png' | null;
+    urltype?: 'video' | 'audio' | 'image' | 'markdown' | 'pdf' | 'png' | 'url' | 'loop' | null;
+    user_id: string; // uuid
 }
 
 export type NodeTreeItem = DocumentNode & {

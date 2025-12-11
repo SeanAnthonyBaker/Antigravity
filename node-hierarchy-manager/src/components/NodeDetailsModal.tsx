@@ -19,7 +19,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
     const [isEditing, setIsEditing] = useState(false);
     const [editedText, setEditedText] = useState(node.text || '');
     const [editedUrl, setEditedUrl] = useState(node.url || '');
-    const [editedUrlType, setEditedUrlType] = useState<'video' | 'audio' | 'image' | 'markdown' | 'pdf' | 'png' | null>(node.urltype || null);
+    const [editedUrlType, setEditedUrlType] = useState<'video' | 'audio' | 'image' | 'markdown' | 'pdf' | 'png' | 'url' | 'loop' | null>(node.urltype || null);
     const [isSaving, setIsSaving] = useState(false);
     const [showPlayer, setShowPlayer] = useState(false);
     const [blobStoreFiles, setBlobStoreFiles] = useState<string[]>([]);
@@ -277,15 +277,31 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                         }}
                     />
 
-                    <h2 style={{
-                        margin: '0',
-                        fontSize: '1.5em',
+                    <div style={{
                         flex: 1,
                         textAlign: 'center',
                         padding: '0 1rem'
                     }}>
-                        {node.title}
-                    </h2>
+                        <h2 style={{
+                            margin: '0 0 0.5rem 0',
+                            fontSize: '1.5em'
+                        }}>
+                            {node.title}
+                        </h2>
+                        <div style={{
+                            fontSize: '0.85rem',
+                            color: 'var(--color-text-secondary)',
+                            display: 'flex',
+                            gap: '1rem',
+                            justifyContent: 'center',
+                            flexWrap: 'wrap'
+                        }}>
+                            <span><strong>ID:</strong> {node.nodeID}</span>
+                            <span><strong>Parent:</strong> {node.parentNodeID ?? 'None'}</span>
+                            <span><strong>Level:</strong> {node.level ?? 0}</span>
+                            <span><strong>Order:</strong> {node.order ?? 0}</span>
+                        </div>
+                    </div>
 
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0 }}>
                         {!isEditing ? (
@@ -393,7 +409,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                     {isEditing ? (
                                         <select
                                             value={editedUrlType || ''}
-                                            onChange={(e) => setEditedUrlType((e.target.value || null) as 'video' | 'audio' | 'image' | 'markdown' | 'pdf' | 'png' | null)}
+                                            onChange={(e) => setEditedUrlType((e.target.value || null) as 'video' | 'audio' | 'image' | 'markdown' | 'pdf' | 'png' | 'url' | 'loop' | null)}
                                             style={{
                                                 padding: '0.5rem',
                                                 borderRadius: '4px',
@@ -404,6 +420,8 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                             }}
                                         >
                                             <option value="">None</option>
+                                            <option value="url">Url</option>
+                                            <option value="loop">Loop</option>
                                             <option value="video">Video</option>
                                             <option value="audio">Audio</option>
                                             <option value="image">Image</option>

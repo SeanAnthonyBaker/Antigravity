@@ -3,6 +3,9 @@ import type { DocumentNode, NodeTreeItem } from '../types';
 import { NodeService } from '../services/NodeService';
 import { NodeItem } from './NodeItem';
 import { NodeDetailsModal } from './NodeDetailsModal';
+import HierarchyCreationModal from './HierarchyCreationModal';
+import { ApiKeyService } from '../services/ApiKeyService';
+import { supabase } from '../lib/supabase';
 
 import { ThemeToggle } from './ThemeToggle';
 
@@ -15,7 +18,6 @@ interface NodeTreeProps {
     onRefresh: () => void;
     onNodeAdded: (newNode: DocumentNode) => void;
     onNodeUpdated: (updatedNode: DocumentNode) => void;
-    onNodeDeleted: (nodeId: number) => void;
     onNodesUpdated: (updatedNodes: DocumentNode[]) => void;
     onSave: () => void;
     isSaving: boolean;
@@ -31,7 +33,6 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
     onRefresh,
     onNodeAdded,
     onNodeUpdated,
-    onNodeDeleted,
     onNodesUpdated,
     onSave,
     isSaving,
@@ -39,6 +40,9 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
 }) => {
     const [selectedNode, setSelectedNode] = useState<DocumentNode | null>(null);
     const [draggedNodeId, setDraggedNodeId] = useState<number | null>(null);
+    const [showHierarchyModal, setShowHierarchyModal] = useState(false);
+    const [hierarchyParentId, setHierarchyParentId] = useState<number | null>(null);
+    const [geminiApiKey, setGeminiApiKey] = useState('');
 
     const buildTree = (flatNodes: DocumentNode[]): NodeTreeItem[] => {
         const nodeMap = new Map<number, NodeTreeItem>();
@@ -76,32 +80,48 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
         return roots;
     };
 
+    // Fetch Gemini API key on mount
+    React.useEffect(() => {
+        const fetchApiKey = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                try {
+                    const apiKeys = await ApiKeyService.fetchApiKeys(user.id);
+                    if (apiKeys.gemini) {
+                        setGeminiApiKey(apiKeys.gemini);
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch API key:', err);
+                }
+            }
+        };
+        fetchApiKey();
+    }, []);
+
+    const handleCreateHierarchy = (parentId: number) => {
+        setHierarchyParentId(parentId);
+        setShowHierarchyModal(true);
+    };
+
     const handleAddNode = async (parentId: number | null) => {
         const title = prompt('Enter node title:');
         if (!title) return;
 
         try {
-            let level = 0;
+            let validParentId = parentId;
+
+            // Validate parent exists if parentId is provided
             if (parentId) {
                 const parent = nodes.find(n => n.nodeID === parentId);
-                if (parent) level = parent.level + 1;
+                if (!parent) {
+                    alert('Parent node no longer exists. Please refresh and try again.');
+                    onRefresh();
+                    return;
+                }
             }
 
-            const newNode: Partial<DocumentNode> = {
-                title,
-                parentNodeID: parentId,
-                level,
-                order: nodes.length,
-                selected: false,
-                text: '',
-                visible: true,
-                children: false,
-                type: 'folder',
-                url: '',
-                urltype: undefined
-            };
-
-            const createdNode = await NodeService.createNode(newNode);
+            // Use RPC function for proper ID generation
+            const createdNode = await NodeService.createNodeWithRPC(title, validParentId, '');
             // Use optimistic update instead of full refresh
             onNodeAdded(createdNode);
         } catch (err: any) {
@@ -121,11 +141,30 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
     };
 
     const handleDeleteNode = async (nodeId: number) => {
-        if (!confirm('Are you sure you want to delete this node?')) return;
+        const nodeToDelete = nodes.find(n => n.nodeID === nodeId);
+        if (!nodeToDelete) return;
+
+        // Count children to warn user about cascade delete
+        const countDescendants = (parentId: number): number => {
+            const children = nodes.filter(n => n.parentNodeID === parentId);
+            return children.reduce((count, child) => {
+                return count + 1 + countDescendants(child.nodeID);
+            }, 0);
+        };
+
+        const descendantCount = countDescendants(nodeId);
+
+        let confirmMessage = `Are you sure you want to delete "${nodeToDelete.title}"?`;
+        if (descendantCount > 0) {
+            confirmMessage += `\n\nThis will also delete ${descendantCount} descendant node${descendantCount > 1 ? 's' : ''}.`;
+        }
+
+        if (!confirm(confirmMessage)) return;
+
         try {
             await NodeService.deleteNode(nodeId);
-            // Use optimistic update instead of full refresh
-            onNodeDeleted(nodeId);
+            // Refresh to sync with cascade deletes from database
+            onRefresh();
         } catch (err: any) {
             alert('Failed to delete node: ' + err.message);
         }
@@ -281,6 +320,7 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                         onDrop={handleMoveNode}
                         onToggle={onToggle}
                         onMoveUpDown={handleMoveNodeUpDown}
+                        onCreateHierarchy={handleCreateHierarchy}
                         showActions={showActions}
                     />
                 ))
@@ -291,6 +331,15 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                     node={selectedNode}
                     onClose={() => setSelectedNode(null)}
                     onUpdate={onRefresh}
+                />
+            )}
+
+            {showHierarchyModal && geminiApiKey && (
+                <HierarchyCreationModal
+                    parentNodeId={hierarchyParentId}
+                    onClose={() => setShowHierarchyModal(false)}
+                    onHierarchyCreated={onRefresh}
+                    geminiApiKey={geminiApiKey}
                 />
             )}
         </div>

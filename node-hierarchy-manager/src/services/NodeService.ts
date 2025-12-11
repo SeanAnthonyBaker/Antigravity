@@ -24,6 +24,13 @@ export const NodeService = {
     },
 
     async createNode(node: Partial<DocumentNode>) {
+        // Get current user ID if not provided
+        if (!node.user_id) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('User not authenticated');
+            node.user_id = user.id;
+        }
+
         const { data, error } = await supabase
             .from('documents')
             .insert([node])
@@ -63,5 +70,33 @@ export const NodeService = {
 
         if (error) throw error;
         return data as DocumentNode[];
+    },
+
+    /**
+     * Create a node using the Supabase RPC function for proper ID generation
+     */
+    async createNodeWithRPC(title: string, parentNodeId: number | null, text: string = '') {
+        // Get current user ID
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const { data, error } = await supabase.rpc('create_node', {
+            title: title,
+            parentnodeid: parentNodeId,
+            user_id: user.id
+        });
+
+        if (error) throw error;
+
+        // Fetch the created node to return it
+        const nodeId = data as number;
+        const createdNode = await this.getNodeById(nodeId);
+
+        // Update the text if provided (since RPC doesn't accept text parameter)
+        if (text && text !== 'New Node') {
+            return await this.updateNode(nodeId, { text });
+        }
+
+        return createdNode;
     }
 };
