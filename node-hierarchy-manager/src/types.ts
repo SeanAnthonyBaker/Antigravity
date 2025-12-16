@@ -12,8 +12,29 @@ export interface DocumentNode {
     visible: boolean;
     children: boolean;
     url: string;
-    urltype?: 'video' | 'audio' | 'image' | 'markdown' | 'pdf' | 'png' | 'url' | 'loop' | null;
-    user_id: string; // uuid
+    urltype?: 'Video' | 'Audio' | 'Image' | 'Markdown' | 'PDF' | 'PNG' | 'Url' | 'Loop' | null;
+    access_level?: 'read_only' | 'full_access'; // Optional, populated for specific users
+}
+
+export type AccessLevel = 'read_only' | 'full_access';
+
+export interface UserRole {
+    user_id: string;
+    role: 'admin' | 'user';
+    created_at?: string;
+}
+
+export interface DocumentPermission {
+    id: number;
+    node_id: number;
+    user_id: string;
+    access_level: AccessLevel;
+    created_at?: string;
+}
+
+export interface UserProfile {
+    id: string;
+    email: string;
 }
 
 export type NodeTreeItem = DocumentNode & {

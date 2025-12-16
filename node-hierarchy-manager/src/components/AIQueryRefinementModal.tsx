@@ -45,6 +45,9 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
     const [deepSeekApiKey, setDeepSeekApiKey] = useState('');
     const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
+    // Manual Login / VNC State
+    const [authRequired, setAuthRequired] = useState(false);
+
     // NotebookLM State
     const [notebooks, setNotebooks] = useState<UserNotebook[]>([]);
     const [selectedNotebookId, setSelectedNotebookId] = usePersistedState('last_selected_notebook', '');
@@ -419,7 +422,11 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
                                 if (data.chunk) {
                                     setGeneratedResponse(prev => prev + data.chunk);
                                 } else if (data.status) {
-                                    // Optional: You could add a status state to show what's happening
+                                    // Handle Authentication Status
+                                    if (data.status === 'authentication_required') {
+                                        alert("Authentication Required!\n\nPlease open the VNC Viewer (Port 7900) and sign in to your Google Account manually.\n\nThe system will wait for 5 minutes.");
+                                    }
+
                                     console.log("Status:", data.status, data.message);
                                 } else if (data.error) {
                                     throw new Error(data.error);
@@ -698,6 +705,65 @@ Instructions:
 
                     <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer', marginLeft: '1rem' }}>×</button>
                 </div>
+
+                {/* VNC Overlay */}
+                {authRequired && (
+                    <div style={{
+                        position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                        backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 10,
+                        display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+                        color: '#fff', textAlign: 'center', padding: '2rem'
+                    }}>
+                        <h2 style={{ color: '#f87171', fontSize: '2rem', marginBottom: '1rem' }}>⚠️ Authentication Required</h2>
+                        <p style={{ fontSize: '1.2rem', maxWidth: '600px', marginBottom: '2rem' }}>
+                            The automated browser is stuck on the Google Sign-in page.
+                            <br />
+                            Please log in manually to continue.
+                        </p>
+
+                        <div style={{ backgroundColor: '#333', padding: '1.5rem', borderRadius: '8px', marginBottom: '2rem', border: '1px solid #555' }}>
+                            <p style={{ margin: '0 0 1rem 0', color: '#aaa' }}>1. Click the link below to open the VNC Viewer:</p>
+                            <a
+                                href={`http://${import.meta.env.VITE_VNC_PUBLIC_IP || 'localhost'}:7900`}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{
+                                    display: 'inline-block', padding: '0.8rem 1.5rem',
+                                    backgroundColor: '#3b82f6', color: '#fff',
+                                    textDecoration: 'none', borderRadius: '6px', fontWeight: 'bold',
+                                    fontSize: '1.1rem'
+                                }}
+                            >
+                                Open VNC Viewer 🖥️
+                            </a>
+
+                            <div style={{ marginTop: '1.5rem', textAlign: 'left' }}>
+                                <p style={{ margin: '0.5rem 0', color: '#aaa' }}>2. Use this password:</p>
+                                <code style={{
+                                    display: 'block', padding: '0.8rem', backgroundColor: '#000',
+                                    color: '#4ade80', borderRadius: '4px', fontSize: '1.2rem', letterSpacing: '2px',
+                                    border: '1px dashed #555'
+                                }}>
+                                    secret
+                                </code>
+                            </div>
+
+                            <p style={{ marginTop: '1.5rem', marginBottom: 0, color: '#aaa' }}>3. Sign in to Google inside the opened window.</p>
+                        </div>
+
+                        <button
+                            onClick={() => setAuthRequired(false)}
+                            style={{
+                                padding: '0.8rem 2rem', backgroundColor: 'transparent',
+                                color: '#ccc', border: '1px solid #555', borderRadius: '6px',
+                                cursor: 'pointer', fontSize: '1rem'
+                            }}
+                        >
+                            I have logged in (Close Overlay)
+                        </button>
+                    </div>
+                )}
+
 
                 {/* Body */}
                 <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>

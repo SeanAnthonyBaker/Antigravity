@@ -8,6 +8,18 @@ $FILES = @("Dockerfile", "Dockerfile.selenium", "entrypoint-selenium.sh", "noteb
 
 Write-Host "🚀 Deploying updates to $VM_NAME..." -ForegroundColor Cyan
 
+# Check/Create Firewall Rule
+Write-Host "Checking firewall rules..." -ForegroundColor Yellow
+$FW_RULE = "allow-vnc-7900"
+gcloud compute firewall-rules describe $FW_RULE --format="value(name)" 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "🔥 Creating firewall rule: $FW_RULE..." -ForegroundColor Yellow
+    gcloud compute firewall-rules create $FW_RULE --allow tcp:7900 --target-tags=http-server --description="Allow VNC access"
+}
+else {
+    Write-Host "✅ Firewall rule $FW_RULE already exists." -ForegroundColor Green
+}
+
 foreach ($file in $FILES) {
     Write-Host "Uploading $file..." -ForegroundColor Yellow
     gcloud compute scp $file "$($VM_NAME):/home/$REMOTE_USER/$file" --zone=$ZONE

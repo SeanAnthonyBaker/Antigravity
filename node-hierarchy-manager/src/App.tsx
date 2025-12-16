@@ -2,8 +2,14 @@ import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import { NodeTree } from './components/NodeTree'
 import { Auth } from './components/Auth'
+import { AdminModal } from './components/AdminModal'
+import { UploadModal } from './components/UploadModal'
+import { TagMaintenanceModal } from './components/TagMaintenanceModal'
+import { ClassificationModal } from './components/ClassificationModal'
+import { TagFilterModal } from './components/TagFilterModal'
 import bannerImage from './assets/tulkah-banner.png'
 import { NodeService } from './services/NodeService'
+import { AuthService } from './services/AuthService'
 import type { DocumentNode } from './types'
 import { supabase } from './lib/supabase'
 import type { Session } from '@supabase/supabase-js'
@@ -22,6 +28,17 @@ function App() {
   const [showSaveMessage, setShowSaveMessage] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // Admin State
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
+  const [showTags, setShowTags] = useState(false);
+  const [showClassify, setShowClassify] = useState(false);
+
+  const [showTagFilter, setShowTagFilter] = useState(false);
+  const [activeFilterTagIds, setActiveFilterTagIds] = useState<Set<number>>(new Set());
+  const [filterFilePaths, setFilterFilePaths] = useState<Set<string> | null>(null);
+
   const loadedSessionId = useRef<string | null>(null);
 
   // Auth Effect
@@ -29,18 +46,23 @@ function App() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setAuthLoading(false);
+      if (session) checkAdminStatus();
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
+      if (event === 'SIGNED_IN') {
+        checkAdminStatus();
+      }
       if (event === 'SIGNED_OUT') {
         // Clear local storage on sign out
         localStorage.removeItem('hierarchy_nodes');
         localStorage.removeItem('hierarchy_expanded');
         setNodes([]);
         setExpandedNodeIds(new Set());
+        setIsAdmin(false);
       }
     });
 
@@ -55,11 +77,21 @@ function App() {
     }
   }, [session?.user?.id]);
 
-  const loadNodes = async (force = false) => {
+  const checkAdminStatus = async () => {
+    // Check if user is admin
+    // Also try to ensure the role exists for the super admin
+    await AuthService.ensureAdminRole();
+    const isAdm = await AuthService.checkIsAdmin();
+    setIsAdmin(isAdm);
+  };
+
+  const loadNodes = async (force = false, tagsOverride?: Set<number>) => {
+    const tagsToUse = tagsOverride || activeFilterTagIds;
+
     try {
       setLoading(true);
 
-      if (!force) {
+      if (!force && tagsToUse.size === 0) {
         const savedNodes = localStorage.getItem('hierarchy_nodes');
         const savedExpanded = localStorage.getItem('hierarchy_expanded');
 
@@ -80,10 +112,18 @@ function App() {
         }
       }
 
-      const data = await NodeService.fetchNodes();
+      let data: DocumentNode[];
+      if (tagsToUse.size > 0) {
+        data = await NodeService.fetchNodesByTags(Array.from(tagsToUse));
+      } else {
+        data = await NodeService.fetchNodes();
+      }
+
       setNodes(data);
 
       // Infer expansion state: A node is expanded if any of its children are visible
+      // If filtering, we might want to expand everything to show matches?
+      // For now, keep existing logic (expand parents of visible nodes)
       const expanded = new Set<number>();
       data.forEach(node => {
         if (node.visible && node.parentNodeID) {
@@ -102,16 +142,17 @@ function App() {
 
   // Save state to local storage whenever it changes
   useEffect(() => {
-    if (isInitialized && nodes.length > 0) {
+    // Only save if NO filter is active
+    if (isInitialized && nodes.length > 0 && activeFilterTagIds.size === 0) {
       localStorage.setItem('hierarchy_nodes', JSON.stringify(nodes));
     }
-  }, [nodes, isInitialized]);
+  }, [nodes, isInitialized, activeFilterTagIds]);
 
   useEffect(() => {
-    if (isInitialized) {
+    if (isInitialized && activeFilterTagIds.size === 0) {
       localStorage.setItem('hierarchy_expanded', JSON.stringify(Array.from(expandedNodeIds)));
     }
-  }, [expandedNodeIds, isInitialized]);
+  }, [expandedNodeIds, isInitialized, activeFilterTagIds]);
 
   const handleNodeAdded = (newNode: DocumentNode) => {
     setNodes(prev => [...prev, newNode]);
@@ -149,6 +190,44 @@ function App() {
     });
   };
 
+  const handleFilterByTags = async (tagIds: Set<number>) => {
+    setActiveFilterTagIds(tagIds);
+    // When filtering via tags (valid or empty), we clear the file-path based client-side filter
+    setFilterFilePaths(null);
+    await loadNodes(true, tagIds);
+  };
+
+  // Calculate nodes to display
+  const getDisplayNodes = () => {
+    if (!filterFilePaths) return nodes;
+
+    const includedNodeIds = new Set<number>();
+    const nodesById = new Map(nodes.map(n => [n.nodeID, n]));
+
+    const addNodeAndAncestors = (node: DocumentNode) => {
+      if (includedNodeIds.has(node.nodeID)) return;
+      includedNodeIds.add(node.nodeID);
+
+      if (node.parentNodeID) {
+        const parent = nodesById.get(node.parentNodeID);
+        if (parent) addNodeAndAncestors(parent);
+      }
+    };
+
+    nodes.forEach(node => {
+      if (node.url) {
+        const urlPath = node.url.split('/').pop() || node.url;
+        if (filterFilePaths.has(urlPath)) {
+          addNodeAndAncestors(node);
+        }
+      }
+    });
+
+    return nodes.filter(n => includedNodeIds.has(n.nodeID));
+  };
+
+  const displayNodes = getDisplayNodes();
+
   const handleSaveHierarchy = async () => {
     try {
       setIsSaving(true);
@@ -178,10 +257,13 @@ function App() {
 
         visibilityMap.set(node.nodeID, isVisible);
 
-        updates.push({
-          ...node,
-          visible: isVisible
-        });
+        // Only update writeable nodes
+        if (node.access_level !== 'read_only') {
+          updates.push({
+            ...node,
+            visible: isVisible
+          });
+        }
 
         const isExpanded = expandedNodeIds.has(node.nodeID);
         const children = childrenMap.get(node.nodeID) || [];
@@ -248,6 +330,108 @@ function App() {
           >
             Sign Out
           </button>
+
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={() => setShowTags(true)}
+              style={{
+                padding: '0.5rem 1rem',
+                fontSize: '0.8rem',
+                minWidth: '80px',
+                backgroundColor: 'rgba(124, 58, 237, 0.5)', // Purple tint
+                border: '1px solid rgba(124, 58, 237, 0.3)',
+                borderRadius: '4px',
+                color: '#fff',
+                cursor: 'pointer',
+                backdropFilter: 'blur(4px)'
+              }}
+            >
+              Tags
+            </button>
+
+            <button
+              onClick={() => setShowClassify(true)}
+              style={{
+                padding: '0.5rem 1rem',
+                fontSize: '0.8rem',
+                minWidth: '80px',
+                backgroundColor: 'rgba(245, 158, 11, 0.5)', // Amber/Orange tint
+                border: '1px solid rgba(245, 158, 11, 0.3)',
+                borderRadius: '4px',
+                color: '#fff',
+                cursor: 'pointer',
+                backdropFilter: 'blur(4px)'
+              }}
+            >
+              Classify
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={() => setShowUpload(true)}
+              style={{
+                padding: '0.5rem 1rem',
+                fontSize: '0.8rem',
+                minWidth: '80px',
+                backgroundColor: 'rgba(16, 185, 129, 0.5)', // Green tint
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                borderRadius: '4px',
+                color: '#fff',
+                cursor: 'pointer',
+                backdropFilter: 'blur(4px)'
+              }}
+            >
+              Upload
+            </button>
+
+            {isAdmin && (
+              <button
+                onClick={() => setShowAdmin(true)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  fontSize: '0.8rem',
+                  minWidth: '80px',
+                  backgroundColor: 'rgba(59, 130, 246, 0.5)', // Blue tint
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  borderRadius: '4px',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  backdropFilter: 'blur(4px)'
+                }}
+              >
+                Admin
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={() => setShowTagFilter(true)}
+            style={{
+              padding: '0.5rem 1rem',
+              fontSize: '0.8rem',
+              backgroundColor: activeFilterTagIds.size > 0 ? 'rgba(239, 68, 68, 0.8)' : 'rgba(59, 130, 246, 0.5)',
+              border: activeFilterTagIds.size > 0 ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(59, 130, 246, 0.3)',
+              borderRadius: '4px',
+              color: '#fff',
+              cursor: 'pointer',
+              backdropFilter: 'blur(4px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.25rem'
+            }}
+          >
+            {activeFilterTagIds.size > 0 ? `🚫 Clear (${activeFilterTagIds.size})` : '🔍 Filter'}
+          </button>
+          <div style={{
+            fontSize: '0.7rem',
+            color: 'rgba(255, 255, 255, 0.8)',
+            marginTop: '0.25rem',
+            textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+          }}>
+            {session.user.email}
+          </div>
         </div>
         <img
           src={bannerImage}
@@ -261,7 +445,7 @@ function App() {
         />
       </div>
       <NodeTree
-        nodes={nodes}
+        nodes={displayNodes}
         expandedNodeIds={expandedNodeIds}
         loading={loading}
         error={error}
@@ -273,6 +457,30 @@ function App() {
         onSave={handleSaveHierarchy}
         isSaving={isSaving}
         showSaveMessage={showSaveMessage}
+      />
+
+      <AdminModal
+        isOpen={showAdmin}
+        onClose={() => setShowAdmin(false)}
+      />
+      <UploadModal
+        isOpen={showUpload}
+        onClose={() => setShowUpload(false)}
+        onUploadComplete={() => loadNodes(true)}
+      />
+      <TagMaintenanceModal
+        isOpen={showTags}
+        onClose={() => setShowTags(false)}
+      />
+      <ClassificationModal
+        isOpen={showClassify}
+        onClose={() => setShowClassify(false)}
+      />
+      <TagFilterModal
+        isOpen={showTagFilter}
+        onClose={() => setShowTagFilter(false)}
+        onSelectTags={handleFilterByTags}
+        selectedTagIds={activeFilterTagIds}
       />
     </>
   )

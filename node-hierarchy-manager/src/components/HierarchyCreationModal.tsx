@@ -17,42 +17,31 @@ export const HierarchyCreationModal: React.FC<HierarchyCreationModalProps> = ({
     geminiApiKey
 }) => {
     const [step, setStep] = useState<'upload' | 'edit-titles' | 'generating-descriptions' | 'creating'>('upload');
-    const [imageFile, setImageFile] = useState<File | null>(null);
-    const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
     const [hierarchyTitles, setHierarchyTitles] = useState<HierarchyData | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string>('');
     const [generationProgress, setGenerationProgress] = useState<string>('');
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             if (!file.type.startsWith('image/')) {
                 setError('Please select an image file');
                 return;
             }
-            setImageFile(file);
-            // Create preview URL
-            const previewUrl = URL.createObjectURL(file);
-            setImagePreviewUrl(previewUrl);
             setError('');
-        }
-    };
 
-    const handleProcessImage = async () => {
-        if (!imageFile || !geminiApiKey) return;
-
-        setIsProcessing(true);
-        setError('');
-
-        try {
-            const hierarchy = await HierarchyService.imageToTitlesOnly(imageFile, geminiApiKey);
-            setHierarchyTitles(hierarchy);
-            setStep('edit-titles');
-        } catch (err: any) {
-            setError(err.message || 'Failed to process image');
-        } finally {
-            setIsProcessing(false);
+            // Automatically process the image
+            setIsProcessing(true);
+            try {
+                const hierarchy = await HierarchyService.imageToTitlesOnly(file, geminiApiKey);
+                setHierarchyTitles(hierarchy);
+                setStep('edit-titles');
+            } catch (err: any) {
+                setError(err.message || 'Failed to process image');
+            } finally {
+                setIsProcessing(false);
+            }
         }
     };
 
@@ -275,100 +264,58 @@ export const HierarchyCreationModal: React.FC<HierarchyCreationModalProps> = ({
                     {step === 'upload' && (
                         <div style={{ textAlign: 'center' }}>
                             <p style={{ color: '#ccc', marginBottom: '2rem' }}>
-                                Upload a mind map image from NotebookLM. The AI will extract the titles, then you can review and edit them before generating descriptions.
+                                Upload a mind map image from NotebookLM. The AI will automatically extract the titles for you to review and edit.
                             </p>
 
-                            <div
-                                style={{
-                                    border: '2px dashed #444',
-                                    borderRadius: '8px',
-                                    padding: imageFile ? '1rem' : '3rem',
-                                    marginBottom: '2rem',
-                                    backgroundColor: '#252526'
-                                }}
-                            >
-                                {!imageFile ? (
-                                    <>
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={handleFileSelect}
-                                            style={{ display: 'none' }}
-                                            id="hierarchy-image-upload"
-                                        />
-                                        <label
-                                            htmlFor="hierarchy-image-upload"
-                                            style={{
-                                                display: 'inline-block',
-                                                padding: '1rem 2rem',
-                                                backgroundColor: '#3b82f6',
-                                                color: '#fff',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer',
-                                                fontSize: '1rem'
-                                            }}
-                                        >
-                                            Choose Image File
-                                        </label>
-                                    </>
-                                ) : (
-                                    <div style={{ textAlign: 'center' }}>
-                                        <img
-                                            src={imagePreviewUrl || ''}
-                                            alt="Mind map preview"
-                                            style={{
-                                                maxWidth: '100%',
-                                                maxHeight: '400px',
-                                                borderRadius: '4px',
-                                                marginBottom: '1rem'
-                                            }}
-                                        />
-                                        <p style={{ color: '#4ade80', margin: '0.5rem 0' }}>
-                                            ✓ {imageFile.name}
-                                        </p>
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={handleFileSelect}
-                                            style={{ display: 'none' }}
-                                            id="hierarchy-image-change"
-                                        />
-                                        <label
-                                            htmlFor="hierarchy-image-change"
-                                            style={{
-                                                display: 'inline-block',
-                                                padding: '0.5rem 1rem',
-                                                backgroundColor: '#444',
-                                                color: '#fff',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer',
-                                                fontSize: '0.9rem',
-                                                marginTop: '0.5rem'
-                                            }}
-                                        >
-                                            Change Image
-                                        </label>
-                                    </div>
-                                )}
-                            </div>
-
-                            {imageFile && (
-                                <button
-                                    onClick={handleProcessImage}
-                                    disabled={isProcessing}
+                            {!isProcessing ? (
+                                <div
                                     style={{
-                                        padding: '1rem 2rem',
-                                        backgroundColor: '#4ade80',
-                                        color: '#000',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        fontSize: '1rem',
-                                        cursor: isProcessing ? 'not-allowed' : 'pointer',
-                                        opacity: isProcessing ? 0.6 : 1
+                                        border: '2px dashed #444',
+                                        borderRadius: '8px',
+                                        padding: '3rem',
+                                        marginBottom: '2rem',
+                                        backgroundColor: '#252526'
                                     }}
                                 >
-                                    {isProcessing ? 'Extracting Titles...' : 'Extract Titles from Image'}
-                                </button>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleFileSelect}
+                                        style={{ display: 'none' }}
+                                        id="hierarchy-image-upload"
+                                    />
+                                    <label
+                                        htmlFor="hierarchy-image-upload"
+                                        style={{
+                                            display: 'inline-block',
+                                            padding: '1rem 2rem',
+                                            backgroundColor: '#3b82f6',
+                                            color: '#fff',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer',
+                                            fontSize: '1rem'
+                                        }}
+                                    >
+                                        Choose Mind Map Image
+                                    </label>
+                                </div>
+                            ) : (
+                                <div style={{ textAlign: 'center', padding: '3rem' }}>
+                                    <div
+                                        style={{
+                                            width: '60px',
+                                            height: '60px',
+                                            border: '4px solid #444',
+                                            borderTop: '4px solid #4ade80',
+                                            borderRadius: '50%',
+                                            animation: 'spin 1s linear infinite',
+                                            margin: '0 auto 2rem'
+                                        }}
+                                    />
+                                    <p style={{ color: '#ccc', fontSize: '1.2rem' }}>
+                                        Extracting titles from mind map...
+                                    </p>
+                                </div>
                             )}
                         </div>
                     )}

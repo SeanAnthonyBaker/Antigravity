@@ -46,6 +46,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ node, isExpanded, expandedNo
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault(); // Necessary to allow dropping
         e.dataTransfer.dropEffect = 'move';
+        if (!canEdit) return; // Don't show drag over for read only
         if (!isDragOver) console.log('Drag over:', node.nodeID);
         setIsDragOver(true);
     };
@@ -58,16 +59,18 @@ export const NodeItem: React.FC<NodeItemProps> = ({ node, isExpanded, expandedNo
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragOver(false);
+        if (!canEdit) return; // Prevent dropping on read-only nodes
         console.log('Drop on:', node.nodeID);
         onDrop(node.nodeID);
     };
 
     const hasChildren = node.childNodes && node.childNodes.length > 0;
+    const canEdit = node.access_level !== 'read_only';
 
     return (
         <div
-            draggable={!isEditing}
-            onDragStart={handleDragStart}
+            draggable={!isEditing && canEdit}
+            onDragStart={canEdit ? handleDragStart : undefined}
             onDragEnd={handleDragEnd}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -107,13 +110,14 @@ export const NodeItem: React.FC<NodeItemProps> = ({ node, isExpanded, expandedNo
                         </div>
                     ) : (
                         <span
-                            style={{ fontWeight: 500, cursor: 'pointer' }}
-                            onDoubleClick={() => setIsEditing(true)}
+                            style={{ fontWeight: 500, cursor: canEdit ? 'pointer' : 'default' }}
+                            onDoubleClick={() => canEdit && setIsEditing(true)}
                             onClick={() => onClick(node)}
                         >
                             {node.title || 'Untitled Node'}
                         </span>
                     )}
+
                 </div>
                 <div className="node-actions">
                     <span
@@ -142,10 +146,10 @@ export const NodeItem: React.FC<NodeItemProps> = ({ node, isExpanded, expandedNo
                             ? `(${node.urltype})`
                             : ''}
                     </span>
-                    {showActions && (
+                    {showActions && canEdit && (
                         <>
-                            <button className="icon-btn" onClick={() => onMoveUpDown(node.nodeID, 'up')} title="Move Up">↑</button>
-                            <button className="icon-btn" onClick={() => onMoveUpDown(node.nodeID, 'down')} title="Move Down">↓</button>
+                            {canEdit && <button className="icon-btn" onClick={() => onMoveUpDown(node.nodeID, 'up')} title="Move Up">↑</button>}
+                            {canEdit && <button className="icon-btn" onClick={() => onMoveUpDown(node.nodeID, 'down')} title="Move Down">↓</button>}
                             <button className="icon-btn" onClick={() => onAdd(node.nodeID)} title="Add Child">+</button>
                             <button
                                 className="icon-btn"
@@ -176,6 +180,22 @@ export const NodeItem: React.FC<NodeItemProps> = ({ node, isExpanded, expandedNo
                             <button className="icon-btn" onClick={() => onDelete(node.nodeID)} title="Delete" style={{ color: 'var(--color-danger)' }}>🗑</button>
                         </>
                     )}
+                    <span
+                        title={canEdit ? 'Full Access' : 'Read Only'}
+                        style={{
+                            marginLeft: '0.5rem',
+                            fontSize: '0.75rem',
+                            color: canEdit ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.6)',
+                            cursor: 'help',
+                            fontFamily: 'monospace',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            opacity: 0.7,
+                            fontWeight: 'normal'
+                        }}
+                    >
+                        ({canEdit ? 'U' : 'R'})
+                    </span>
                 </div>
             </div>
 

@@ -1,15 +1,65 @@
 import { supabase } from '../lib/supabase';
 import type { DocumentNode } from '../types';
+import { AuthService } from './AuthService';
 
 export const NodeService = {
     async fetchNodes() {
-        const { data, error } = await supabase
+        // 1. Fetch all documents (RLS filtered)
+        const { data: nodes, error: nodeError } = await supabase
             .from('documents')
             .select('*')
             .order('order', { ascending: true });
 
-        if (error) throw error;
-        return data as DocumentNode[];
+        if (nodeError) throw nodeError;
+
+        return this._enrichNodesWithPermissions(nodes as DocumentNode[]);
+    },
+
+    async fetchNodesByTags(tagIds: number[]) {
+        // 1. Fetch filtered nodes via RPC
+        const { data: nodes, error: nodeError } = await supabase
+            .rpc('get_nodes_by_tags', { p_tag_ids: tagIds });
+
+        if (nodeError) throw nodeError;
+
+        return this._enrichNodesWithPermissions(nodes as DocumentNode[]);
+    },
+
+    async _enrichNodesWithPermissions(nodes: DocumentNode[]) {
+        // 2. Check if user is Admin
+        const isAdmin = await AuthService.checkIsAdmin();
+
+        // 3. Fetch permissions for the current user
+        const { data: user } = await supabase.auth.getUser();
+        let permissions: { node_id: number; access_level: 'read_only' | 'full_access' }[] = [];
+
+        if (user?.user && !isAdmin) {
+            const { data: perms } = await supabase
+                .from('document_permissions')
+                .select('node_id, access_level')
+                .eq('user_id', user.user.id);
+
+            if (perms) {
+                permissions = perms as any[];
+            }
+        }
+
+        // 4. Merge permissions
+        return nodes.map(node => {
+            // Admin has full access implicit
+            if (isAdmin) {
+                return { ...node, access_level: 'full_access' as const };
+            }
+
+            // Check explicit permissions
+            const perm = permissions.find(p => p.node_id === node.nodeID);
+            if (perm) {
+                return { ...node, access_level: perm.access_level };
+            }
+
+            // Default fallback
+            return { ...node, access_level: 'read_only' as const };
+        });
     },
 
     async getNodeById(nodeID: number) {
@@ -20,20 +70,46 @@ export const NodeService = {
             .single();
 
         if (error) throw error;
-        return data as DocumentNode;
+        const node = data as DocumentNode;
+
+        // Check if user is Admin
+        const isAdmin = await AuthService.checkIsAdmin();
+        if (isAdmin) {
+            return { ...node, access_level: 'full_access' as const };
+        }
+
+        // Fetch permissions for this node
+        const { data: user } = await supabase.auth.getUser();
+
+        // Owner has full access (REMOVED: user_id no longer exists on node)
+
+
+        if (user?.user) {
+            const { data: perm } = await supabase
+                .from('document_permissions')
+                .select('access_level')
+                .eq('user_id', user.user.id)
+                .eq('node_id', nodeID)
+                .single();
+
+            if (perm) {
+                return { ...node, access_level: perm.access_level as 'read_only' | 'full_access' };
+            }
+        }
+
+        // Default to read_only if visible but no explicit permission
+        // (RLS handles visibility, if we got here we can see it)
+        return { ...node, access_level: 'read_only' as const };
     },
 
     async createNode(node: Partial<DocumentNode>) {
-        // Get current user ID if not provided
-        if (!node.user_id) {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('User not authenticated');
-            node.user_id = user.id;
-        }
+        // user_id removed from documents table
 
+
+        const { access_level, ...nodeData } = node as any;
         const { data, error } = await supabase
             .from('documents')
-            .insert([node])
+            .insert([nodeData])
             .select()
             .single();
 
@@ -42,9 +118,11 @@ export const NodeService = {
     },
 
     async updateNode(nodeID: number, updates: Partial<DocumentNode>) {
+        const { access_level, ...updateData } = updates as any;
+        console.log('NodeService.updateNode:', { nodeID, updateData });
         const { data, error } = await supabase
             .from('documents')
-            .update(updates)
+            .update(updateData)
             .eq('nodeID', nodeID)
             .select()
             .single();
@@ -63,9 +141,14 @@ export const NodeService = {
     },
 
     async bulkUpdateNodes(nodes: Partial<DocumentNode>[]) {
+        const safeNodes = nodes.map(n => {
+            const { access_level, ...rest } = n as any;
+            return rest;
+        });
+
         const { data, error } = await supabase
             .from('documents')
-            .upsert(nodes)
+            .upsert(safeNodes)
             .select();
 
         if (error) throw error;
@@ -83,7 +166,7 @@ export const NodeService = {
         const { data, error } = await supabase.rpc('create_node', {
             title: title,
             parentnodeid: parentNodeId,
-            user_id: user.id
+            userid: user.id // Pass user_id to RPC for permission assignment
         });
 
         if (error) throw error;

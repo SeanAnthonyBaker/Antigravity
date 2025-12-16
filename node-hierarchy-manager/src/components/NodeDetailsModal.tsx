@@ -5,6 +5,8 @@ import remarkGfm from 'remark-gfm';
 import tulkahLogo from '../assets/tulkah-logo.png';
 import { NodeService } from '../services/NodeService';
 import { StorageService } from '../services/StorageService';
+import { TagService } from '../services/TagService';
+import type { TagTreeNode } from '../types/tags';
 import { openMarkdownWindow } from '../utils/markdownUtils';
 import AIQueryRefinementModal from './AIQueryRefinementModal';
 
@@ -14,12 +16,12 @@ interface NodeDetailsModalProps {
     onUpdate?: () => void;
 }
 
-export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClose }) => {
+export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClose, onUpdate }) => {
     const [currentNode, setCurrentNode] = useState(node);
     const [isEditing, setIsEditing] = useState(false);
     const [editedText, setEditedText] = useState(node.text || '');
     const [editedUrl, setEditedUrl] = useState(node.url || '');
-    const [editedUrlType, setEditedUrlType] = useState<'video' | 'audio' | 'image' | 'markdown' | 'pdf' | 'png' | 'url' | 'loop' | null>(node.urltype || null);
+    const [editedUrlType, setEditedUrlType] = useState<'Video' | 'Audio' | 'Image' | 'Markdown' | 'PDF' | 'PNG' | 'Url' | 'Loop' | null>(node.urltype || null);
     const [isSaving, setIsSaving] = useState(false);
     const [showPlayer, setShowPlayer] = useState(false);
     const [blobStoreFiles, setBlobStoreFiles] = useState<string[]>([]);
@@ -29,6 +31,11 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
     const [selectedText, setSelectedText] = useState('');
     const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    // Tag state
+    const [availableTags, setAvailableTags] = useState<TagTreeNode[]>([]);
+    const [selectedTagIds, setSelectedTagIds] = useState<Set<number>>(new Set());
+    const [originalTagIds, setOriginalTagIds] = useState<Set<number>>(new Set());
 
     // Fetch fresh node data from Supabase when modal opens
     useEffect(() => {
@@ -44,6 +51,24 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
             }
         };
         fetchNodeData();
+    }, [node.nodeID]);
+
+    // Load available tags and current node's tags
+    useEffect(() => {
+        const loadTagData = async () => {
+            try {
+                const [tree, nodeTagIds] = await Promise.all([
+                    TagService.fetchTagTree(),
+                    TagService.getTagsForNode(node.nodeID)
+                ]);
+                setAvailableTags(tree);
+                setSelectedTagIds(new Set(nodeTagIds));
+                setOriginalTagIds(new Set(nodeTagIds));
+            } catch (err) {
+                console.error('Failed to load tags:', err);
+            }
+        };
+        loadTagData();
     }, [node.nodeID]);
 
     // Fetch files from BlobStore bucket
@@ -66,7 +91,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                     }
                 }
 
-                const fileNames = files.map(file => file.name).filter(name => name); // Filter out empty names
+                const fileNames = files.map((file: { name: string }) => file.name).filter((name: string) => name); // Filter out empty names
                 setBlobStoreFiles(fileNames);
             } catch (err) {
                 console.error('Failed to fetch BlobStore files:', err);
@@ -75,11 +100,71 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
         fetchFiles();
     }, []);
 
+    // Check if tags have changed
+    const tagsChanged = (() => {
+        if (selectedTagIds.size !== originalTagIds.size) return true;
+        for (const id of selectedTagIds) {
+            if (!originalTagIds.has(id)) return true;
+        }
+        return false;
+    })();
+
     // Check if any fields have been modified
     const hasChanges =
         editedText !== (node.text || '') ||
         editedUrl !== (node.url || '') ||
-        editedUrlType !== (node.urltype || null);
+        editedUrlType !== (node.urltype || null) ||
+        tagsChanged;
+
+    const handleTagToggle = (tagId: number) => {
+        setSelectedTagIds(prev => {
+            const next = new Set(prev);
+            if (next.has(tagId)) {
+                next.delete(tagId);
+            } else {
+                next.add(tagId);
+            }
+            return next;
+        });
+    };
+
+    // Render tag checkboxes recursively
+    const renderTagCheckboxes = (nodes: TagTreeNode[]): React.ReactNode => {
+        return (
+            <ul style={{ listStyle: 'none', paddingLeft: nodes[0]?.level > 0 ? '15px' : '0', margin: 0 }}>
+                {nodes.map(node => (
+                    <li key={node.id} style={{ marginBottom: '4px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                            <input
+                                type="checkbox"
+                                checked={selectedTagIds.has(node.id)}
+                                onChange={() => handleTagToggle(node.id)}
+                            />
+                            <span>{node.name}</span>
+                        </label>
+                        {node.childNodes && node.childNodes.length > 0 && renderTagCheckboxes(node.childNodes)}
+                    </li>
+                ))}
+            </ul>
+        );
+    };
+
+    // Get tag names from IDs for display
+    const getTagNames = (nodes: TagTreeNode[], ids: Set<number>): string[] => {
+        const names: string[] = [];
+        const findNames = (list: TagTreeNode[]) => {
+            for (const node of list) {
+                if (ids.has(node.id)) {
+                    names.push(node.name);
+                }
+                if (node.childNodes) {
+                    findNames(node.childNodes);
+                }
+            }
+        };
+        findNames(nodes);
+        return names;
+    };
 
     const handleSave = async () => {
         try {
@@ -90,6 +175,12 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                 urltype: editedUrlType
             });
 
+            // Save tag assignments if changed
+            if (tagsChanged) {
+                await TagService.assignTags(node.nodeID, Array.from(selectedTagIds));
+                setOriginalTagIds(new Set(selectedTagIds));
+            }
+
             // Update currentNode with the saved values
             setCurrentNode({
                 ...currentNode,
@@ -97,6 +188,8 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                 url: editedUrl,
                 urltype: editedUrlType
             });
+
+            if (onUpdate) onUpdate();
 
             setIsEditing(false);
         } catch (err: any) {
@@ -133,7 +226,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
     };
 
     const handlePlayMedia = () => {
-        if (node.urltype === 'video') {
+        if (node.urltype === 'Video') {
             const videoWindow = window.open('', '_blank', 'width=800,height=600');
             if (videoWindow) {
                 videoWindow.document.write(`
@@ -176,7 +269,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                 `);
                 videoWindow.document.close();
             }
-        } else if (node.urltype === 'audio') {
+        } else if (node.urltype === 'Audio') {
             setShowPlayer(true);
         }
     };
@@ -260,7 +353,9 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
     };
 
     const hasValidUrl = node.url && node.url.trim() !== '' && isValidUrl(node.url.trim());
-    const canPlayMedia = hasValidUrl && (node.urltype === 'video' || node.urltype === 'audio');
+    const canPlayMedia = hasValidUrl && (node.urltype === 'Video' || node.urltype === 'Audio');
+
+    const canEdit = node.access_level !== 'read_only';
 
     return (
         <div className="modal-overlay" onClick={onClose}>
@@ -306,9 +401,11 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0 }}>
                         {!isEditing ? (
                             <>
-                                <button onClick={() => setIsEditing(true)} style={{ fontSize: '0.9rem', padding: '0.4rem 0.8rem' }}>
-                                    ✏️ Edit
-                                </button>
+                                {canEdit && (
+                                    <button onClick={() => setIsEditing(true)} style={{ fontSize: '0.9rem', padding: '0.4rem 0.8rem' }}>
+                                        ✏️ Edit
+                                    </button>
+                                )}
                                 <button className="icon-btn" onClick={onClose}>✕</button>
                             </>
                         ) : (
@@ -409,7 +506,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                     {isEditing ? (
                                         <select
                                             value={editedUrlType || ''}
-                                            onChange={(e) => setEditedUrlType((e.target.value || null) as 'video' | 'audio' | 'image' | 'markdown' | 'pdf' | 'png' | 'url' | 'loop' | null)}
+                                            onChange={(e) => setEditedUrlType((e.target.value || null) as 'Video' | 'Audio' | 'Image' | 'Markdown' | 'PDF' | 'PNG' | 'Url' | 'Loop' | null)}
                                             style={{
                                                 padding: '0.5rem',
                                                 borderRadius: '4px',
@@ -420,14 +517,14 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                             }}
                                         >
                                             <option value="">None</option>
-                                            <option value="url">Url</option>
-                                            <option value="loop">Loop</option>
-                                            <option value="video">Video</option>
-                                            <option value="audio">Audio</option>
-                                            <option value="image">Image</option>
-                                            <option value="markdown">Markdown</option>
-                                            <option value="pdf">PDF</option>
-                                            <option value="png">PNG</option>
+                                            <option value="Url">Url</option>
+                                            <option value="Loop">Loop</option>
+                                            <option value="Video">Video</option>
+                                            <option value="Audio">Audio</option>
+                                            <option value="Image">Image</option>
+                                            <option value="Markdown">Markdown</option>
+                                            <option value="PDF">PDF</option>
+                                            <option value="PNG">PNG</option>
                                         </select>
                                     ) : (
                                         <>
@@ -444,7 +541,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                                     📄 Display
                                                 </button>
                                             )}
-                                            {currentNode.urltype === 'pdf' && (
+                                            {currentNode.urltype === 'PDF' && (
                                                 <button
                                                     onClick={handleDisplayPdf}
                                                     style={{
@@ -456,7 +553,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                                     📑 Display
                                                 </button>
                                             )}
-                                            {currentNode.urltype === 'png' && (
+                                            {currentNode.urltype === 'PNG' && (
                                                 <button
                                                     onClick={handleDisplayPng}
                                                     style={{
@@ -544,7 +641,42 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                         </div>
                     </div>
 
-                    {showPlayer && canPlayMedia && node.urltype === 'audio' && (
+                    {/* Tags Section */}
+                    {isEditing && availableTags.length > 0 && (
+                        <div className="detail-section" style={{ marginTop: '1.5rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Tags:</label>
+                            <div style={{
+                                maxHeight: '150px',
+                                overflowY: 'auto',
+                                backgroundColor: 'var(--color-bg-secondary)',
+                                padding: '0.75rem',
+                                borderRadius: '4px',
+                                border: '1px solid var(--color-border)'
+                            }}>
+                                {renderTagCheckboxes(availableTags)}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Display assigned tags when not editing */}
+                    {!isEditing && selectedTagIds.size > 0 && (
+                        <div className="detail-section" style={{ marginTop: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Tags:</label>
+                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                {getTagNames(availableTags, selectedTagIds).map((name, i) => (
+                                    <span key={i} style={{
+                                        backgroundColor: 'rgba(124, 58, 237, 0.3)',
+                                        color: '#c4b5fd',
+                                        padding: '0.25rem 0.5rem',
+                                        borderRadius: '4px',
+                                        fontSize: '0.85rem'
+                                    }}>{name}</span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {showPlayer && canPlayMedia && node.urltype === 'Audio' && (
                         <div className="detail-section" style={{ marginTop: '1rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                                 <label>Audio Player:</label>

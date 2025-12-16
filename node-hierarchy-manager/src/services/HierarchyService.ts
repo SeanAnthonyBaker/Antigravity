@@ -273,7 +273,8 @@ Return ONLY valid JSON with the same structure, no markdown formatting or explan
         // Get current user ID
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('User not authenticated');
-        const userId = user.id;
+        // userId used for permissions now, not document column
+
 
         // Validate parent node exists if parentNodeId is provided
         if (parentNodeId !== null && parentNodeId !== undefined) {
@@ -312,8 +313,9 @@ Return ONLY valid JSON with the same structure, no markdown formatting or explan
                 children: hierarchyData.children && hierarchyData.children.length > 0,
                 type: 'leaf',
                 url: '',
-                urltype: null,
-                user_id: userId
+                urltype: null
+                // user_id removed
+
             })
             .select()
             .single();
@@ -334,8 +336,8 @@ Return ONLY valid JSON with the same structure, no markdown formatting or explan
             const childNodes = await this.createChildNodes(
                 hierarchyData.children,
                 nodeId,
-                parentLevel + 1,
-                userId
+                parentLevel + 1
+
             );
             createdNodes.push(...childNodes);
         }
@@ -349,8 +351,8 @@ Return ONLY valid JSON with the same structure, no markdown formatting or explan
     async createChildNodes(
         children: HierarchyNode[],
         parentId: number,
-        parentLevel: number,
-        userId: string
+        parentLevel: number
+
     ): Promise<DocumentNode[]> {
         const createdNodes: DocumentNode[] = [];
 
@@ -377,8 +379,9 @@ Return ONLY valid JSON with the same structure, no markdown formatting or explan
                     children: child.children && child.children.length > 0,
                     type: 'leaf',
                     url: '',
-                    urltype: null,
-                    user_id: userId
+                    urltype: null
+                    // user_id removed
+
                 })
                 .select()
                 .single();
@@ -391,8 +394,8 @@ Return ONLY valid JSON with the same structure, no markdown formatting or explan
                 const grandchildren = await this.createChildNodes(
                     child.children,
                     nodeId,
-                    parentLevel + 1,
-                    userId
+                    parentLevel + 1
+
                 );
                 createdNodes.push(...grandchildren);
             }
