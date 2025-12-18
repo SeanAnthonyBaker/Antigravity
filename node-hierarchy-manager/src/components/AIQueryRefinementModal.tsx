@@ -4,6 +4,7 @@ import { NotebookService } from '../services/NotebookService';
 import type { UserNotebook } from '../services/NotebookService';
 import { ApiKeyService } from '../services/ApiKeyService';
 import { supabase } from '../lib/supabase';
+import { VNCPanel } from './VNCPanel';
 
 interface AIQueryRefinementModalProps {
     initialText: string;
@@ -44,6 +45,7 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
     const [grokApiKey, setGrokApiKey] = useState('');
     const [deepSeekApiKey, setDeepSeekApiKey] = useState('');
     const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+    const [isVNCVisible, setIsVNCVisible] = useState(false);
 
     // Manual Login / VNC State
     const [authRequired, setAuthRequired] = useState(false);
@@ -137,6 +139,11 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
         else if (selectedLLM === 'Grok' && !grokApiKey) setShowApiKeyInput(true);
         else if (selectedLLM === 'DeepSeek' && !deepSeekApiKey) setShowApiKeyInput(true);
         else setShowApiKeyInput(false);
+
+        // Auto-close VNC if switching away from NotebookLM
+        if (selectedLLM !== 'NotebookLM') {
+            setIsVNCVisible(false);
+        }
     }, [selectedLLM, apiKey, grokApiKey, deepSeekApiKey]);
 
     const handleSaveApiKey = async (key: string) => {
@@ -404,6 +411,8 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
 
                 const decoder = new TextDecoder();
                 let buffer = '';
+                let lastUpdate = 0;
+                let currentText = '';
 
                 while (true) {
                     const { done, value } = await reader.read();
@@ -420,11 +429,19 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
                             try {
                                 const data = JSON.parse(line.slice(6));
                                 if (data.chunk) {
-                                    setGeneratedResponse(prev => prev + data.chunk);
+                                    currentText += data.chunk;
+                                    const now = Date.now();
+                                    // Update state at most every 100ms
+                                    if (now - lastUpdate > 100) {
+                                        setGeneratedResponse(currentText);
+                                        lastUpdate = now;
+                                    }
                                 } else if (data.status) {
                                     // Handle Authentication Status
                                     if (data.status === 'authentication_required') {
-                                        alert("Authentication Required!\n\nPlease open the VNC Viewer (Port 7900) and sign in to your Google Account manually.\n\nThe system will wait for 5 minutes.");
+                                        setAuthRequired(true); // Show VNC Overlay using state
+                                        // Also ensure VNC is visible
+                                        setIsVNCVisible(true);
                                     }
 
                                     console.log("Status:", data.status, data.message);
@@ -437,6 +454,8 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
                         }
                     }
                 }
+                // Final update to ensure all text is shown
+                setGeneratedResponse(currentText);
             } else if (selectedLLM === 'DeepSeek') {
                 // Use backend proxy to avoid CORS
                 const apiBase = import.meta.env.VITE_API_BASE_URL || '';
@@ -610,7 +629,9 @@ Instructions:
             overscrollBehavior: 'contain'
         }} onClick={onClose}>
             <div style={{
-                width: '90%', maxWidth: '1200px', height: '85vh',
+                width: isVNCVisible ? '98vw' : '90%',
+                maxWidth: isVNCVisible ? 'none' : '1200px',
+                height: '85vh',
                 backgroundColor: '#1e1e1e', borderRadius: '12px',
                 display: 'flex', flexDirection: 'column', overflow: 'hidden',
                 border: '1px solid #333',
@@ -627,7 +648,27 @@ Instructions:
                         <h2 style={{ margin: 0, color: '#fff', fontSize: '1.2rem', whiteSpace: 'nowrap' }}>AI Query Refinement</h2>
 
                         {/* Action Buttons Moved to Header */}
-                        <div style={{ display: 'flex', gap: '1rem' }}>
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                            {selectedLLM === 'NotebookLM' && (
+                                <button
+                                    onClick={() => setIsVNCVisible(!isVNCVisible)}
+                                    style={{
+                                        padding: '0.4rem 1.2rem',
+                                        backgroundColor: isVNCVisible ? '#4b5563' : '#374151',
+                                        color: '#fff',
+                                        border: '1px solid #4b5563',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        fontWeight: 600,
+                                        fontSize: '0.9rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem'
+                                    }}
+                                >
+                                    {isVNCVisible ? '🚫 Close VNC' : '🖥️ VNC'}
+                                </button>
+                            )}
                             <button
                                 onClick={handleGeneratePrompt}
                                 disabled={isExecuting || isGenerating || !!selectedAction}
@@ -645,7 +686,11 @@ Instructions:
                             </button>
                             {!isGenerating && !isExecuting && (
                                 <button
-                                    onClick={() => handleExecute()}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        console.log("[AIModal] Execute Clicked");
+                                        handleExecute();
+                                    }}
                                     disabled={isExecuting || !!selectedAction}
                                     style={{
                                         padding: '0.4rem 1.2rem', backgroundColor: '#3b82f6', color: '#fff',
@@ -767,389 +812,404 @@ Instructions:
 
                 {/* Body */}
                 <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+                    {/* Main AI UI Wrapper */}
+                    <div style={{ display: 'flex', flex: 1, overflow: 'hidden', width: isVNCVisible ? '50%' : '100%' }}>
 
-                    {/* Left Panel: Query Input */}
-                    <div style={{
-                        flex: 1, padding: '1rem', display: 'flex', flexDirection: 'column',
-                        borderRight: '1px solid #333',
-                        transform: 'translateZ(0)', willChange: 'transform', backfaceVisibility: 'hidden'
-                    }}>
-                        <label style={{ color: '#ccc', marginBottom: '0.5rem' }}>Query Input Area</label>
-                        <textarea
-                            value={promptText}
-                            onChange={(e) => setPromptText(e.target.value)}
-                            style={{
-                                flex: 1, resize: 'none', padding: '1rem',
-                                backgroundColor: '#1e1e1e', color: '#fff',
-                                border: '1px solid #444', borderRadius: '8px',
-                                fontSize: '1rem', lineHeight: '1.5',
-                                fontFamily: 'inherit'
-                            }}
-                        />
-
-                        <div style={{ marginTop: '1rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                            <label style={{ color: '#4ade80', marginBottom: '0.5rem' }}>Generated Response</label>
+                        {/* Left Panel: Query Input */}
+                        <div style={{
+                            flex: 1, padding: '1rem', display: 'flex', flexDirection: 'column',
+                            borderRight: '1px solid #333'
+                        }}>
+                            <label style={{ color: '#ccc', marginBottom: '0.5rem' }}>Query Input Area</label>
                             <textarea
-                                value={generatedResponse || (isExecuting ? "Generating query - this may take a little time ,  please wait....." : "")}
-                                readOnly
-                                placeholder="Response will appear here..."
+                                value={promptText}
+                                onChange={(e) => setPromptText(e.target.value)}
                                 style={{
                                     flex: 1, resize: 'none', padding: '1rem',
-                                    backgroundColor: '#111', color: '#eee',
+                                    backgroundColor: '#1e1e1e', color: '#fff',
                                     border: '1px solid #444', borderRadius: '8px',
-                                    fontSize: '0.95rem', lineHeight: '1.5',
-                                    opacity: generatedResponse ? 1 : 0.5
+                                    fontSize: '1rem', lineHeight: '1.5',
+                                    fontFamily: 'inherit'
                                 }}
                             />
-                        </div>
-                    </div>
 
-                    {/* Right Panel: Parameters */}
-                    <div className="custom-scrollbar" style={{
-                        width: '400px', padding: '1rem', overflowY: 'auto',
-                        backgroundColor: '#252526',
-                        overscrollBehavior: 'contain',
-                        transform: 'translateZ(0)',
-                        backfaceVisibility: 'hidden'
-                    }}>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '1rem' }}>
+                                <label style={{ color: '#4ade80', marginBottom: '0.5rem' }}>Generated Response</label>
+                                <textarea
+                                    value={generatedResponse || (isExecuting ? "Generating query - this may take a little time ,  please wait....." : "")}
+                                    readOnly
+                                    placeholder="Response will appear here..."
+                                    style={{
+                                        flex: 1, resize: 'none', padding: '1rem',
+                                        backgroundColor: '#111', color: '#eee',
+                                        border: '1px solid #444', borderRadius: '8px',
+                                        fontSize: '0.95rem', lineHeight: '1.5',
+                                        opacity: generatedResponse ? 1 : 0.5
+                                    }}
+                                />
+                            </div>
 
-                        {!showAdvancedOptions ? (
-                            <>
-                                {/* API Key Management */}
-                                <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#2d2d2d', borderRadius: '8px', border: '1px solid #444' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                        <label style={{ color: '#fff', fontSize: '0.9rem', margin: 0 }}>
-                                            {selectedLLM} API Key
-                                        </label>
-                                        {(selectedLLM === 'Gemini' && apiKey) || (selectedLLM === 'Grok' && grokApiKey) || (selectedLLM === 'DeepSeek' && deepSeekApiKey) ? (
-                                            <button
-                                                onClick={async () => {
-                                                    if (!userId) return;
+                        </div> {/* End Left Panel */}
 
-                                                    try {
-                                                        if (selectedLLM === 'Gemini') {
-                                                            await ApiKeyService.deleteApiKey(userId, 'gemini');
-                                                            setApiKey('');
-                                                        }
-                                                        if (selectedLLM === 'Grok') {
-                                                            await ApiKeyService.deleteApiKey(userId, 'grok');
-                                                            setGrokApiKey('');
-                                                        }
-                                                        if (selectedLLM === 'DeepSeek') {
-                                                            await ApiKeyService.deleteApiKey(userId, 'deepseek');
-                                                            setDeepSeekApiKey('');
-                                                        }
-                                                        setShowApiKeyInput(true);
-                                                    } catch (error) {
-                                                        console.error("Failed to delete API key:", error);
-                                                    }
-                                                }}
-                                                style={{
-                                                    background: 'none', border: 'none', color: '#3b82f6',
-                                                    cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline'
-                                                }}
-                                            >
-                                                Change Key
-                                            </button>
-                                        ) : null}
-                                    </div>
+                        {/* Right Panel: Parameters */}
+                        <div className="custom-scrollbar" style={{
+                            width: '400px', padding: '1rem', overflowY: 'auto',
+                            backgroundColor: '#252526',
+                            overscrollBehavior: 'contain'
+                        }}>
 
-                                    {(showApiKeyInput || (selectedLLM === 'Gemini' && !apiKey) || (selectedLLM === 'Grok' && !grokApiKey) || (selectedLLM === 'DeepSeek' && !deepSeekApiKey)) && (
-                                        <input
-                                            type="password"
-                                            value={selectedLLM === 'Gemini' ? apiKey : selectedLLM === 'Grok' ? grokApiKey : deepSeekApiKey}
-                                            onChange={(e) => handleSaveApiKey(e.target.value)}
-                                            placeholder={`Enter ${selectedLLM} API Key...`}
-                                            style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: 'none', backgroundColor: '#1e1e1e', color: '#fff' }}
-                                        />
-                                    )}
-
-                                    {/* Status Indicator */}
-                                    {((selectedLLM === 'Gemini' && apiKey) || (selectedLLM === 'Grok' && grokApiKey) || (selectedLLM === 'DeepSeek' && deepSeekApiKey)) && !showApiKeyInput && (
-                                        <div style={{ fontSize: '0.8rem', color: '#4ade80' }}>
-                                            ✓ Key loaded
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* NotebookLM Management */}
-                                {(selectedLLM === 'NotebookLM') && (
-                                    <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#2d2d2d', borderRadius: '8px', border: '1px solid #444' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                            <h3 style={{ color: '#fff', fontSize: '0.9rem', margin: 0 }}>Select Notebook</h3>
-                                            <button
-                                                onClick={() => setShowNotebookMaintenance(!showNotebookMaintenance)}
-                                                style={{
-                                                    background: 'none', border: 'none', color: '#3b82f6',
-                                                    cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline'
-                                                }}
-                                            >
-                                                {showNotebookMaintenance ? 'Hide Maintenance' : 'Maintain Notebooks'}
-                                            </button>
-                                        </div>
-                                        <select
-                                            value={selectedNotebookId}
-                                            onChange={(e) => setSelectedNotebookId(e.target.value)}
-                                            style={{
-                                                width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #444',
-                                                backgroundColor: '#1e1e1e', color: '#fff', marginBottom: '0.5rem'
-                                            }}
-                                        >
-                                            <option value="">-- Select a Notebook --</option>
-                                            {notebooks.map(nb => (
-                                                <option key={nb.id} value={nb.id}>{nb.description} ({nb.notebook_id})</option>
-                                            ))}
-                                        </select>
-
-                                        {showNotebookMaintenance && (
-                                            <div style={{ marginTop: '1rem', borderTop: '1px solid #444', paddingTop: '1rem' }}>
-                                                <h3 style={{ color: '#fff', fontSize: '0.9rem', marginBottom: '0.5rem' }}>Manage Notebooks</h3>
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Description (e.g. My Research)"
-                                                        value={newNotebookDesc}
-                                                        onChange={(e) => setNewNotebookDesc(e.target.value)}
-                                                        style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #444', backgroundColor: '#1e1e1e', color: '#fff' }}
-                                                    />
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Notebook ID"
-                                                        value={newNotebookId}
-                                                        onChange={(e) => setNewNotebookId(e.target.value)}
-                                                        style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #444', backgroundColor: '#1e1e1e', color: '#fff' }}
-                                                    />
+                            {!showAdvancedOptions ? (
+                                <>
+                                    {/* API Key Management - Hidden for NotebookLM */}
+                                    {selectedLLM !== 'NotebookLM' && (
+                                        <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#2d2d2d', borderRadius: '8px', border: '1px solid #444' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                                <label style={{ color: '#fff', fontSize: '0.9rem', margin: 0 }}>
+                                                    {selectedLLM} API Key
+                                                </label>
+                                                {(selectedLLM === 'Gemini' && apiKey) || (selectedLLM === 'Grok' && grokApiKey) || (selectedLLM === 'DeepSeek' && deepSeekApiKey) ? (
                                                     <button
-                                                        onClick={handleAddNotebook}
+                                                        onClick={async () => {
+                                                            if (!userId) return;
+
+                                                            try {
+                                                                if (selectedLLM === 'Gemini') {
+                                                                    await ApiKeyService.deleteApiKey(userId, 'gemini');
+                                                                    setApiKey('');
+                                                                }
+                                                                if (selectedLLM === 'Grok') {
+                                                                    await ApiKeyService.deleteApiKey(userId, 'grok');
+                                                                    setGrokApiKey('');
+                                                                }
+                                                                if (selectedLLM === 'DeepSeek') {
+                                                                    await ApiKeyService.deleteApiKey(userId, 'deepseek');
+                                                                    setDeepSeekApiKey('');
+                                                                }
+                                                                setShowApiKeyInput(true);
+                                                            } catch (error) {
+                                                                console.error("Failed to delete API key:", error);
+                                                            }
+                                                        }}
                                                         style={{
-                                                            padding: '0.4rem', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer'
+                                                            background: 'none', border: 'none', color: '#3b82f6',
+                                                            cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline'
                                                         }}
                                                     >
-                                                        Add Notebook
+                                                        Change Key
                                                     </button>
-                                                </div>
-                                                {notebooks.length > 0 && (
-                                                    <div style={{ marginTop: '1rem' }}>
-                                                        <label style={{ color: '#aaa', fontSize: '0.8rem' }}>Saved Notebooks:</label>
-                                                        <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0 0' }}>
-                                                            {notebooks.map(nb => (
-                                                                <li key={nb.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem', fontSize: '0.85rem', color: '#ddd' }}>
-                                                                    <span>{nb.description}</span>
-                                                                    <button
-                                                                        onClick={() => handleDeleteNotebook(nb.id)}
-                                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem' }}
-                                                                    >
-                                                                        Delete
-                                                                    </button>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
-                                                )}
+                                                ) : null}
                                             </div>
-                                        )}
-                                    </div>
-                                )}
 
-                                {/* Quick Actions - Hidden for NotebookLM */}
-                                {selectedLLM !== 'NotebookLM' && (
-                                    <div style={{ marginBottom: '1.5rem' }}>
-                                        <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Quick Actions</h3>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                                            {['Clarify', 'Proofread', 'Summarise', 'Rewrite'].map(action => (
-                                                <button
-                                                    key={action}
-                                                    onClick={() => {
-                                                        const newAction = selectedAction === action ? '' : action;
-                                                        setSelectedAction(newAction);
-                                                        // If selecting a new action (not deselecting), trigger execution immediately
-                                                        if (newAction) {
-                                                            handleExecute(newAction);
-                                                        }
-                                                    }}
-                                                    disabled={isExecuting || isGenerating}
-                                                    style={{
-                                                        padding: '0.5rem',
-                                                        borderRadius: '6px',
-                                                        border: '1px solid',
-                                                        borderColor: selectedAction === action ? '#3b82f6' : '#444',
-                                                        backgroundColor: selectedAction === action ? 'rgba(59, 130, 246, 0.2)' : '#333',
-                                                        color: selectedAction === action ? '#3b82f6' : '#ccc',
-                                                        cursor: (isExecuting || isGenerating) ? 'not-allowed' : 'pointer',
-                                                        fontSize: '0.9rem',
-                                                        transition: 'all 0.2s',
-                                                        opacity: (isExecuting || isGenerating) ? 0.6 : 1
-                                                    }}
-                                                >
-                                                    {action}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Core Query Parameters</h3>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    <ParamDropdown label="Style" value={style} onChange={setStyle} options={['RFP response', 'Professional', 'Casual', '3rd Person', 'Personal']} />
-
-                                    {/* Bullet List Toggle */}
-                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                        <label style={{ fontSize: '0.8rem', color: '#aaa', marginBottom: '0.2rem' }}>Structure</label>
-                                        <div
-                                            onClick={() => setUseBulletList(!useBulletList)}
-                                            style={{
-                                                padding: '0.4rem', borderRadius: '4px', border: '1px solid #444',
-                                                backgroundColor: useBulletList ? '#3b82f6' : '#333',
-                                                color: '#fff', fontSize: '0.9rem',
-                                                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                userSelect: 'none', transition: 'background-color 0.2s'
-                                            }}
-                                        >
-                                            {useBulletList ? '✓ Bullet List' : 'Standard Text'}
-                                        </div>
-                                    </div>
-
-                                    {/* Custom Length UI */}
-                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                        <label style={{ fontSize: '0.8rem', color: '#aaa', marginBottom: '0.2rem' }}>Length</label>
-                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                            <select
-                                                value={length === 'Similar' ? 'Similar' : 'Custom'}
-                                                onChange={(e) => {
-                                                    const val = e.target.value;
-                                                    if (val === 'Similar') {
-                                                        setLength('Similar');
-                                                    } else {
-                                                        setLength(`${customLengthValue} words`);
-                                                    }
-                                                }}
-                                                style={{
-                                                    padding: '0.4rem', borderRadius: '4px', border: '1px solid #444',
-                                                    backgroundColor: '#333', color: '#fff', fontSize: '0.9rem',
-                                                    flex: 1
-                                                }}
-                                            >
-                                                <option value="Similar">Similar</option>
-                                                <option value="Custom">Custom</option>
-                                            </select>
-                                            {length !== 'Similar' && (
+                                            {(showApiKeyInput || (selectedLLM === 'Gemini' && !apiKey) || (selectedLLM === 'Grok' && !grokApiKey) || (selectedLLM === 'DeepSeek' && !deepSeekApiKey)) && (
                                                 <input
-                                                    type="number"
-                                                    value={customLengthValue}
-                                                    onChange={(e) => {
-                                                        setCustomLengthValue(e.target.value);
-                                                        setLength(`${e.target.value} words`);
-                                                    }}
-                                                    placeholder="#"
-                                                    style={{
-                                                        width: '60px', padding: '0.4rem', borderRadius: '4px',
-                                                        border: '1px solid #444', backgroundColor: '#333', color: '#fff',
-                                                        fontSize: '0.9rem'
-                                                    }}
+                                                    type="password"
+                                                    value={selectedLLM === 'Gemini' ? apiKey : selectedLLM === 'Grok' ? grokApiKey : deepSeekApiKey}
+                                                    onChange={(e) => handleSaveApiKey(e.target.value)}
+                                                    placeholder={`Enter ${selectedLLM} API Key...`}
+                                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: 'none', backgroundColor: '#1e1e1e', color: '#fff' }}
                                                 />
                                             )}
+
+                                            {/* Status Indicator */}
+                                            {((selectedLLM === 'Gemini' && apiKey) || (selectedLLM === 'Grok' && grokApiKey) || (selectedLLM === 'DeepSeek' && deepSeekApiKey)) && !showApiKeyInput && (
+                                                <div style={{ fontSize: '0.8rem', color: '#4ade80' }}>
+                                                    ✓ Key loaded
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
+                                    )}
 
-                                    <ParamDropdown label="Sources" value={sources} onChange={setSources} options={['No reference', 'References']} />
-                                    <ParamDropdown label="Format" value={format} onChange={setFormat} options={['Plain written text', 'Markdown']} />
-                                    <ParamDropdown label="Language" value={language} onChange={setLanguage} options={['English', 'German', 'Japanese', 'Spanish', 'French']} />
-                                    <ParamDropdown label="Suitability" value={suitability} onChange={setSuitability} options={['Executive', 'Casual', 'Technical']} />
-                                </div>
+                                    {/* NotebookLM Management */}
+                                    {(selectedLLM === 'NotebookLM') && (
+                                        <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#2d2d2d', borderRadius: '8px', border: '1px solid #444' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                                <h3 style={{ color: '#fff', fontSize: '0.9rem', margin: 0 }}>Select Notebook</h3>
+                                                <button
+                                                    onClick={() => setShowNotebookMaintenance(!showNotebookMaintenance)}
+                                                    style={{
+                                                        background: 'none', border: 'none', color: '#3b82f6',
+                                                        cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline'
+                                                    }}
+                                                >
+                                                    {showNotebookMaintenance ? 'Hide Maintenance' : 'Maintain Notebooks'}
+                                                </button>
+                                            </div>
+                                            <select
+                                                value={selectedNotebookId}
+                                                onChange={(e) => setSelectedNotebookId(e.target.value)}
+                                                style={{
+                                                    width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #444',
+                                                    backgroundColor: '#1e1e1e', color: '#fff', marginBottom: '0.5rem'
+                                                }}
+                                            >
+                                                <option value="">-- Select a Notebook --</option>
+                                                {notebooks.map(nb => (
+                                                    <option key={nb.id} value={nb.id}>{nb.description} ({nb.notebook_id})</option>
+                                                ))}
+                                            </select>
 
-                                {/* More Options Toggle - Hidden for NotebookLM */}
-                                {selectedLLM !== 'NotebookLM' && (
-                                    <div
-                                        onClick={() => setShowAdvancedOptions(true)}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: '0.5rem',
-                                            marginTop: '1rem', cursor: 'pointer', color: '#3b82f6',
-                                            fontSize: '0.9rem', userSelect: 'none', justifyContent: 'flex-end'
-                                        }}
-                                    >
-                                        <span>More Options &gt;</span>
-                                    </div>
-                                )}
-                            </>
-                        ) : (
-                            <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
-                                <div
-                                    onClick={() => setShowAdvancedOptions(false)}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: '0.5rem',
-                                        marginBottom: '1rem', cursor: 'pointer', color: '#3b82f6',
-                                        fontSize: '0.9rem', userSelect: 'none'
-                                    }}
-                                >
-                                    <span>&lt; Back to Basic Options</span>
-                                </div>
-
-                                {/* Boosters */}
-                                <div style={{ marginBottom: '1.5rem' }}>
-                                    <h3 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: '0.8rem', fontWeight: '600' }}>Proven Booster Toggles</h3>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem 1rem' }}>
-                                        <BoosterToggle label="Step-by-step thinking" checked={boosters.stepByStep} onChange={() => toggleBooster('stepByStep')} />
-                                        <BoosterToggle label="Critique reasoning" checked={boosters.critique} onChange={() => toggleBooster('critique')} />
-                                        <BoosterToggle label="Multiple approaches" checked={boosters.multipleApproaches} onChange={() => toggleBooster('multipleApproaches')} />
-                                        <BoosterToggle label="Expert persona" checked={boosters.expert} onChange={() => toggleBooster('expert')} />
-                                        <BoosterToggle label="Ethical filter" checked={boosters.unethical} onChange={() => toggleBooster('unethical')} />
-                                        <BoosterToggle label="Delimit inputs" checked={boosters.delimiters} onChange={() => toggleBooster('delimiters')} />
-                                    </div>
-                                </div>
-
-                                {/* Advanced */}
-                                <div>
-                                    <h3 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: '0.8rem', fontWeight: '600' }}>Advanced Options</h3>
-
-                                    <div style={{ marginBottom: '1.2rem' }}>
-                                        <label style={{ color: '#aaa', fontSize: '0.85rem', display: 'block', marginBottom: '0.5rem' }}>Reasoning Style</label>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                            {['Chain-of-Thought', 'Tree-of-Thought', 'Step-by-step', 'Self-Consistency'].map(opt => (
-                                                <CheckButton key={opt} label={opt} checked={reasoningStyles.includes(opt)} onChange={() => toggleReasoning(opt)} />
-                                            ))}
+                                            {showNotebookMaintenance && (
+                                                <div style={{ marginTop: '1rem', borderTop: '1px solid #444', paddingTop: '1rem' }}>
+                                                    <h3 style={{ color: '#fff', fontSize: '0.9rem', marginBottom: '0.5rem' }}>Manage Notebooks</h3>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Description (e.g. My Research)"
+                                                            value={newNotebookDesc}
+                                                            onChange={(e) => setNewNotebookDesc(e.target.value)}
+                                                            style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #444', backgroundColor: '#1e1e1e', color: '#fff' }}
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Notebook ID"
+                                                            value={newNotebookId}
+                                                            onChange={(e) => setNewNotebookId(e.target.value)}
+                                                            style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #444', backgroundColor: '#1e1e1e', color: '#fff' }}
+                                                        />
+                                                        <button
+                                                            onClick={handleAddNotebook}
+                                                            style={{
+                                                                padding: '0.4rem', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            Add Notebook
+                                                        </button>
+                                                    </div>
+                                                    {notebooks.length > 0 && (
+                                                        <div style={{ marginTop: '1rem' }}>
+                                                            <label style={{ color: '#aaa', fontSize: '0.8rem' }}>Saved Notebooks:</label>
+                                                            <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0 0' }}>
+                                                                {notebooks.map(nb => (
+                                                                    <li key={nb.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem', fontSize: '0.85rem', color: '#ddd' }}>
+                                                                        <span>{nb.description}</span>
+                                                                        <button
+                                                                            onClick={() => handleDeleteNotebook(nb.id)}
+                                                                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem' }}
+                                                                        >
+                                                                            Delete
+                                                                        </button>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
+                                    )}
 
-                                    <div style={{ marginBottom: '1.2rem' }}>
-                                        <label style={{ color: '#aaa', fontSize: '0.85rem', display: 'block', marginBottom: '0.5rem' }}>Output Format</label>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                            {['Plain text', 'JSON', 'YAML', 'Markdown', 'Table', 'XML'].map(opt => (
-                                                <CheckButton key={opt} label={opt} checked={outputFormats.includes(opt)} onChange={() => toggleOutputFormat(opt)} />
-                                            ))}
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <CheckButton label="Code block" checked={outputFormats.includes('Code block')} onChange={() => toggleOutputFormat('Code block')} />
-                                                {outputFormats.includes('Code block') && (
+                                    {/* Quick Actions - Hidden for NotebookLM */}
+                                    {selectedLLM !== 'NotebookLM' && (
+                                        <div style={{ marginBottom: '1.5rem' }}>
+                                            <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Quick Actions</h3>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                                {['Clarify', 'Proofread', 'Summarise', 'Rewrite'].map(action => (
+                                                    <button
+                                                        key={action}
+                                                        onClick={() => {
+                                                            const newAction = selectedAction === action ? '' : action;
+                                                            setSelectedAction(newAction);
+                                                            // If selecting a new action (not deselecting), trigger execution immediately
+                                                            if (newAction) {
+                                                                handleExecute(newAction);
+                                                            }
+                                                        }}
+                                                        disabled={isExecuting || isGenerating}
+                                                        style={{
+                                                            padding: '0.5rem',
+                                                            borderRadius: '6px',
+                                                            border: '1px solid',
+                                                            borderColor: selectedAction === action ? '#3b82f6' : '#444',
+                                                            backgroundColor: selectedAction === action ? 'rgba(59, 130, 246, 0.2)' : '#333',
+                                                            color: selectedAction === action ? '#3b82f6' : '#ccc',
+                                                            cursor: (isExecuting || isGenerating) ? 'not-allowed' : 'pointer',
+                                                            fontSize: '0.9rem',
+                                                            transition: 'all 0.2s',
+                                                            opacity: (isExecuting || isGenerating) ? 0.6 : 1
+                                                        }}
+                                                    >
+                                                        {action}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <h3 style={{ color: '#fff', fontSize: '1rem', marginBottom: '1rem', borderBottom: '1px solid #444', paddingBottom: '0.5rem' }}>Core Query Parameters</h3>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <ParamDropdown label="Style" value={style} onChange={setStyle} options={['RFP response', 'Professional', 'Casual', '3rd Person', 'Personal']} />
+
+                                        {/* Bullet List Toggle */}
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <label style={{ fontSize: '0.8rem', color: '#aaa', marginBottom: '0.2rem' }}>Structure</label>
+                                            <div
+                                                onClick={() => setUseBulletList(!useBulletList)}
+                                                style={{
+                                                    padding: '0.4rem', borderRadius: '4px', border: '1px solid #444',
+                                                    backgroundColor: useBulletList ? '#3b82f6' : '#333',
+                                                    color: '#fff', fontSize: '0.9rem',
+                                                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    userSelect: 'none', transition: 'background-color 0.2s'
+                                                }}
+                                            >
+                                                {useBulletList ? '✓ Bullet List' : 'Standard Text'}
+                                            </div>
+                                        </div>
+
+                                        {/* Custom Length UI */}
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <label style={{ fontSize: '0.8rem', color: '#aaa', marginBottom: '0.2rem' }}>Length</label>
+                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                <select
+                                                    value={length === 'Similar' ? 'Similar' : 'Custom'}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        if (val === 'Similar') {
+                                                            setLength('Similar');
+                                                        } else {
+                                                            setLength(`${customLengthValue} words`);
+                                                        }
+                                                    }}
+                                                    style={{
+                                                        padding: '0.4rem', borderRadius: '4px', border: '1px solid #444',
+                                                        backgroundColor: '#333', color: '#fff', fontSize: '0.9rem',
+                                                        flex: 1
+                                                    }}
+                                                >
+                                                    <option value="Similar">Similar</option>
+                                                    <option value="Custom">Custom</option>
+                                                </select>
+                                                {length !== 'Similar' && (
                                                     <input
-                                                        type="text" placeholder="lang" value={codeLanguage} onChange={e => setCodeLanguage(e.target.value)}
-                                                        style={{ width: '60px', padding: '0.2rem', borderRadius: '4px', border: 'none', backgroundColor: '#333', color: '#fff', fontSize: '0.8rem' }}
+                                                        type="number"
+                                                        value={customLengthValue}
+                                                        onChange={(e) => {
+                                                            setCustomLengthValue(e.target.value);
+                                                            setLength(`${e.target.value} words`);
+                                                        }}
+                                                        placeholder="#"
+                                                        style={{
+                                                            width: '60px', padding: '0.4rem', borderRadius: '4px',
+                                                            border: '1px solid #444', backgroundColor: '#333', color: '#fff',
+                                                            fontSize: '0.9rem'
+                                                        }}
                                                     />
                                                 )}
                                             </div>
                                         </div>
+
+                                        <ParamDropdown label="Sources" value={sources} onChange={setSources} options={['No reference', 'References']} />
+                                        <ParamDropdown label="Format" value={format} onChange={setFormat} options={['Plain written text', 'Markdown']} />
+                                        <ParamDropdown label="Language" value={language} onChange={setLanguage} options={['English', 'German', 'Japanese', 'Spanish', 'French']} />
+                                        <ParamDropdown label="Suitability" value={suitability} onChange={setSuitability} options={['Executive', 'Casual', 'Technical']} />
                                     </div>
 
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', backgroundColor: '#2d2d2d', padding: '0.8rem', borderRadius: '6px' }}>
-                                        <ConstraintRow label="Max length" active={constraints.maxLength.active} value={constraints.maxLength.value}
-                                            onToggle={v => handleConstraintChange('maxLength', 'active', v)}
-                                            onChange={v => handleConstraintChange('maxLength', 'value', v)} placeholder="e.g. 500 words" />
-                                        <ConstraintRow label="Forbidden words" active={constraints.forbidden.active} value={constraints.forbidden.value}
-                                            onToggle={v => handleConstraintChange('forbidden', 'active', v)}
-                                            onChange={v => handleConstraintChange('forbidden', 'value', v)} placeholder="e.g. confidential" />
-                                        <ConstraintRow label="Keywords" active={constraints.keywords.active} value={constraints.keywords.value}
-                                            onToggle={v => handleConstraintChange('keywords', 'active', v)}
-                                            onChange={v => handleConstraintChange('keywords', 'value', v)} placeholder="Must include..." />
-                                        <ConstraintRow label="Tone" active={constraints.tone.active} value={constraints.tone.value}
-                                            onToggle={v => handleConstraintChange('tone', 'active', v)}
-                                            onChange={v => handleConstraintChange('tone', 'value', v)} placeholder="e.g. Sarcastic" />
+                                    {/* More Options Toggle - Hidden for NotebookLM */}
+                                    {selectedLLM !== 'NotebookLM' && (
+                                        <div
+                                            onClick={() => setShowAdvancedOptions(true)}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                                marginTop: '1rem', cursor: 'pointer', color: '#3b82f6',
+                                                fontSize: '0.9rem', userSelect: 'none', justifyContent: 'flex-end'
+                                            }}
+                                        >
+                                            <span>More Options &gt;</span>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
+                                    <div
+                                        onClick={() => setShowAdvancedOptions(false)}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                            marginBottom: '1rem', cursor: 'pointer', color: '#3b82f6',
+                                            fontSize: '0.9rem', userSelect: 'none'
+                                        }}
+                                    >
+                                        <span>&lt; Back to Basic Options</span>
+                                    </div>
+
+                                    {/* Boosters */}
+                                    <div style={{ marginBottom: '1.5rem' }}>
+                                        <h3 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: '0.8rem', fontWeight: '600' }}>Proven Booster Toggles</h3>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem 1rem' }}>
+                                            <BoosterToggle label="Step-by-step thinking" checked={boosters.stepByStep} onChange={() => toggleBooster('stepByStep')} />
+                                            <BoosterToggle label="Critique reasoning" checked={boosters.critique} onChange={() => toggleBooster('critique')} />
+                                            <BoosterToggle label="Multiple approaches" checked={boosters.multipleApproaches} onChange={() => toggleBooster('multipleApproaches')} />
+                                            <BoosterToggle label="Expert persona" checked={boosters.expert} onChange={() => toggleBooster('expert')} />
+                                            <BoosterToggle label="Ethical filter" checked={boosters.unethical} onChange={() => toggleBooster('unethical')} />
+                                            <BoosterToggle label="Delimit inputs" checked={boosters.delimiters} onChange={() => toggleBooster('delimiters')} />
+                                        </div>
+                                    </div>
+
+                                    {/* Advanced */}
+                                    <div>
+                                        <h3 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: '0.8rem', fontWeight: '600' }}>Advanced Options</h3>
+
+                                        <div style={{ marginBottom: '1.2rem' }}>
+                                            <label style={{ color: '#aaa', fontSize: '0.85rem', display: 'block', marginBottom: '0.5rem' }}>Reasoning Style</label>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                                {['Chain-of-Thought', 'Tree-of-Thought', 'Step-by-step', 'Self-Consistency'].map(opt => (
+                                                    <CheckButton key={opt} label={opt} checked={reasoningStyles.includes(opt)} onChange={() => toggleReasoning(opt)} />
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div style={{ marginBottom: '1.2rem' }}>
+                                            <label style={{ color: '#aaa', fontSize: '0.85rem', display: 'block', marginBottom: '0.5rem' }}>Output Format</label>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                                {['Plain text', 'JSON', 'YAML', 'Markdown', 'Table', 'XML'].map(opt => (
+                                                    <CheckButton key={opt} label={opt} checked={outputFormats.includes(opt)} onChange={() => toggleOutputFormat(opt)} />
+                                                ))}
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <CheckButton label="Code block" checked={outputFormats.includes('Code block')} onChange={() => toggleOutputFormat('Code block')} />
+                                                    {outputFormats.includes('Code block') && (
+                                                        <input
+                                                            type="text" placeholder="lang" value={codeLanguage} onChange={e => setCodeLanguage(e.target.value)}
+                                                            style={{ width: '60px', padding: '0.2rem', borderRadius: '4px', border: 'none', backgroundColor: '#333', color: '#fff', fontSize: '0.8rem' }}
+                                                        />
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', backgroundColor: '#2d2d2d', padding: '0.8rem', borderRadius: '6px' }}>
+                                            <ConstraintRow label="Max length" active={constraints.maxLength.active} value={constraints.maxLength.value}
+                                                onToggle={v => handleConstraintChange('maxLength', 'active', v)}
+                                                onChange={v => handleConstraintChange('maxLength', 'value', v)} placeholder="e.g. 500 words" />
+                                            <ConstraintRow label="Forbidden words" active={constraints.forbidden.active} value={constraints.forbidden.value}
+                                                onToggle={v => handleConstraintChange('forbidden', 'active', v)}
+                                                onChange={v => handleConstraintChange('forbidden', 'value', v)} placeholder="e.g. confidential" />
+                                            <ConstraintRow label="Keywords" active={constraints.keywords.active} value={constraints.keywords.value}
+                                                onToggle={v => handleConstraintChange('keywords', 'active', v)}
+                                                onChange={v => handleConstraintChange('keywords', 'value', v)} placeholder="Must include..." />
+                                            <ConstraintRow label="Tone" active={constraints.tone.active} value={constraints.tone.value}
+                                                onToggle={v => handleConstraintChange('tone', 'active', v)}
+                                                onChange={v => handleConstraintChange('tone', 'value', v)} placeholder="e.g. Sarcastic" />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                            )}
+                        </div>
+                    </div> {/* End Main Wrapper */}
+
+                    {isVNCVisible && (
+                        <div style={{
+                            width: '50%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            borderLeft: '1px solid #333',
+                            backgroundColor: '#000'
+                        }}>
+                            <VNCPanel />
+                        </div>
+                    )}
+                </div> {/* End Body */}
+
+
             </div>
-
-
         </div>
     );
 
@@ -1260,4 +1320,4 @@ const ConstraintRow: React.FC<ConstraintRowProps> = ({ label, active, value, onT
     </div>
 );
 
-export default AIQueryRefinementModal;
+export default React.memo(AIQueryRefinementModal);

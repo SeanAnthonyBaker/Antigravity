@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { DocumentNode } from '../types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -18,6 +18,12 @@ interface NodeDetailsModalProps {
 
 export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClose, onUpdate }) => {
     const [currentNode, setCurrentNode] = useState(node);
+
+    useEffect(() => {
+        console.log(`[NodeDetailsModal] Mount for node ${node.nodeID}`);
+        return () => console.log(`[NodeDetailsModal] Unmount for node ${node.nodeID}`);
+    }, [node.nodeID]);
+
     const [isEditing, setIsEditing] = useState(false);
     const [editedText, setEditedText] = useState(node.text || '');
     const [editedUrl, setEditedUrl] = useState(node.url || '');
@@ -206,7 +212,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
         setIsEditing(false);
     };
 
-    const handlePasteRefinement = (text: string) => {
+    const handlePasteRefinement = useCallback((text: string) => {
         if (!text) return;
 
         let newText = editedText;
@@ -223,7 +229,11 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
         setEditedText(newText);
         setShowRefinementModal(false);
         setSelectionRange(null);
-    };
+    }, [editedText, selectionRange]);
+
+    const handleCloseRefinement = useCallback(() => {
+        setShowRefinementModal(false);
+    }, []);
 
     const handlePlayMedia = () => {
         if (node.urltype === 'Video') {
@@ -358,7 +368,10 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
     const canEdit = node.access_level !== 'read_only';
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-overlay" onClick={() => {
+            console.log("[NodeDetailsModal] Overlay Clicked -> Closing");
+            onClose();
+        }}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', padding: '1rem' }}>
                     <img
@@ -482,7 +495,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                 {showRefinementModal && (
                                     <AIQueryRefinementModal
                                         initialText={selectedText} // Use full text if no selection
-                                        onClose={() => setShowRefinementModal(false)}
+                                        onClose={handleCloseRefinement}
                                         onPaste={handlePasteRefinement}
                                     />
                                 )}

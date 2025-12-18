@@ -50,6 +50,14 @@ SUGGESTION_CHIP_SELECTORS = [
     (By.XPATH, "//button[contains(@class, 'suggestion')]")
 ]
 
+SAVE_TO_NOTE_SELECTORS = [
+    (By.CSS_SELECTOR, "button[aria-label='Save to note']"),
+    (By.XPATH, "//button[contains(@aria-label, 'Save to note')]"),
+    (By.CSS_SELECTOR, "[data-testid='save-to-note']"),
+    (By.XPATH, "//*[text()='Save to note']"),
+    (By.XPATH, "//span[contains(@class, 'mdc-button__label') and contains(text(), 'Save to note')]")
+]
+
 NOTEBOOKLM_LOAD_INDICATORS = [
     (By.CSS_SELECTOR, '[data-testid="chat-input"]'), # Chat input is a good sign of readiness
     (By.CSS_SELECTOR, 'div[aria-label="Sources"]'), # Sources panel
@@ -215,6 +223,24 @@ def count_all_suggestions(driver):
             pass
     
     return len(suggestion_elements)
+
+def count_save_to_note_buttons(driver):
+    """
+    Counts all 'Save to note' buttons using multiple selectors.
+    Returns the total count of unique button elements.
+    """
+    buttons = set()
+    for by, value in SAVE_TO_NOTE_SELECTORS:
+        try:
+            elements = driver.find_elements(by, value)
+            for elem in elements:
+                try:
+                    buttons.add(elem.id)
+                except:
+                    pass
+        except Exception as e:
+            pass
+    return len(buttons)
 
 def safe_get_element_text(driver, selector, max_retries=15):
     """
@@ -425,7 +451,13 @@ def process_query():
                 initial_suggestion_count = count_all_suggestions(browser_instance)
                 logger.info(f"BASELINE: {initial_suggestion_count} suggestion chips found before query")
                 
+                # Check for Save-to-Note buttons
+                initial_save_note_count = count_save_to_note_buttons(browser_instance)
+                logger.info(f"BASELINE: {initial_save_note_count} save-to-note buttons found before query")
+                
                 initial_response_count = len(browser_instance.find_elements(*RESPONSE_CONTENT_SELECTOR))
+                
+                last_completion_check_time = time.time()
                 
                 logger.info("Attempting to find the chat input field...")
                 input_field = find_element_by_priority(browser_instance, CHAT_INPUT_SELECTORS, condition=EC.element_to_be_clickable, timeout=10)
@@ -605,12 +637,14 @@ def process_query():
                         last_clean_text = current_clean_text
                         last_change_time = time.time()
                     
-                    # 5. Completion Detection
-                    current_suggestion_count = count_all_suggestions(browser_instance)
-                    if current_suggestion_count > initial_suggestion_count:
-                        logger.info(f"🎯 COMPLETION DETECTED: Suggestion chips increased.")
-                        stream_completed = True
-                        break
+                    # 5. Completion Detection (Save-to-Note Button)
+                    if time.time() - last_completion_check_time >= 5:
+                        current_save_note_count = count_save_to_note_buttons(browser_instance)
+                        if current_save_note_count > initial_save_note_count:
+                             logger.info(f"🎯 COMPLETION DETECTED: Save-to-note buttons increased ({initial_save_note_count} -> {current_save_note_count}).")
+                             stream_completed = True
+                             break
+                        last_completion_check_time = time.time()
 
                     if material_started:
                         silence_duration = time.time() - last_change_time
@@ -679,4 +713,3 @@ def get_status():
                 return jsonify({'browser_active': False, 'status': 'error', 'error': str(e)}), 500
         else:
             return jsonify({'browser_active': False, 'status': 'inactive'})
-

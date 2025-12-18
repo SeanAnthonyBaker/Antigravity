@@ -265,8 +265,16 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
 
     const treeData = buildTree(nodes);
 
-    if (loading) return <div>Loading...</div>;
-    if (error) return <div style={{ color: 'red' }}>Error: {error}</div>;
+    if (loading) {
+        console.log("[NodeTree] Loading...");
+        return <div>Loading...</div>;
+    }
+    if (error) {
+        console.log("[NodeTree] Error:", error);
+        return <div style={{ color: 'red' }}>Error: {error}</div>;
+    }
+
+    console.log("[NodeTree] Render. SelectedNode:", selectedNode?.nodeID);
 
     return (
         <div className="tree-container">
