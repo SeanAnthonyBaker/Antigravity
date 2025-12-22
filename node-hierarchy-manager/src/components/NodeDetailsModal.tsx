@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import type { DocumentNode } from '../types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -367,11 +368,15 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
 
     const canEdit = node.access_level !== 'read_only';
 
-    return (
-        <div className="modal-overlay" onClick={() => {
-            console.log("[NodeDetailsModal] Overlay Clicked -> Closing");
-            onClose();
-        }}>
+    const modalContent = (
+        <div className="modal-overlay"
+            onClick={() => {
+                onClose();
+            }}
+            style={{
+                visibility: showRefinementModal ? 'hidden' : 'visible'
+            }}
+        >
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', padding: '1rem' }}>
                     <img
@@ -445,6 +450,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                             {isEditing && (
                                 <button
                                     onClick={() => {
+                                        console.log("[NodeDetailsModal] Opening AI Refinement Modal");
                                         if (textareaRef.current) {
                                             const start = textareaRef.current.selectionStart;
                                             const end = textareaRef.current.selectionEnd;
@@ -492,13 +498,6 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                     rows={15}
                                     style={{ width: '100%' }}
                                 />
-                                {showRefinementModal && (
-                                    <AIQueryRefinementModal
-                                        initialText={selectedText} // Use full text if no selection
-                                        onClose={handleCloseRefinement}
-                                        onPaste={handlePasteRefinement}
-                                    />
-                                )}
                             </div>
                         ) : (
                             <div className="rich-text-display markdown-content" style={{ marginTop: '0.5rem' }}>
@@ -712,5 +711,18 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                 </div>
             </div>
         </div>
+    );
+
+    return (
+        <>
+            {ReactDOM.createPortal(modalContent, document.body)}
+            {showRefinementModal && (
+                <AIQueryRefinementModal
+                    initialText={selectedText || editedText}
+                    onClose={handleCloseRefinement}
+                    onPaste={handlePasteRefinement}
+                />
+            )}
+        </>
     );
 };

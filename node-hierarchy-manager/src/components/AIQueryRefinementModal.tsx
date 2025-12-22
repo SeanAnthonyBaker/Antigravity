@@ -36,6 +36,14 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
         return [state, setState];
     };
 
+    // Lifecycle logging
+    useEffect(() => {
+        console.log(`[AIModal] Mount. InitialText length: ${initialText.length}`);
+        return () => console.log(`[AIModal] Unmount`);
+    }, []);
+
+    console.log("[AIModal] Render.");
+
     // --- State ---
     const [promptText, setPromptText] = useState(initialText);
     const [generatedResponse, setGeneratedResponse] = useState('');
@@ -687,8 +695,9 @@ Instructions:
                             {!isGenerating && !isExecuting && (
                                 <button
                                     onClick={(e) => {
+                                        e.preventDefault();
                                         e.stopPropagation();
-                                        console.log("[AIModal] Execute Clicked");
+                                        console.log("[AIModal] Execute Clicked (Propagation Stopped + PreventDefault)");
                                         handleExecute();
                                     }}
                                     disabled={isExecuting || !!selectedAction}

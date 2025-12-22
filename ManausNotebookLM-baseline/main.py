@@ -49,13 +49,8 @@ if SECRET_KEY == 'a-default-insecure-secret-key-for-dev' and os.environ.get('FLA
     logging.warning("SECURITY WARNING: Using default insecure secret key in production. Set the FLASK_SECRET_KEY environment variable.")
 app.config['SECRET_KEY'] = SECRET_KEY
 
-# Enable CORS for all routes
-# In production, we assume an external proxy (like Nginx) handles CORS headers.
-# Enabling it here would cause duplicate headers (one from Flask, one from Proxy).
-if os.environ.get('FLASK_ENV') != 'production':
-    CORS(app)
-else:
-    logging.info("Production environment detected: CORS disabled in Flask (assuming external proxy handles it).")
+# Enable CORS for all routes (required for frontend access)
+CORS(app)
 
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(notebooklm_bp, url_prefix='/api')

@@ -67,6 +67,25 @@ export const VNCPanel = React.memo<VNCPanelProps>(({ onClose }) => {
                             Reset
                         </button>
                     </div>
+
+                    {/* Open in New Window Button */}
+                    <button
+                        onClick={() => window.open(vncUrl, 'VNC_Window', 'width=1280,height=800')}
+                        title="Open VNC in New Window"
+                        style={{
+                            padding: '0.3rem 0.8rem',
+                            background: '#0078D4',
+                            border: 'none',
+                            color: 'white',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem',
+                            marginLeft: '1rem',
+                            fontWeight: 500
+                        }}
+                    >
+                        🗖 Open in New Window
+                    </button>
                 </div>
                 {onClose && (
                     <button

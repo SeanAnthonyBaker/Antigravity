@@ -10,7 +10,7 @@ services:
     environment:
       # This tells the Flask app to connect to the 'selenium' service by its network name
       - SELENIUM_HUB_URL=http://selenium:4444/wd/hub
-      - FLASK_ENV=production
+      - FLASK_ENV=development
       - CHROME_USER_AGENT=${CHROME_USER_AGENT}
       - NOTEBOOKLM_BASE_URL=${NOTEBOOKLM_BASE_URL}
       - NOTEBOOKLM_INITIAL_URL=${NOTEBOOKLM_INITIAL_URL}
@@ -21,7 +21,7 @@ services:
     restart: unless-stopped
     healthcheck:
       # This check ensures the Flask app and its browser are responsive before other services might depend on it.
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/status"]
+      test: [ "CMD", "curl", "-f", "http://localhost:5000/api/status" ]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -52,7 +52,7 @@ services:
       # Docker will create the 'chrome-data' directory on your host if it doesn't exist.
       - ./chrome-data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4444/wd/hub/status"]
+      test: [ "CMD", "curl", "-f", "http://localhost:4444/wd/hub/status" ]
       interval: 10s
       timeout: 5s
       retries: 5

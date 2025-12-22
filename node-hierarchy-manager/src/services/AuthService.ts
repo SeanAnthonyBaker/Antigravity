@@ -154,22 +154,31 @@ export const AuthService = {
      * real security is RLS
      */
     async ensureAdminRole(): Promise<void> {
-        if (await this.isSuperAdmin()) {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                // Try to insert admin role if it doesn't exist
-                // This might fail if RLS prevents insertion, but we have a policy for this in migration
-                // Or we rely on the migration DO block.
-                // This is a backup check.
-                const { error } = await supabase
-                    .from('user_roles')
-                    .upsert(
-                        { user_id: user.id, role: 'admin' },
-                        { onConflict: 'user_id' }
-                    );
+        try {
+            if (await this.isSuperAdmin()) {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    // Try to insert admin role if it doesn't exist
+                    // This might fail if RLS prevents insertion, but we have a policy for this in migration
+                    // Or we rely on the migration DO block.
+                    // This is a backup check.
+                    const { error } = await supabase
+                        .from('user_roles')
+                        .upsert(
+                            { user_id: user.id, role: 'admin' },
+                            { onConflict: 'user_id' }
+                        );
 
-                if (error) console.log('Admin role upsert result (may be ignored if exists):', error);
+                    if (error) {
+                        // 403 or other errors here are fine, it just means we can't auto-promote ourselves
+                        // likely already handled by SQL migration or RLS
+                        console.debug('Admin role upsert result (safe to ignore):', error.message);
+                    }
+                }
             }
+        } catch (e) {
+            // Totally suppress this to prevent app loops
+            console.debug('Supressed error in ensureAdminRole:', e);
         }
     }
 };

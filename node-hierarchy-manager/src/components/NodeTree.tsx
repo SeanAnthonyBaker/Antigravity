@@ -265,10 +265,7 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
 
     const treeData = buildTree(nodes);
 
-    if (loading) {
-        console.log("[NodeTree] Loading...");
-        return <div>Loading...</div>;
-    }
+    // Removed early return for loading to prevent unmounting children (modals)
     if (error) {
         console.log("[NodeTree] Error:", error);
         return <div style={{ color: 'red' }}>Error: {error}</div>;
@@ -277,7 +274,28 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
     console.log("[NodeTree] Render. SelectedNode:", selectedNode?.nodeID);
 
     return (
-        <div className="tree-container">
+        <div className="tree-container" style={{ position: 'relative' }}>
+            {loading && (
+                <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.3)',
+                    zIndex: 10,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    color: 'white',
+                    fontSize: '1.2em',
+                    fontWeight: 'bold',
+                    backdropFilter: 'blur(2px)',
+                    borderRadius: '8px'
+                }}>
+                    Loading...
+                </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h2 style={{ margin: 0 }}>Expert quality assured Knowledge</h2>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -337,7 +355,10 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
             {selectedNode && (
                 <NodeDetailsModal
                     node={selectedNode}
-                    onClose={() => setSelectedNode(null)}
+                    onClose={() => {
+                        console.log("[NodeTree] Closing NodeDetailsModal (via onClose)");
+                        setSelectedNode(null);
+                    }}
                     onUpdate={onRefresh}
                 />
             )}

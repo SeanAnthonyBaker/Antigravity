@@ -153,7 +153,7 @@ export const TagService = {
         const { data: node, error: nodeError } = await supabase
             .from('documents')
             .select('url')
-            .eq('node_id', nodeId)
+            .eq('nodeID', nodeId)
             .single();
 
         if (nodeError) throw nodeError;
@@ -173,7 +173,7 @@ export const TagService = {
         const { data: node, error: nodeError } = await supabase
             .from('documents')
             .select('url')
-            .eq('node_id', nodeId)
+            .eq('nodeID', nodeId)
             .single();
 
         if (nodeError) throw nodeError;

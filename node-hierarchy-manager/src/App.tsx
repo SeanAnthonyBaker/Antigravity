@@ -80,7 +80,7 @@ function App() {
   const checkAdminStatus = async () => {
     // Check if user is admin
     // Also try to ensure the role exists for the super admin
-    await AuthService.ensureAdminRole();
+    // await AuthService.ensureAdminRole(); // Commented out to prevent 403 loop
     const isAdm = await AuthService.checkIsAdmin();
     setIsAdmin(isAdm);
   };
