@@ -78,8 +78,9 @@ def graceful_shutdown(signum, frame):
 signal.signal(signal.SIGINT, graceful_shutdown)
 signal.signal(signal.SIGTERM, graceful_shutdown)
 
-# Start browser initialization in a background thread
-start_browser_initialization_thread()
+# Browser is now initialized on-demand during query execution, not on startup
+# This ensures VNC shows a clean desktop when no queries are running
+# start_browser_initialization_thread()
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')

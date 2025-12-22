@@ -845,7 +845,7 @@ Instructions:
                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '1rem' }}>
                                 <label style={{ color: '#4ade80', marginBottom: '0.5rem' }}>Generated Response</label>
                                 <textarea
-                                    value={generatedResponse || (isExecuting ? "Generating query - this may take a little time ,  please wait....." : "")}
+                                    value={generatedResponse || (isExecuting ? "Generating query - this may take a little time, please wait.....\n\nNote: Queries will automatically terminate after 2 minutes if not completed." : "")}
                                     readOnly
                                     placeholder="Response will appear here..."
                                     style={{

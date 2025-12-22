@@ -107,16 +107,38 @@ THINKING_PHRASES = [
 def reset_browser():
     """
     Safely quits the current browser instance and resets the global variable to None.
+    Enhanced with aggressive cleanup to prevent orphaned Chrome processes.
     """
     global browser_instance
+    session_id = None
+    
     try:
         if browser_instance:
+            # Try to get session ID before quitting (in case quit() fails)
+            try:
+                session_id = browser_instance.session_id
+            except:
+                pass
+            
+            # Attempt graceful quit
             browser_instance.quit()
             logger.info("Browser instance quit successfully.")
     except Exception as e:
         logger.warning(f"Error quitting browser instance (likely already dead): {e}")
+        
+        # Fallback: Try to delete session via Selenium Hub API
+        if session_id:
+            try:
+                import requests
+                selenium_hub_url = os.environ.get('SELENIUM_HUB_URL', 'http://selenium:4444/wd/hub')
+                delete_url = f"{selenium_hub_url}/session/{session_id}"
+                response = requests.delete(delete_url, timeout=5)
+                logger.info(f"Forcefully deleted Selenium session {session_id}: {response.status_code}")
+            except Exception as cleanup_error:
+                logger.warning(f"Failed to force-delete session via API: {cleanup_error}")
     finally:
         browser_instance = None
+        logger.info("Browser instance reference cleared.")
 
 def initialize_browser(retries=3, delay=5):
     """
@@ -179,10 +201,68 @@ def initialize_browser(retries=3, delay=5):
     reset_browser()
     return False, str(last_error)
 
+def cleanup_orphaned_sessions():
+    """
+    Clean up any orphaned Chrome sessions that may exist from previous crashes or restarts.
+    Uses Selenium Grid API to delete all active sessions.
+    This prevents leftover browser windows from appearing in VNC when the app starts.
+    """
+    try:
+        logger.info("Cleaning up any orphaned Chrome sessions from previous runs...")
+        import requests
+        
+        selenium_hub_url = os.environ.get('SELENIUM_HUB_URL', 'http://selenium:4444/wd/hub')
+        status_url = selenium_hub_url.replace('/wd/hub', '/status')
+        
+        # Get all active sessions from Selenium Grid
+        try:
+            response = requests.get(status_url, timeout=5)
+            if response.status_code == 200:
+                status_data = response.json()
+                
+                # Navigate through the status structure to find sessions
+                nodes = status_data.get('value', {}).get('nodes', [])
+                sessions_found = 0
+                sessions_deleted = 0
+                
+                for node in nodes:
+                    slots = node.get('slots', [])
+                    for slot in slots:
+                        if slot.get('session'):
+                            session_id = slot['session'].get('sessionId')
+                            if session_id:
+                                sessions_found += 1
+                                # Try to delete this session
+                                try:
+                                    delete_url = f"{selenium_hub_url}/session/{session_id}"
+                                    del_response = requests.delete(delete_url, timeout=5)
+                                    if del_response.status_code in [200, 404]:
+                                        sessions_deleted += 1
+                                        logger.info(f"Deleted orphaned session: {session_id}")
+                                except Exception as del_error:
+                                    logger.warning(f"Failed to delete session {session_id}: {del_error}")
+                
+                if sessions_found > 0:
+                    logger.info(f"Cleanup complete: Deleted {sessions_deleted}/{sessions_found} orphaned sessions")
+                else:
+                    logger.info("No orphaned sessions found - VNC should show clean desktop")
+        except Exception as e:
+            logger.debug(f"Could not query Selenium status (this is OK if Selenium is starting up): {e}")
+        
+    except Exception as e:
+        logger.warning(f"Error during orphaned session cleanup: {e}")
+        # Don't fail startup if cleanup fails
+
+
 def start_browser_initialization_thread():
     """Starts the browser initialization in a background thread to not block app startup."""
+    # First, clean up any orphaned sessions from previous runs
+    cleanup_orphaned_sessions()
+    
+    # Then start browser initialization
     init_thread = threading.Thread(target=initialize_browser, daemon=True)
     init_thread.start()
+
 
 def find_element_by_priority(driver, selectors, condition=EC.presence_of_element_located, timeout=10):
     """
@@ -337,6 +417,11 @@ def is_only_thinking_phrase(text):
 def process_query():
     """
     Consolidated Endpoint: Opens NotebookLM, submits a query, streams the response, and closes the browser.
+    
+    Timeout Behavior:
+    - Default timeout is 120 seconds
+    - If query doesn't complete within timeout, browser is automatically cleaned up
+    - Cleanup is guaranteed via the finally block which always calls reset_browser()
     """
     logger.info("VERSION: STRICT_THINKING_LOGIC_V2 - Starting process_query")
     data = request.get_json()
@@ -346,7 +431,8 @@ def process_query():
     url = data.get('notebooklm_url', "https://notebooklm.google.com/")
     logger.info(f"DEBUG: process_query received URL: '{url}'")
     query_text = data['query']
-    timeout = data.get('timeout', 180)
+    timeout = data.get('timeout', 120)  # Default 120 seconds with guaranteed cleanup
+
 
     def generate_full_process_response():
         global browser_instance
@@ -670,9 +756,15 @@ def process_query():
                          yield f'data: {json.dumps({"status": "streaming"})}\n\n'
                     yield f'data: {json.dumps({"chunk": chunk_buffer})}\n\n'
 
-                status_message = "timeout" if not stream_completed else "complete"
+                # Determine final status
+                if not stream_completed:
+                    logger.warning(f"Query timed out after {timeout} seconds - cleanup will proceed")
+                    status_message = "timeout"
+                else:
+                    logger.info("Query completed successfully")
+                    status_message = "complete"
+                    
                 yield f'data: {json.dumps({"status": status_message})}\n\n'
-
 
 
 
@@ -682,9 +774,11 @@ def process_query():
                 yield f'data: {json.dumps({"error": str(e)})}\n\n'
             
             finally:
-                # 3. Close Browser
+                # GUARANTEED CLEANUP: This always runs, even on timeout or error
+                logger.info("Cleaning up browser session (guaranteed cleanup)")
                 reset_browser()
                 yield f'data: {json.dumps({"status": "browser_closed"})}\n\n'
+
 
     return Response(stream_with_context(generate_full_process_response()), mimetype='text/event-stream')
 
