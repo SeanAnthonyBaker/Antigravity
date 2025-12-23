@@ -1,0 +1,120 @@
+.json-viewer-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    backdrop-filter: blur(4px);
+}
+
+.json-viewer-modal {
+    background: #1e1e1e;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 1200px;
+    height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    border: 1px solid #333;
+}
+
+.json-viewer-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #333;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #2a2a2a 0%, #1e1e1e 100%);
+    border-radius: 12px 12px 0 0;
+}
+
+.json-viewer-header h2 {
+    margin: 0;
+    color: #fff;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.json-viewer-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.json-action-btn {
+    padding: 8px 16px;
+    border: 1px solid #444;
+    background: #2a2a2a;
+    color: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.json-action-btn:hover {
+    background: #3a3a3a;
+    border-color: #555;
+    transform: translateY(-1px);
+}
+
+.json-close-btn {
+    padding: 6px 12px;
+    border: 1px solid #d32f2f;
+    background: transparent;
+    color: #ff5252;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: 600;
+    transition: all 0.2s;
+    line-height: 1;
+}
+
+.json-close-btn:hover {
+    background: #d32f2f;
+    color: #fff;
+}
+
+.json-viewer-content {
+    flex: 1;
+    overflow: auto;
+    padding: 24px;
+    background: #1a1a1a;
+}
+
+.json-viewer-content pre {
+    margin: 0;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #d4d4d4;
+    white-space: pre;
+    word-wrap: break-word;
+}
+
+/* Scrollbar styling */
+.json-viewer-content::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+.json-viewer-content::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+.json-viewer-content::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 6px;
+}
+
+.json-viewer-content::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
