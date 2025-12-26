@@ -50,7 +50,9 @@ if SECRET_KEY == 'a-default-insecure-secret-key-for-dev' and os.environ.get('FLA
 app.config['SECRET_KEY'] = SECRET_KEY
 
 # Enable CORS for all routes (required for frontend access)
-CORS(app)
+# In production, CORS is handled by the reverse proxy (Caddy) to avoid duplicate headers.
+if os.environ.get('FLASK_ENV') != 'production':
+    CORS(app)
 
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(notebooklm_bp, url_prefix='/api')

@@ -159,11 +159,13 @@ def initialize_browser(retries=3, delay=5):
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-infobars")
     chrome_options.add_argument("--disable-extensions")
-    chrome_options.add_argument("--disable-gpu")
+    # REMOVED --disable-gpu to allow proper window rendering in VNC
     chrome_options.add_argument("--window-size=1920,1080")
     chrome_options.add_argument('--disable-blink-features=AutomationControlled')
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     
+    # Explicitly set display for VNC visibility
+    chrome_options.add_argument("--display=:99.0")
     chrome_options.add_argument("--start-maximized")
     
     # Using a realistic or slightly future-dated User-Agent helps avoid bot detection.
@@ -774,6 +776,17 @@ def process_query():
                 yield f'data: {json.dumps({"error": str(e)})}\n\n'
             
             finally:
+                # --- DEBUGGING: Capture screenshot before closing ---
+                try:
+                    if browser_instance:
+                        log_dir = os.environ.get('LOG_DIR', './logs')
+                        os.makedirs(log_dir, exist_ok=True)
+                        screenshot_path = os.path.join(log_dir, f"last_query_{int(time.time())}.png")
+                        browser_instance.save_screenshot(screenshot_path)
+                        logger.info(f"DEBUG: Saved post-query screenshot to {screenshot_path}")
+                except Exception as screenshot_err:
+                    logger.warning(f"DEBUG: Failed to save screenshot: {screenshot_err}")
+
                 # GUARANTEED CLEANUP: This always runs, even on timeout or error
                 logger.info("Cleaning up browser session (guaranteed cleanup)")
                 reset_browser()

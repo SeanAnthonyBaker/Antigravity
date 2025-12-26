@@ -83,6 +83,7 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
     const [format, setFormat] = usePersistedState('last_format', 'Plain written text');
     const [language, setLanguage] = usePersistedState('last_language', 'English');
     const [suitability, setSuitability] = usePersistedState('last_suitability', 'Executive');
+    const [numFactors, setNumFactors] = usePersistedState('last_num_factors', 15);
 
     // Boosters - Persisted
     const [boosters, setBoosters] = usePersistedState('last_boosters', {
@@ -294,7 +295,7 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
     // ====== Brainstorm Multi-Model Pipeline ======
 
     const callGemini = async (prompt: string): Promise<string> => {
-        const apiModelId = 'gemini-2.5-pro';
+        const apiModelId = 'gemini-3-flash-preview';
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${apiModelId}:generateContent?key=${apiKey}`;
 
         const response = await fetch(url, {
@@ -346,7 +347,7 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
                 'Authorization': `Bearer ${grokApiKey}`
             },
             body: JSON.stringify({
-                model: "grok-3",
+                model: "grok-4-1-fast-non-reasoning",
                 messages: [{ role: "user", content: prompt }]
             })
         });
@@ -362,26 +363,45 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
 
     const handleBrainstorm = async () => {
         console.log('🎨 Brainstorm started - Optimized Mode (4 API calls)');
+
+        const topic = promptText.trim();
+        if (!topic) {
+            alert('Please enter a topic to brainstorm about.');
+            return;
+        }
+
+        // Ask for the number of factors after "Execute" is pressed
+        const userInput = window.prompt("How many factors should each LLM generate?", numFactors.toString());
+        if (userInput === null) {
+            console.log('Brainstorm cancelled by user');
+            return; // User cancelled the prompt
+        }
+
+        const factorsCount = parseInt(userInput);
+        if (isNaN(factorsCount) || factorsCount <= 0) {
+            alert("Please enter a valid positive number for factors.");
+            return;
+        }
+
+        // Update state and local storage for next time
+        setNumFactors(factorsCount);
+
         setIsExecuting(true);
         setGeneratedResponse('');
 
         try {
-            const topic = promptText.trim();
-            if (!topic) {
-                alert('Please enter a topic to brainstorm about.');
-                setIsExecuting(false);
-                return;
-            }
+            // Step 1: Generate factors from all models
+            const numFactorsPerLLM = factorsCount;
+            console.log(`🚀 Launching 3 parallel API calls with ${numFactorsPerLLM} factors each...`);
 
-            // Initial setup
-            setGeneratedResponse('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🎨 OPTIMIZED BRAINSTORM MODE\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n[Step 1/2] Generating 15 unique factors from each model (3 parallel calls)...\n\n');
+            setGeneratedResponse(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🎨 OPTIMIZED BRAINSTORM MODE\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n[Step 1/2] Generating ${numFactorsPerLLM} unique factors from each model (3 parallel calls)...\n\n`);
 
-            // Create optimized prompt for bulk factor generation with deduplication
-            const factorPrompt = `Generate exactly 15 UNIQUE and DIVERSE important factors to consider when thinking about: "${topic}". 
+            // Use numFactors in the prompt
+            const factorPrompt = `Generate exactly ${numFactorsPerLLM} UNIQUE and DIVERSE important factors to consider when thinking about: "${topic}". 
 
 CRITICAL REQUIREMENTS:
 1. Each factor MUST be between 4-7 words
-2. All 15 factors MUST be unique and different from each other (remove any duplicates)
+2. All ${numFactorsPerLLM} factors MUST be unique and different from each other (remove any duplicates)
 3. Be specific, insightful, and cover different aspects of the topic
 4. Ensure variety - don't repeat similar concepts
 
@@ -390,12 +410,9 @@ Return ONLY a JSON object with this exact format:
   "factors": [
     "factor 1 here (4-7 words)",
     "factor 2 here (4-7 words)",
-    ...exactly 15 unique factors...
+    ...exactly ${numFactorsPerLLM} unique factors...
   ]
 }`;
-
-            // Execute all three LLM calls in parallel
-            console.log('🚀 Launching 3 parallel API calls...');
 
             const [geminiResult, deepseekResult, grokResult] = await Promise.all([
                 callGemini(factorPrompt)
@@ -593,7 +610,7 @@ Important:
             const fullPrompt = constructPrompt(actionOverride);
 
             if (selectedLLM === 'Gemini') {
-                const apiModelId = 'gemini-2.5-pro';
+                const apiModelId = 'gemini-3-flash-preview';
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${apiModelId}:generateContent?key=${apiKey}`;
 
                 const response = await fetch(url, {
@@ -629,7 +646,7 @@ Important:
                         'Authorization': `Bearer ${grokApiKey}`
                     },
                     body: JSON.stringify({
-                        model: "grok-3",
+                        model: "grok-4-1-fast-non-reasoning",
                         messages: [
                             { role: "system", content: "You are a helpful AI assistant." },
                             { role: "user", content: fullPrompt }
@@ -940,7 +957,7 @@ Instructions:
 
                         {/* Action Buttons Moved to Header */}
                         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                            {selectedLLM === 'NotebookLM' && (
+                            {selectedLLM === 'NotebookLM' && import.meta.env.VITE_ENABLE_VNC === 'true' && (
                                 <button
                                     onClick={() => setIsVNCVisible(!isVNCVisible)}
                                     style={{
@@ -1036,7 +1053,7 @@ Instructions:
                         >
                             {['Gemini', 'Grok', 'NotebookLM', 'DeepSeek', 'Brainstorm'].map(opt => (
                                 <option key={opt} value={opt}>
-                                    {opt === 'NotebookLM' ? 'AI Approach' : opt}
+                                    {opt}
                                 </option>
                             ))}
                         </select>

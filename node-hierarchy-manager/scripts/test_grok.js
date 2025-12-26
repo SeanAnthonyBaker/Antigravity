@@ -10,7 +10,7 @@ const testGrok = async () => {
                 'Authorization': 'Bearer test-key'
             },
             body: JSON.stringify({
-                model: "grok-beta",
+                model: "grok-4-1-fast-non-reasoning",
                 messages: [{ role: "user", content: "Hello" }]
             })
         });

@@ -10,7 +10,7 @@ services:
     environment:
       # This tells the Flask app to connect to the 'selenium' service by its network name
       - SELENIUM_HUB_URL=http://selenium:4444/wd/hub
-      - FLASK_ENV=development
+      - FLASK_ENV=${FLASK_ENV:-production}
       - CHROME_USER_AGENT=${CHROME_USER_AGENT}
       - NOTEBOOKLM_BASE_URL=${NOTEBOOKLM_BASE_URL}
       - NOTEBOOKLM_INITIAL_URL=${NOTEBOOKLM_INITIAL_URL}
