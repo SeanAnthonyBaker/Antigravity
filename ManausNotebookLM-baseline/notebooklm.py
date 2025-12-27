@@ -425,7 +425,7 @@ def process_query():
     - If query doesn't complete within timeout, browser is automatically cleaned up
     - Cleanup is guaranteed via the finally block which always calls reset_browser()
     """
-    logger.info("VERSION: STRICT_THINKING_LOGIC_V2 - Starting process_query")
+    logger.info("VERSION: END_OF_DATA_CHUNK_DETECTION - Starting process_query")
     data = request.get_json()
     if not data or 'query' not in data:
         return jsonify({'error': 'Missing "query" in request body'}), 400
@@ -535,17 +535,7 @@ def process_query():
                 # Track baseline for completion detection
                 response_elements_before = browser_instance.find_elements(*RESPONSE_CONTENT_SELECTOR)
                 
-                # BASELINE: Count suggestion chips before query
-                initial_suggestion_count = count_all_suggestions(browser_instance)
-                logger.info(f"BASELINE: {initial_suggestion_count} suggestion chips found before query")
-                
-                # Check for Save-to-Note buttons
-                initial_save_note_count = count_save_to_note_buttons(browser_instance)
-                logger.info(f"BASELINE: {initial_save_note_count} save-to-note buttons found before query")
-                
                 initial_response_count = len(browser_instance.find_elements(*RESPONSE_CONTENT_SELECTOR))
-                
-                last_completion_check_time = time.time()
                 
                 logger.info("Attempting to find the chat input field...")
                 input_field = find_element_by_priority(browser_instance, CHAT_INPUT_SELECTORS, condition=EC.element_to_be_clickable, timeout=10)
@@ -725,19 +715,12 @@ def process_query():
                         last_clean_text = current_clean_text
                         last_change_time = time.time()
                     
-                    # 5. Completion Detection (Save-to-Note Button)
-                    if time.time() - last_completion_check_time >= 5:
-                        current_save_note_count = count_save_to_note_buttons(browser_instance)
-                        if current_save_note_count > initial_save_note_count:
-                             logger.info(f"🎯 COMPLETION DETECTED: Save-to-note buttons increased ({initial_save_note_count} -> {current_save_note_count}).")
-                             stream_completed = True
-                             break
-                        last_completion_check_time = time.time()
-
+                    # 5. Completion Detection (End of Data - Silence-based)
+                    # Check if content has stopped changing (no new chunks = end of stream)
                     if material_started:
                         silence_duration = time.time() - last_change_time
                         if silence_duration > SILENCE_TIMEOUT:
-                             logger.info(f"Stream complete: Silence timeout.")
+                             logger.info(f"🎯 COMPLETION DETECTED: No new content for {SILENCE_TIMEOUT}s (end of data chunks)")
                              stream_completed = True
                              break
                     
@@ -757,6 +740,9 @@ def process_query():
                     if not material_started:
                          yield f'data: {json.dumps({"status": "streaming"})}\n\n'
                     yield f'data: {json.dumps({"chunk": chunk_buffer})}\n\n'
+
+                # Signal end of streaming
+                yield f'data: {json.dumps({"status": "end_of_stream"})}\n\n'
 
                 # Determine final status
                 if not stream_completed:
