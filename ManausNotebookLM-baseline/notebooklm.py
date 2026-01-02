@@ -418,12 +418,15 @@ def is_only_thinking_phrase(text):
 @notebooklm_bp.route('/process_query', methods=['POST'])
 def process_query():
     """
-    Consolidated Endpoint: Opens NotebookLM, submits a query, streams the response, and closes the browser.
+    Consolidated Endpoint: Opens NotebookLM, submits a query, streams the response.
     
-    Timeout Behavior:
-    - Default timeout is 120 seconds
-    - If query doesn't complete within timeout, browser is automatically cleaned up
-    - Cleanup is guaranteed via the finally block which always calls reset_browser()
+    Development Mode:
+    - Set dev_mode=true to keep browser open after query (for faster testing)
+    - Browser will persist between queries until manually closed via /api/close_browser
+    
+    Production Mode (default):
+    - Browser is automatically closed after query completion
+    - Cleanup is guaranteed via the finally block
     """
     logger.info("VERSION: END_OF_DATA_CHUNK_DETECTION - Starting process_query")
     data = request.get_json()
@@ -433,7 +436,11 @@ def process_query():
     url = data.get('notebooklm_url', "https://notebooklm.google.com/")
     logger.info(f"DEBUG: process_query received URL: '{url}'")
     query_text = data['query']
-    timeout = data.get('timeout', 120)  # Default 120 seconds with guaranteed cleanup
+    timeout = data.get('timeout', 120)  # Default 120 seconds
+    dev_mode = data.get('dev_mode', False)  # Development mode flag
+    
+    if dev_mode:
+        logger.info("🔧 DEV MODE: Browser will remain open after query")
 
 
     def generate_full_process_response():
@@ -773,10 +780,14 @@ def process_query():
                 except Exception as screenshot_err:
                     logger.warning(f"DEBUG: Failed to save screenshot: {screenshot_err}")
 
-                # GUARANTEED CLEANUP: This always runs, even on timeout or error
-                logger.info("Cleaning up browser session (guaranteed cleanup)")
-                reset_browser()
-                yield f'data: {json.dumps({"status": "browser_closed"})}\n\n'
+                # CLEANUP: Conditional based on dev_mode
+                if dev_mode:
+                    logger.info("🔧 DEV MODE: Keeping browser open for next query")
+                    yield f'data: {json.dumps({"status": "dev_mode_active", "message": "Browser kept open"})}\n\n'
+                else:
+                    logger.info("Cleaning up browser session (production mode)")
+                    reset_browser()
+                    yield f'data: {json.dumps({"status": "browser_closed"})}\n\n'
 
 
     return Response(stream_with_context(generate_full_process_response()), mimetype='text/event-stream')
@@ -806,3 +817,59 @@ def get_status():
                 return jsonify({'browser_active': False, 'status': 'error', 'error': str(e)}), 500
         else:
             return jsonify({'browser_active': False, 'status': 'inactive'})
+
+@notebooklm_bp.route('/close_browser', methods=['POST'])
+def close_browser_endpoint():
+    """
+    Endpoint for manually closing the browser (primarily for dev mode).
+    Allows users to close the browser session via UI button.
+    """
+    global browser_instance
+    with browser_lock:
+        if browser_instance:
+            try:
+                logger.info("🔧 Manual browser close requested")
+                reset_browser()
+                return jsonify({
+                    'success': True, 
+                    'message': 'Browser closed successfully'
+                })
+            except Exception as e:
+                logger.error(f"Error closing browser: {e}")
+                return jsonify({
+                    'success': False, 
+                    'message': f'Error closing browser: {str(e)}'
+                }), 500
+        else:
+            return jsonify({
+                'success': False, 
+                'message': 'No active browser session to close'
+            })
+
+@notebooklm_bp.route('/browser_status', methods=['GET'])
+def browser_status_endpoint():
+    """
+    Get detailed browser status information.
+    Useful for UI to show whether browser is active and what page it's on.
+    """
+    global browser_instance
+    with browser_lock:
+        if browser_instance:
+            try:
+                current_url = browser_instance.current_url
+                session_id = browser_instance.session_id
+                return jsonify({
+                    'active': True,
+                    'url': current_url,
+                    'session_id': session_id,
+                    'on_notebooklm': 'notebooklm.google.com' in current_url
+                })
+            except Exception as e:
+                logger.warning(f"Browser session appears stale: {e}")
+                return jsonify({
+                    'active': False,
+                    'error': 'Browser session is stale'
+                })
+        else:
+            return jsonify({'active': False})
+

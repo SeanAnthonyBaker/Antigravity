@@ -11,6 +11,57 @@ export const VNCPanel = React.memo<VNCPanelProps>(({ onClose }) => {
     // Zoom state
     const [zoom, setZoom] = React.useState(1);
 
+    // Browser status state
+    const [browserStatus, setBrowserStatus] = React.useState<{
+        active: boolean;
+        url?: string;
+        onNotebooklm?: boolean;
+    }>({ active: false });
+    const [closingBrowser, setClosingBrowser] = React.useState(false);
+
+    // Poll browser status
+    React.useEffect(() => {
+        const checkBrowserStatus = async () => {
+            try {
+                const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+                const response = await fetch(`${apiBase}/api/browser_status`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setBrowserStatus(data);
+                }
+            } catch (err) {
+                console.error('Failed to fetch browser status:', err);
+            }
+        };
+
+        checkBrowserStatus();
+        const interval = setInterval(checkBrowserStatus, 3000); // Poll every 3s
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleCloseBrowser = async () => {
+        try {
+            setClosingBrowser(true);
+            const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+            const response = await fetch(`${apiBase}/api/close_browser`, {
+                method: 'POST'
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                setBrowserStatus({ active: false });
+                alert('Browser closed successfully');
+            } else {
+                alert(data.message || 'Failed to close browser');
+            }
+        } catch (err) {
+            console.error('Error closing browser:', err);
+            alert('Error closing browser');
+        } finally {
+            setClosingBrowser(false);
+        }
+    };
+
     const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.1, 3));
     const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.1, 0.5));
     const handleResetZoom = () => setZoom(1);
@@ -40,6 +91,19 @@ export const VNCPanel = React.memo<VNCPanelProps>(({ onClose }) => {
                     <span style={{ fontSize: '1.2rem' }}>🖥️</span>
                     <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Remote Desktop</h3>
 
+                    {/* Browser Status Indicator */}
+                    <div style={{
+                        padding: '0.2rem 0.6rem',
+                        borderRadius: '12px',
+                        fontSize: '0.75rem',
+                        fontWeight: 500,
+                        backgroundColor: browserStatus.active ? '#10b981' : '#6b7280',
+                        color: 'white',
+                        marginLeft: '0.5rem'
+                    }}>
+                        {browserStatus.active ? '🟢 Browser Active' : '⚫ No Browser'}
+                    </div>
+
                     {/* Zoom Controls */}
                     <div style={{ display: 'flex', gap: '0.3rem', marginLeft: '1.5rem' }}>
                         <button
@@ -68,6 +132,26 @@ export const VNCPanel = React.memo<VNCPanelProps>(({ onClose }) => {
                         </button>
                     </div>
 
+                    {/* Close Browser Button */}
+                    <button
+                        onClick={handleCloseBrowser}
+                        disabled={!browserStatus.active || closingBrowser}
+                        title="Close Browser (Dev Mode)"
+                        style={{
+                            padding: '0.3rem 0.8rem',
+                            background: browserStatus.active ? '#ef4444' : '#374151',
+                            border: 'none',
+                            color: 'white',
+                            borderRadius: '4px',
+                            cursor: browserStatus.active ? 'pointer' : 'not-allowed',
+                            fontSize: '0.85rem',
+                            fontWeight: 500,
+                            opacity: browserStatus.active ? 1 : 0.5
+                        }}
+                    >
+                        {closingBrowser ? '⏳ Closing...' : '🗙 Close Browser'}
+                    </button>
+
                     {/* Open in New Window Button */}
                     <button
                         onClick={() => window.open(vncUrl, 'VNC_Window', 'width=1280,height=800')}
@@ -80,7 +164,6 @@ export const VNCPanel = React.memo<VNCPanelProps>(({ onClose }) => {
                             borderRadius: '4px',
                             cursor: 'pointer',
                             fontSize: '0.85rem',
-                            marginLeft: '1rem',
                             fontWeight: 500
                         }}
                     >

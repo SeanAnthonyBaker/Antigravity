@@ -70,6 +70,7 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
     const [newNotebookDesc, setNewNotebookDesc] = useState('');
     const [userId, setUserId] = useState<string | null>(null);
     const [showNotebookMaintenance, setShowNotebookMaintenance] = useState(false);
+    const [devMode, setDevMode] = usePersistedState('notebooklm_dev_mode', false); // Development mode toggle
 
     // Core Parameters - Persisted
     const [selectedAction, setSelectedAction] = useState('');
@@ -702,7 +703,8 @@ Important:
                     body: JSON.stringify({
                         notebooklm_url: notebookUrl,
                         query: fullPrompt,
-                        timeout: 300
+                        timeout: 300,
+                        dev_mode: devMode  // Pass dev mode flag to backend
                     })
                 });
 
@@ -1258,6 +1260,40 @@ Instructions:
                                                     <option key={nb.id} value={nb.id}>{nb.description} ({nb.notebook_id})</option>
                                                 ))}
                                             </select>
+
+                                            {/* Development Mode Toggle */}
+                                            <label style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.5rem',
+                                                color: '#9ca3af',
+                                                fontSize: '0.85rem',
+                                                marginTop: '0.5rem',
+                                                cursor: 'pointer'
+                                            }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={devMode}
+                                                    onChange={(e) => setDevMode(e.target.checked)}
+                                                    style={{ cursor: 'pointer' }}
+                                                />
+                                                <span style={{ color: devMode ? '#10b981' : '#9ca3af' }}>
+                                                    Development Mode
+                                                    {devMode && ' (Browser stays open)'}
+                                                </span>
+                                            </label>
+                                            {devMode && (
+                                                <div style={{
+                                                    fontSize: '0.75rem',
+                                                    color: '#6b7280',
+                                                    marginTop: '0.3rem',
+                                                    marginLeft: '1.7rem',
+                                                    fontStyle: 'italic'
+                                                }}>
+                                                    Browser will persist between queries. Use "Close Browser" button in VNC panel to close.
+                                                </div>
+                                            )}
+
 
                                             {showNotebookMaintenance && (
                                                 <div style={{ marginTop: '1rem', borderTop: '1px solid #444', paddingTop: '1rem' }}>
