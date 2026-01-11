@@ -28,7 +28,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
     const [isEditing, setIsEditing] = useState(false);
     const [editedText, setEditedText] = useState(node.text || '');
     const [editedUrl, setEditedUrl] = useState(node.url || '');
-    const [editedUrlType, setEditedUrlType] = useState<'Video' | 'Audio' | 'Image' | 'Markdown' | 'PDF' | 'PNG' | 'Url' | 'Loop' | null>(node.urltype || null);
+    const [editedUrlType, setEditedUrlType] = useState<'Video' | 'Audio' | 'Image' | 'Markdown' | 'PDF' | 'PNG' | 'Url' | 'Loop' | 'InfoGraphic' | null>(node.urltype || null);
     const [isSaving, setIsSaving] = useState(false);
     const [showPlayer, setShowPlayer] = useState(false);
     const [blobStoreFiles, setBlobStoreFiles] = useState<string[]>([]);
@@ -518,7 +518,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                     {isEditing ? (
                                         <select
                                             value={editedUrlType || ''}
-                                            onChange={(e) => setEditedUrlType((e.target.value || null) as 'Video' | 'Audio' | 'Image' | 'Markdown' | 'PDF' | 'PNG' | 'Url' | 'Loop' | null)}
+                                            onChange={(e) => setEditedUrlType((e.target.value || null) as 'Video' | 'Audio' | 'Image' | 'Markdown' | 'PDF' | 'PNG' | 'Url' | 'Loop' | 'InfoGraphic' | null)}
                                             style={{
                                                 padding: '0.5rem',
                                                 borderRadius: '4px',
@@ -537,6 +537,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                             <option value="Markdown">Markdown</option>
                                             <option value="PDF">PDF</option>
                                             <option value="PNG">PNG</option>
+                                            <option value="InfoGraphic">InfoGraphic</option>
                                         </select>
                                     ) : (
                                         <>

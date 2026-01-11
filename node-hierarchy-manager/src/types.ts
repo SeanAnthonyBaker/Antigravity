@@ -12,7 +12,7 @@ export interface DocumentNode {
     visible: boolean;
     children: boolean;
     url: string;
-    urltype?: 'Video' | 'Audio' | 'Image' | 'Markdown' | 'PDF' | 'PNG' | 'Url' | 'Loop' | null;
+    urltype?: 'Video' | 'Audio' | 'Image' | 'Markdown' | 'PDF' | 'PNG' | 'Url' | 'Loop' | 'InfoGraphic' | null;
     access_level?: 'read_only' | 'full_access'; // Optional, populated for specific users
 }
 
