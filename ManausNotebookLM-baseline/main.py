@@ -59,6 +59,9 @@ app.register_blueprint(notebooklm_bp, url_prefix='/api')
 app.register_blueprint(grok_bp, url_prefix='/api')
 app.register_blueprint(deepseek_bp, url_prefix='/api')
 
+from mcp_bp import mcp_bp
+app.register_blueprint(mcp_bp, url_prefix='/api/mcp')
+
 # Ensure the database directory exists
 db_path = os.path.join(os.path.dirname(__file__), 'database')
 os.makedirs(db_path, exist_ok=True)

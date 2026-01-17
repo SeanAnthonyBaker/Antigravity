@@ -13,6 +13,17 @@ interface AIQueryRefinementModalProps {
     onPaste: (text: string) => void;
 }
 
+interface McpNotebook {
+    id: string;
+    title: string;
+    source_count: number;
+    url: string;
+    ownership: number;
+    is_shared: boolean;
+    created_at: string | null;
+    modified_at: string | null;
+}
+
 const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initialText, onClose, onPaste }) => {
     // Helper to load from localStorage with fallback
     const usePersistedState = <T,>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] => {
@@ -71,6 +82,10 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
     const [userId, setUserId] = useState<string | null>(null);
     const [showNotebookMaintenance, setShowNotebookMaintenance] = useState(false);
     const [devMode, setDevMode] = usePersistedState('notebooklm_dev_mode', false); // Development mode toggle
+
+    // MCP Notebook State
+    const [mcpNotebooks, setMcpNotebooks] = useState<McpNotebook[]>([]);
+    const [selectedMcpNotebookId, setSelectedMcpNotebookId] = usePersistedState('last_selected_mcp_notebook', '');
 
     // Core Parameters - Persisted
     const [selectedAction, setSelectedAction] = useState('');
@@ -147,6 +162,29 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
     }, []);
 
     // (Removed localStorage save effect for notebooks)
+
+    // Fetch MCP Notebooks when LLM is selected
+    useEffect(() => {
+        if (selectedLLM === 'NotebookLM MCP') {
+            const fetchMcpNotebooks = async () => {
+                try {
+                    const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+                    const response = await fetch(`${apiBase}/api/mcp/notebooks`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.status === 'success') {
+                            setMcpNotebooks(data.notebooks);
+                        }
+                    } else {
+                        console.error("Failed to fetch MCP notebooks: status", response.status);
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch MCP notebooks", e);
+                }
+            };
+            fetchMcpNotebooks();
+        }
+    }, [selectedLLM]);
 
     // Check if key is missing when LLM changes or on mount
     useEffect(() => {
@@ -798,19 +836,34 @@ Important:
                         throw new Error(`API Error (${response.status}): ${errText.slice(0, 100)}...`);
                     }
                 }
+                const data = await response.json();
+                setGeneratedResponse(data.choices?.[0]?.message?.content || "No response generated.");
 
-                if (!contentType || !contentType.includes('application/json')) {
-                    throw new Error("Received HTML instead of JSON. This usually means the API proxy is not working.");
+            } else if (selectedLLM === 'NotebookLM MCP') {
+                if (!selectedMcpNotebookId) {
+                    throw new Error("Please select a Notebook.");
+                }
+                const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+                const response = await fetch(`${apiBase}/api/mcp/query`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        notebook_id: selectedMcpNotebookId,
+                        query: fullPrompt
+                    })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error || `API Error: ${response.statusText}`);
                 }
 
-                let data;
-                try {
-                    data = await response.json();
-                } catch (e) {
-                    throw new Error("Failed to parse DeepSeek API response.");
+                const data = await response.json();
+                if (data.status === 'success') {
+                    setGeneratedResponse(data.answer);
+                } else {
+                    throw new Error(data.error || "Unknown error");
                 }
-                const text = data.choices?.[0]?.message?.content || "No response generated.";
-                setGeneratedResponse(text);
             }
 
         } catch (err: any) {
@@ -1053,7 +1106,7 @@ Instructions:
                                 cursor: 'pointer'
                             }}
                         >
-                            {['Gemini', 'Grok', 'NotebookLM', 'DeepSeek', 'Brainstorm'].map(opt => (
+                            {['Gemini', 'Grok', 'NotebookLM', 'DeepSeek', 'Brainstorm', 'NotebookLM MCP'].map(opt => (
                                 <option key={opt} value={opt}>
                                     {opt}
                                 </option>
@@ -1345,6 +1398,29 @@ Instructions:
                                         </div>
                                     )}
 
+                                    {/* NotebookLM MCP Management */}
+                                    {(selectedLLM === 'NotebookLM MCP') && (
+                                        <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#2d2d2d', borderRadius: '8px', border: '1px solid #444' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                                <h3 style={{ color: '#fff', fontSize: '0.9rem', margin: 0 }}>Select MCP Notebook</h3>
+                                                <small style={{ color: '#aaa' }}>{mcpNotebooks.length} available</small>
+                                            </div>
+                                            <select
+                                                value={selectedMcpNotebookId}
+                                                onChange={(e) => setSelectedMcpNotebookId(e.target.value)}
+                                                style={{
+                                                    width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #444',
+                                                    backgroundColor: '#1e1e1e', color: '#fff', marginBottom: '0.5rem'
+                                                }}
+                                            >
+                                                <option value="">-- Select a Notebook --</option>
+                                                {mcpNotebooks.map(nb => (
+                                                    <option key={nb.id} value={nb.id}>{nb.title} ({nb.source_count} sources)</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+
                                     {/* Quick Actions - Hidden for NotebookLM */}
                                     {selectedLLM !== 'NotebookLM' && (
                                         <div style={{ marginBottom: '1.5rem' }}>
@@ -1447,7 +1523,7 @@ Instructions:
 
                                         <ParamDropdown label="Sources" value={sources} onChange={setSources} options={['No reference', 'References']} />
                                         <ParamDropdown label="Format" value={format} onChange={setFormat} options={['Plain written text', 'Markdown']} />
-                                        <ParamDropdown label="Language" value={language} onChange={setLanguage} options={['English', 'German', 'Japanese', 'Spanish', 'French']} />
+                                        <ParamDropdown label="Language" value={language} onChange={setLanguage} options={['English', 'German', 'Japanese', 'Spanish', 'French', 'Russian']} />
                                         <ParamDropdown label="Suitability" value={suitability} onChange={setSuitability} options={['Executive', 'Casual', 'Technical']} />
                                     </div>
 

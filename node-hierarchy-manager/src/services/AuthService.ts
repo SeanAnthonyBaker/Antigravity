@@ -21,12 +21,20 @@ export const AuthService = {
     },
 
     /**
-     * Check if current user is the specific super admin email
+     * Check if current user is a super admin (Tulkah.AI team members)
      * Fallback/Initial bootstrap check
      */
     async isSuperAdmin(): Promise<boolean> {
+        const ADMIN_EMAILS = [
+            'pavelkostenko@tulkahaiaglesolutioning.onmicrosoft.com',
+            'marcopinheiro@tulkahaiaglesolutioning.onmicrosoft.com',
+            'phil@tulkahaiaglesolutioning.onmicrosoft.com',
+            'seanbaker@tulkahaiaglesolutioning.onmicrosoft.com',
+            'seanbaker513@gmail.com',
+            'philsageuk@yahoo.co.uk',
+        ];
         const { data: { user } } = await supabase.auth.getUser();
-        return user?.email === 'seanbaker513@gmail.com';
+        return ADMIN_EMAILS.includes(user?.email?.toLowerCase() || '');
     },
 
     /**

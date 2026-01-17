@@ -1,0 +1,38 @@
+# System
+Thumbs.db
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv
+env/
+venv/
+*.log
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Firebase
+.firebase/
+
+# Chrome Profiles (contain secrets/tokens)
+.chrome-auth-profile/
+**/.chrome-auth-profile/
+
+# IDE
+.vscode/
+.idea/
+
+
+# Project Specific Logs
+infographic_run.log
+cookies_debug.log
+test_cookies.log
+script_run.log
+mindmap_run.log

@@ -1,0 +1,117 @@
+{
+  "name": "Notebook MCP Server",
+  "children": [
+    {
+      "name": "Overview",
+      "children": [
+        {
+          "name": "Created by Jacob (VIP Coding)"
+        },
+        {
+          "name": "Model Context Protocol for NotebookLM"
+        },
+        {
+          "name": "Reverse engineered internal RPC calls"
+        },
+        {
+          "name": "31 Integrated Tools"
+        }
+      ]
+    },
+    {
+      "name": "Installation & Setup",
+      "children": [
+        {
+          "name": "Clone and Copy-Paste Installation"
+        },
+        {
+          "name": "Integration with AI tools (Claude Desktop/Code, Gemini, IDEs)"
+        },
+        {
+          "name": "Authentication via custom debug-mode Chrome app"
+        }
+      ]
+    },
+    {
+      "name": "Core Functionalities",
+      "children": [
+        {
+          "name": "Notebook Management",
+          "children": [
+            {
+              "name": "List notebooks (owned vs shared)"
+            },
+            {
+              "name": "Describe notebook (previews)"
+            },
+            {
+              "name": "Delete notebooks (with confirmation)"
+            }
+          ]
+        },
+        {
+          "name": "Source Management",
+          "children": [
+            {
+              "name": "List attached sources"
+            },
+            {
+              "name": "Synchronize with Google Drive"
+            },
+            {
+              "name": "AI description of specific sources"
+            }
+          ]
+        },
+        {
+          "name": "Research & Query",
+          "children": [
+            {
+              "name": "Fast web research"
+            },
+            {
+              "name": "Local drive search"
+            },
+            {
+              "name": "Direct notebook Q&A"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Resource Creation",
+      "children": [
+        {
+          "name": "Audio Overviews (multilingual/Hebrew support)"
+        },
+        {
+          "name": "Study tools (Quizzes, Flashcards)"
+        },
+        {
+          "name": "Visuals (Infographics, Slide decks)"
+        },
+        {
+          "name": "Data (Data packs, Data tables)"
+        }
+      ]
+    },
+    {
+      "name": "Technical Considerations",
+      "children": [
+        {
+          "name": "High token consumption"
+        },
+        {
+          "name": "Optimized to reduce overhead"
+        },
+        {
+          "name": "Short-lived authentication sessions"
+        },
+        {
+          "name": "Open-source (available on GitHub)"
+        }
+      ]
+    }
+  ]
+}
