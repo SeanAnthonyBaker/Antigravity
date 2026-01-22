@@ -10,35 +10,24 @@ sys.stderr = log_file
 
 print("Starting mind map creation...")
 
-def load_cookies(path="cookies.txt"):
-    cookies = {}
-    with open(path, "r", encoding="utf-8") as f:
-        content = f.read().strip()
-        for part in content.split("; "):
-            if "=" in part:
-                k, v = part.split("=", 1)
-                cookies[k] = v
-    return cookies
-
-try:
     # Ensure we can import from src
     sys.path.insert(0, os.path.join(os.getcwd(), "src"))
     
     from notebooklm_mcp.api_client import NotebookLMClient
+    from notebooklm_mcp.auth import load_cached_tokens
     print("Import successful.")
 
-    print("Loading cookies from cookies.txt...")
-    cookies = load_cookies()
-    print(f"Loaded {len(cookies)} cookies.")
+    print("Loading cached auth tokens...")
+    tokens = load_cached_tokens()
+    if not tokens:
+        print("No cached tokens found! Run 'notebooklm-mcp-auth' first.")
+        sys.exit(1)
+    
+    print(f"Loaded {len(tokens.cookies)} cookies.")
     
     print("Initializing client...")
-    try:
-        client = NotebookLMClient(cookies=cookies)
-    except Exception as e:
-        print(f"Failed to initialize client: {e}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+    client = NotebookLMClient(cookies=tokens.cookies)
+    print("Client initialized successfully.")
 
     target_title = "Mastering the NotebookLM MCP Server: 31 Tools for Integration"
     print(f"Searching for notebook: '{target_title}'...")

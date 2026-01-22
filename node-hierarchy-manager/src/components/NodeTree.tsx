@@ -3,6 +3,7 @@ import type { DocumentNode, NodeTreeItem } from '../types';
 import { NodeService } from '../services/NodeService';
 import { NodeItem } from './NodeItem';
 import { NodeDetailsModal } from './NodeDetailsModal';
+import { CurationModal } from './CurationModal';
 import HierarchyCreationModal from './HierarchyCreationModal';
 import { ApiKeyService } from '../services/ApiKeyService';
 import { supabase } from '../lib/supabase';
@@ -15,7 +16,7 @@ interface NodeTreeProps {
     loading: boolean;
     error: string | null;
     onToggle: (nodeId: number) => void;
-    onRefresh: () => void;
+    onRefresh: (isSilent?: boolean) => void;
     onNodeAdded: (newNode: DocumentNode) => void;
     onNodeUpdated: (updatedNode: DocumentNode) => void;
     onNodesUpdated: (updatedNodes: DocumentNode[]) => void;
@@ -42,6 +43,7 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
     const [draggedNodeId, setDraggedNodeId] = useState<number | null>(null);
     const [showHierarchyModal, setShowHierarchyModal] = useState(false);
     const [hierarchyParentId, setHierarchyParentId] = useState<number | null>(null);
+    const [curatingNode, setCuratingNode] = useState<DocumentNode | null>(null);
     const [geminiApiKey, setGeminiApiKey] = useState('');
 
     const buildTree = (flatNodes: DocumentNode[]): NodeTreeItem[] => {
@@ -108,7 +110,7 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
         if (!title) return;
 
         try {
-            let validParentId = parentId;
+            const validParentId = parentId;
 
             // Validate parent exists if parentId is provided
             if (parentId) {
@@ -209,7 +211,7 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
         } catch (err: any) {
             alert('Failed to reorder node: ' + err.message);
             // On error, refresh to get correct state
-            onRefresh();
+            onRefresh(true);
         }
     };
 
@@ -257,7 +259,7 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
         } catch (err: any) {
             alert('Failed to move node: ' + err.message);
             // On error, do a full refresh to get correct state
-            onRefresh();
+            onRefresh(true);
         }
     };
 
@@ -271,7 +273,21 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
         return <div style={{ color: 'red' }}>Error: {error}</div>;
     }
 
-    console.log("[NodeTree] Render. SelectedNode:", selectedNode?.nodeID);
+    // Sync selectedNode when nodes prop changes (preserve details view after background refresh)
+    React.useEffect(() => {
+        if (selectedNode) {
+            const matches = nodes.filter(n => n.nodeID === selectedNode.nodeID);
+            if (matches.length > 0) {
+                // Check if object has changed meaningfully before updating state
+                // This prevents some unnecessary re-renders
+                const fresh = matches[0];
+                if (fresh.modified_at !== selectedNode.modified_at || fresh.text !== selectedNode.text || fresh.url !== selectedNode.url) {
+                    console.log("[NodeTree] Syncing selectedNode with fresh data");
+                    setSelectedNode(fresh);
+                }
+            }
+        }
+    }, [nodes]);
 
     return (
         <div className="tree-container" style={{ position: 'relative' }}>
@@ -304,7 +320,7 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                         {isSaving ? 'Saving...' : 'Save View'}
                     </button>
                     <button
-                        onClick={onRefresh}
+                        onClick={() => onRefresh(false)}
                         disabled={loading}
                         title="Reload from server (discards unsaved changes)"
                     >
@@ -347,6 +363,7 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                         onToggle={onToggle}
                         onMoveUpDown={handleMoveNodeUpDown}
                         onCreateHierarchy={handleCreateHierarchy}
+                        onCurate={setCuratingNode}
                         showActions={showActions}
                     />
                 ))
@@ -359,7 +376,7 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                         console.log("[NodeTree] Closing NodeDetailsModal (via onClose)");
                         setSelectedNode(null);
                     }}
-                    onUpdate={onRefresh}
+                    onUpdate={() => onRefresh(true)}
                 />
             )}
 
@@ -369,6 +386,14 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                     onClose={() => setShowHierarchyModal(false)}
                     onHierarchyCreated={onRefresh}
                     geminiApiKey={geminiApiKey}
+                />
+            )}
+
+            {curatingNode && (
+                <CurationModal
+                    node={curatingNode}
+                    onClose={() => setCuratingNode(null)}
+                    onArtifactSaved={() => onRefresh(true)}
                 />
             )}
         </div>

@@ -15,10 +15,11 @@ interface NodeItemProps {
     onToggle: (nodeId: number) => void;
     onMoveUpDown: (nodeId: number, direction: 'up' | 'down') => void;
     onCreateHierarchy: (parentId: number) => void;
+    onCurate: (node: DocumentNode) => void;
     showActions: boolean;
 }
 
-export const NodeItem: React.FC<NodeItemProps> = ({ node, isExpanded, expandedNodeIds, onAdd, onEdit, onDelete, onClick, onDragStart, onDrop, onToggle, onMoveUpDown, onCreateHierarchy, showActions }) => {
+export const NodeItem: React.FC<NodeItemProps> = ({ node, isExpanded, expandedNodeIds, onAdd, onEdit, onDelete, onClick, onDragStart, onDrop, onToggle, onMoveUpDown, onCreateHierarchy, onCurate, showActions }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editTitle, setEditTitle] = useState(node.title);
     const [isDragging, setIsDragging] = useState(false);
@@ -176,6 +177,39 @@ export const NodeItem: React.FC<NodeItemProps> = ({ node, isExpanded, expandedNo
                                     <line x1="18" y1="14" x2="12" y2="11" />
                                 </svg>
                             </button>
+                            <button
+                                className="icon-btn"
+                                onClick={() => onCurate(node)}
+                                title="Curate Artifacts"
+                                style={{
+                                    background: '#0f172a',
+                                    color: '#fff',
+                                    borderRadius: '6px',
+                                    width: '26px',
+                                    height: '26px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: 0,
+                                    border: '1px solid rgba(255,255,255,0.2)',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                                    position: 'relative',
+                                    overflow: 'hidden'
+                                }}
+                            >
+                                <div style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    height: '2px',
+                                    background: 'linear-gradient(90deg, #4285f4, #a855f7, #f97316)'
+                                }} />
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '2px' }}>
+                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                </svg>
+                            </button>
                             <button className="icon-btn" onClick={() => setIsEditing(true)} title="Edit">✎</button>
                             <button className="icon-btn" onClick={() => onDelete(node.nodeID)} title="Delete" style={{ color: 'var(--color-danger)' }}>🗑</button>
                         </>
@@ -216,6 +250,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ node, isExpanded, expandedNo
                             onToggle={onToggle}
                             onMoveUpDown={onMoveUpDown}
                             onCreateHierarchy={onCreateHierarchy}
+                            onCurate={onCurate}
                             showActions={showActions}
                         />
                     ))}

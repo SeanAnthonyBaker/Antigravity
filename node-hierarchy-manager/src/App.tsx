@@ -85,11 +85,14 @@ function App() {
     setIsAdmin(isAdm);
   };
 
-  const loadNodes = async (force = false, tagsOverride?: Set<number>) => {
+  const loadNodes = async (force = false, tagsOverride?: Set<number>, isSilent = false) => {
     const tagsToUse = tagsOverride || activeFilterTagIds;
 
     try {
-      setLoading(true);
+      // Only show visible loading state if explicitly requested or if we have no nodes yet
+      if (!isSilent && (force || nodes.length === 0)) {
+        setLoading(true);
+      }
 
       if (!force && tagsToUse.size === 0) {
         const savedNodes = localStorage.getItem('hierarchy_nodes');
@@ -103,11 +106,10 @@ function App() {
             } else {
               setExpandedNodeIds(new Set());
             }
-            setLoading(false);
+            if (!isSilent) setLoading(false);
             return;
           } catch (e) {
             console.error('Failed to parse saved state:', e);
-            // Fall back to server load
           }
         }
       }
@@ -121,9 +123,7 @@ function App() {
 
       setNodes(data);
 
-      // Infer expansion state: A node is expanded if any of its children are visible
-      // If filtering, we might want to expand everything to show matches?
-      // For now, keep existing logic (expand parents of visible nodes)
+      // Infer expansion state
       const expanded = new Set<number>();
       data.forEach(node => {
         if (node.visible && node.parentNodeID) {
@@ -450,7 +450,7 @@ function App() {
         loading={loading}
         error={error}
         onToggle={handleToggleNode}
-        onRefresh={() => loadNodes(true)}
+        onRefresh={(isSilent = false) => loadNodes(true, undefined, isSilent)}
         onNodeAdded={handleNodeAdded}
         onNodeUpdated={handleNodeUpdated}
         onNodesUpdated={handleNodesUpdated}

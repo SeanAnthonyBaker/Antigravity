@@ -7,6 +7,8 @@ Reverse-engineered internal API. See CLAUDE.md for full documentation.
 import json
 import os
 import re
+import subprocess
+import sys
 import urllib.parse
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -199,7 +201,7 @@ class NotebookLMClient:
 
     # Headers required for page fetch (must look like a browser navigation)
     _PAGE_FETCH_HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
         "Sec-Fetch-Dest": "document",
@@ -208,7 +210,7 @@ class NotebookLMClient:
         "Sec-Fetch-User": "?1",
         "sec-ch-ua": '"Google Chrome";v="143", "Chromium";v="143", "Not A(Brand";v="24"',
         "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"macOS"',
+        "sec-ch-ua-platform": '"Windows"',
     }
 
     def __init__(self, cookies: dict[str, str], csrf_token: str = "", session_id: str = ""):
@@ -258,6 +260,61 @@ class NotebookLMClient:
             response = client.get(f"{self.BASE_URL}/")
 
             # Check if redirected to login (cookies expired)
+            if "accounts.google.com" in str(response.url):
+                # Attempt self-healing: run auth tool in headless mode
+                try:
+                    # Prefer running via python module to ensure we use the same code version
+                    # (Especially important during development/testing)
+                    cmd = [sys.executable, "-m", "notebooklm_mcp.auth_cli", "--headless"]
+                    
+                    # Ensure the subprocess can find the module (propagate PYTHONPATH or add src)
+                    env = os.environ.copy()
+                    
+                    # If running from source, __file__ is .../src/notebooklm_mcp/api_client.py
+                    # We want PYTHONPATH to include .../src
+                    current_file = os.path.abspath(__file__)
+                    if "src" in current_file:
+                        src_root = os.path.dirname(os.path.dirname(current_file))
+                        current_pythonpath = env.get("PYTHONPATH", "")
+                        if src_root not in current_pythonpath:
+                            env["PYTHONPATH"] = f"{src_root}{os.pathsep}{current_pythonpath}"
+
+                    # Capture both stdout and stderr to avoid leaking to parent stdout
+                    subprocess.run(cmd, check=True, capture_output=True, env=env, text=True)
+                    
+                    # Reload tokens from disk (the CLI tool just updated them)
+                    from .auth import load_cached_tokens
+                    new_tokens = load_cached_tokens()
+                    if new_tokens:
+                        self.cookies = new_tokens.cookies
+                        self.csrf_token = new_tokens.csrf_token
+                        self._session_id = new_tokens.session_id
+                    else:
+                        raise ValueError("Self-healing failed: Could not load new tokens from cache.")
+                    
+                    # One-time retry
+                    # Update cookies for the retry
+                    cookie_header = "; ".join(f"{k}={v}" for k, v in self.cookies.items())
+                    headers["Cookie"] = cookie_header
+                    
+                    with httpx.Client(headers=headers, follow_redirects=True, timeout=15.0) as retry_client:
+                        response = retry_client.get(f"{self.BASE_URL}/")
+                        if "accounts.google.com" in str(response.url):
+                            raise ValueError("Self-healing failed: Still redirected to login.")
+                            
+                except (subprocess.CalledProcessError, Exception) as e:
+                    error_msg = str(e)
+                    if isinstance(e, subprocess.CalledProcessError) and e.stderr:
+                        # e.stderr is already a string because text=True was used in run()
+                        stderr_content = e.stderr if isinstance(e.stderr, str) else e.stderr.decode(errors='replace')
+                        error_msg += f"\nStderr: {stderr_content}"
+                    
+                    print(f"[WARN] Self-healing failed: {error_msg}")
+                    raise ValueError(
+                        f"Cookies have expired and self-healing failed: {error_msg}\n"
+                        "Please run 'notebooklm-mcp-auth' manually."
+                    )
+
             if "accounts.google.com" in str(response.url):
                 raise ValueError(
                     "Cookies have expired. Please re-authenticate by running 'notebooklm-mcp-auth'."
@@ -311,6 +368,19 @@ class NotebookLMClient:
 
             # Load existing cache or create new
             cached = load_cached_tokens()
+            
+            # If we just refreshed via CLI, our memory state might be stale
+            # But normally this function is called AFTER we extracted new tokens from HTML
+            # so we want to write memory -> disk.
+            
+            # UNIQUE CASE: If we called this during self-healing (after CLI run),
+            # we want to load disk -> memory.
+            # We can detect this by checking if our current cookies are empty or we explicitly flagged it.
+            # Simplified approach: The caller (self-healing block) should handle the reload logic manually
+            # or we add a 'reload' flag.
+            # For now, let's keep this as write-only (memory -> disk) as implied by the method name.
+            # The self-healing block will manually reload.
+            
             if cached:
                 # Update existing cache with new tokens
                 cached.cookies = self.cookies
@@ -343,7 +413,7 @@ class NotebookLMClient:
                     "Referer": f"{self.BASE_URL}/",
                     "Cookie": cookie_str,
                     "X-Same-Domain": "1",
-                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
                 },
                 timeout=30.0,
             )

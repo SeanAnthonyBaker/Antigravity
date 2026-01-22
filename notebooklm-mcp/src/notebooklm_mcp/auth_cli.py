@@ -88,6 +88,24 @@ def launch_chrome(port: int, headless: bool = False) -> bool:
     profile_dir = Path.home() / ".notebooklm-mcp" / "chrome-profile"
     profile_dir.mkdir(parents=True, exist_ok=True)
 
+    # Cleanup stale locks before launching
+    for lock in ["SingletonLock", "SingletonCookie", "SingletonSocket"]:
+        lock_path = profile_dir / lock
+        try:
+            if lock_path.exists() or lock_path.is_symlink():
+                try:
+                    lock_path.unlink()
+                except Exception:
+                    # Windows specific: if unlink fails, try to use shell to delete or just ignore
+                    pass
+        except OSError:
+            # Handle cases where stat/exists fails due to broken reparse points (WinError 1920)
+            try:
+                import os
+                os.remove(str(lock_path))
+            except Exception:
+                pass
+
     args = [
         chrome_path,
         f"--remote-debugging-port={port}",
@@ -96,10 +114,14 @@ def launch_chrome(port: int, headless: bool = False) -> bool:
         "--disable-extensions",  # Bypass extensions that may interfere (e.g., Antigravity IDE)
         f"--user-data-dir={profile_dir}",  # Persistent profile for login persistence
         "--remote-allow-origins=*",  # Allow WebSocket connections from any origin
+        "--remote-allow-origins=http://localhost:9222",  # Specifically allow the debugger origin
     ]
 
     if headless:
         args.append("--headless=new")
+
+    if system == "Linux":
+        args.extend(["--no-sandbox", "--disable-dev-shm-usage"])
 
     try:
         # Print the command for debugging
@@ -287,7 +309,12 @@ def is_chrome_profile_locked(profile_dir: str | None = None) -> bool:
 
     # Chrome creates a "SingletonLock" file when the profile is in use
     lock_file = Path(profile_dir) / "SingletonLock"
-    return lock_file.exists()
+    try:
+        return lock_file.exists()
+    except OSError:
+        # If we can't even stat it, it's likely a broken lock/symlink from a previous crash
+        # We'll treat it as NOT locked so launch_chrome can try to clean it up
+        return False
 
 
 def is_our_chrome_profile_in_use() -> bool:
@@ -302,12 +329,13 @@ def is_our_chrome_profile_in_use() -> bool:
     return is_chrome_profile_locked()  # Already checks our profile by default
 
 
-def run_auth_flow(port: int = CDP_DEFAULT_PORT, auto_launch: bool = True) -> AuthTokens | None:
+def run_auth_flow(port: int = CDP_DEFAULT_PORT, auto_launch: bool = True, headless: bool = False) -> AuthTokens | None:
     """Run the authentication flow.
 
     Args:
         port: Chrome DevTools port
         auto_launch: If True, automatically launch Chrome if not running
+        headless: If True, run in headless mode (shorter timeouts, no UI)
     """
     print("NotebookLM MCP Authentication")
     print("=" * 40)
@@ -332,8 +360,8 @@ def run_auth_flow(port: int = CDP_DEFAULT_PORT, auto_launch: bool = True) -> Aut
         print("Launching Chrome with NotebookLM auth profile...")
         print("(First time: you'll need to log in to your Google account)")
         print()
-        # Launch with visible window so user can log in
-        launch_chrome(port, headless=False)
+        # Launch with visible window so user can log in (unless headless)
+        launch_chrome(port, headless=headless)
         time.sleep(3)
         debugger_url = get_chrome_debugger_url(port)
 
@@ -388,7 +416,8 @@ def run_auth_flow(port: int = CDP_DEFAULT_PORT, auto_launch: bool = True) -> Aut
         print()
 
         # Wait for login - check URL every 5 seconds (cheap operation)
-        max_wait = 300  # 5 minutes
+        # If headless, we wait much less time because user can't interact
+        max_wait = 20 if headless else 300  # 20s for headless, 5m for interactive
         start_time = time.time()
         while time.time() - start_time < max_wait:
             time.sleep(5)
@@ -666,6 +695,11 @@ After authentication, start the MCP server with: notebooklm-mcp
         action="store_true",
         help="Don't automatically launch Chrome (requires Chrome to be running with debugging)"
     )
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run in headless mode (no visible UI, shorter timeout)"
+    )
 
     args = parser.parse_args()
 
@@ -685,7 +719,12 @@ After authentication, start the MCP server with: notebooklm-mcp
             tokens = run_file_cookie_entry(cookie_file=args.file if args.file else None)
         else:
             # Automatic extraction via Chrome DevTools
-            tokens = run_auth_flow(args.port, auto_launch=not args.no_auto_launch)
+            # Pass headless flag
+            tokens = run_auth_flow(
+                args.port, 
+                auto_launch=not args.no_auto_launch,
+                headless=args.headless
+            )
 
         return 0 if tokens else 1
     except KeyboardInterrupt:

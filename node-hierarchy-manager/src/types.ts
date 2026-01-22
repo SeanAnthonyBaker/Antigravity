@@ -12,7 +12,7 @@ export interface DocumentNode {
     visible: boolean;
     children: boolean;
     url: string;
-    urltype?: 'Video' | 'Audio' | 'Image' | 'Markdown' | 'PDF' | 'PNG' | 'Url' | 'Loop' | 'InfoGraphic' | null;
+    urltype?: 'Video' | 'Audio' | 'Image' | 'Markdown' | 'PDF' | 'PNG' | 'Url' | 'Loop' | 'InfoGraphic' | 'Specification' | null;
     access_level?: 'read_only' | 'full_access'; // Optional, populated for specific users
 }
 
@@ -35,7 +35,11 @@ export interface DocumentPermission {
 export interface UserProfile {
     id: string;
     email: string;
+    role?: 'admin' | 'user';
+    approved?: boolean;
+    created_at?: string;
 }
+
 
 export type NodeTreeItem = DocumentNode & {
     childNodes?: NodeTreeItem[];

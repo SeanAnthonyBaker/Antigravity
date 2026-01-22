@@ -3,3 +3,6 @@ Flask-Cors
 Flask-SQLAlchemy
 selenium
 requests
+fastmcp
+httpx
+websocket-client

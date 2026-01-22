@@ -42,7 +42,7 @@ export const AuthService = {
      * Calls a secure Postgres function
      */
     async getAllUsers(): Promise<UserProfile[]> {
-        const { data, error } = await supabase.rpc('get_all_users');
+        const { data, error } = await supabase.rpc('get_all_users_with_approval');
 
         if (error) {
             console.error('Error fetching users:', error);
@@ -50,6 +50,30 @@ export const AuthService = {
         }
 
         return data as UserProfile[];
+    },
+
+    /**
+     * Approve or unapprove a user (Admin only)
+     */
+    async approveUser(userId: string, approve: boolean): Promise<void> {
+        if (approve) {
+            const { error } = await supabase.rpc('approve_user', { target_user_id: userId });
+            if (error) {
+                console.error('Error approving user:', error);
+                throw new Error('Failed to approve user');
+            }
+        } else {
+            // Unapprove by setting approved=false directly
+            const { error } = await supabase
+                .from('user_roles')
+                .update({ approved: false })
+                .eq('user_id', userId);
+
+            if (error) {
+                console.error('Error unapproving user:', error);
+                throw new Error('Failed to unapprove user');
+            }
+        }
     },
 
     /**

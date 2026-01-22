@@ -10,6 +10,7 @@ import { TagService } from '../services/TagService';
 import type { TagTreeNode } from '../types/tags';
 import { openMarkdownWindow } from '../utils/markdownUtils';
 import AIQueryRefinementModal from './AIQueryRefinementModal';
+import { CurationModal } from './CurationModal';
 
 interface NodeDetailsModalProps {
     node: DocumentNode;
@@ -28,13 +29,14 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
     const [isEditing, setIsEditing] = useState(false);
     const [editedText, setEditedText] = useState(node.text || '');
     const [editedUrl, setEditedUrl] = useState(node.url || '');
-    const [editedUrlType, setEditedUrlType] = useState<'Video' | 'Audio' | 'Image' | 'Markdown' | 'PDF' | 'PNG' | 'Url' | 'Loop' | 'InfoGraphic' | null>(node.urltype || null);
+    const [editedUrlType, setEditedUrlType] = useState<'Video' | 'Audio' | 'Image' | 'Markdown' | 'PDF' | 'PNG' | 'Url' | 'Loop' | 'InfoGraphic' | 'Specification' | null>(node.urltype || null);
     const [isSaving, setIsSaving] = useState(false);
     const [showPlayer, setShowPlayer] = useState(false);
     const [blobStoreFiles, setBlobStoreFiles] = useState<string[]>([]);
 
     // AI Query Refinement state
     const [showRefinementModal, setShowRefinementModal] = useState(false);
+    const [showCurationModal, setShowCurationModal] = useState(false);
     const [selectedText, setSelectedText] = useState('');
     const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -44,10 +46,17 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
     const [selectedTagIds, setSelectedTagIds] = useState<Set<number>>(new Set());
     const [originalTagIds, setOriginalTagIds] = useState<Set<number>>(new Set());
 
-    // Fetch fresh node data from Supabase when modal opens
+    // Fetch fresh node data from Supabase when modal opens or when prop changes
     useEffect(() => {
         const fetchNodeData = async () => {
             try {
+                // First sync with the prop node (instant update)
+                setCurrentNode(node);
+                setEditedText(node.text || '');
+                setEditedUrl(node.url || '');
+                setEditedUrlType(node.urltype || null);
+
+                // Then fetch fresh data in background to ensure sync
                 const freshNode = await NodeService.getNodeById(node.nodeID);
                 setCurrentNode(freshNode);
                 setEditedText(freshNode.text || '');
@@ -58,7 +67,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
             }
         };
         fetchNodeData();
-    }, [node.nodeID]);
+    }, [node.nodeID, node.modified_at, node.text, node.url, node.urltype]);
 
     // Load available tags and current node's tags
     useEffect(() => {
@@ -424,6 +433,48 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                         ✏️ Edit
                                     </button>
                                 )}
+                                <button
+                                    onClick={() => setShowCurationModal(true)}
+                                    style={{
+                                        fontSize: '0.85rem',
+                                        padding: '0.3rem 0.5rem',
+                                        backgroundColor: 'transparent',
+                                        border: 'none',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        cursor: 'pointer',
+                                        borderRadius: '4px'
+                                    }}
+                                    title="Curation Function"
+                                >
+                                    <div style={{
+                                        width: '26px',
+                                        height: '26px',
+                                        borderRadius: '6px',
+                                        background: '#0f172a',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'white',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                                        border: '1px solid rgba(255,255,255,0.2)',
+                                        position: 'relative',
+                                        overflow: 'hidden'
+                                    }}>
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            right: 0,
+                                            height: '2px',
+                                            background: 'linear-gradient(90deg, #4285f4, #a855f7, #f97316)'
+                                        }} />
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '2px' }}>
+                                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                        </svg>
+                                    </div>
+                                </button>
                                 <button className="icon-btn" onClick={onClose}>✕</button>
                             </>
                         ) : (
@@ -435,6 +486,48 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                 )}
                                 <button onClick={handleCancel} disabled={isSaving} style={{ fontSize: '0.9rem', padding: '0.4rem 0.8rem' }}>
                                     Cancel
+                                </button>
+                                <button
+                                    onClick={() => setShowCurationModal(true)}
+                                    style={{
+                                        fontSize: '0.85rem',
+                                        padding: '0.3rem 0.5rem',
+                                        backgroundColor: 'transparent',
+                                        border: 'none',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        cursor: 'pointer',
+                                        borderRadius: '4px'
+                                    }}
+                                    title="Curation Function"
+                                >
+                                    <div style={{
+                                        width: '26px',
+                                        height: '26px',
+                                        borderRadius: '6px',
+                                        background: '#0f172a',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'white',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                                        border: '1px solid rgba(255,255,255,0.2)',
+                                        position: 'relative',
+                                        overflow: 'hidden'
+                                    }}>
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            right: 0,
+                                            height: '2px',
+                                            background: 'linear-gradient(90deg, #4285f4, #a855f7, #f97316)'
+                                        }} />
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '2px' }}>
+                                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                        </svg>
+                                    </div>
                                 </button>
                                 <button className="icon-btn" onClick={onClose}>✕</button>
                             </>
@@ -518,7 +611,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                     {isEditing ? (
                                         <select
                                             value={editedUrlType || ''}
-                                            onChange={(e) => setEditedUrlType((e.target.value || null) as 'Video' | 'Audio' | 'Image' | 'Markdown' | 'PDF' | 'PNG' | 'Url' | 'Loop' | 'InfoGraphic' | null)}
+                                            onChange={(e) => setEditedUrlType((e.target.value || null) as 'Video' | 'Audio' | 'Image' | 'Markdown' | 'PDF' | 'PNG' | 'Url' | 'Loop' | 'InfoGraphic' | 'Specification' | null)}
                                             style={{
                                                 padding: '0.5rem',
                                                 borderRadius: '4px',
@@ -538,6 +631,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                             <option value="PDF">PDF</option>
                                             <option value="PNG">PNG</option>
                                             <option value="InfoGraphic">InfoGraphic</option>
+                                            <option value="Specification">Specification</option>
                                         </select>
                                     ) : (
                                         <>
@@ -554,7 +648,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                                     📄 Display
                                                 </button>
                                             )}
-                                            {currentNode.urltype === 'PDF' && (
+                                            {(currentNode.urltype === 'PDF' || currentNode.urltype === 'Specification') && (
                                                 <button
                                                     onClick={handleDisplayPdf}
                                                     style={{
@@ -566,7 +660,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                                     📑 Display
                                                 </button>
                                             )}
-                                            {currentNode.urltype === 'PNG' && (
+                                            {(currentNode.urltype === 'PNG' || currentNode.urltype === 'InfoGraphic' || currentNode.urltype === 'Image') && (
                                                 <button
                                                     onClick={handleDisplayPng}
                                                     style={{
@@ -722,6 +816,15 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                     initialText={selectedText || editedText}
                     onClose={handleCloseRefinement}
                     onPaste={handlePasteRefinement}
+                />
+            )}
+            {showCurationModal && (
+                <CurationModal
+                    node={currentNode}
+                    onClose={() => setShowCurationModal(false)}
+                    onArtifactSaved={() => {
+                        if (onUpdate) onUpdate();
+                    }}
                 />
             )}
         </>

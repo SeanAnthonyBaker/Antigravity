@@ -26,6 +26,9 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s # Give the app time for the browser to initialize
+    volumes:
+      - ../notebooklm-mcp:/notebooklm-mcp:ro
+      - ~/.notebooklm-mcp:/home/appuser/.notebooklm-mcp
 
   selenium:
     build:

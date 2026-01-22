@@ -15,9 +15,11 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     const [permissions, setPermissions] = useState<Map<number, AccessLevel>>(new Map());
     const [nodes, setNodes] = useState<DocumentNode[]>([]);
     const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
+    const [activeTab, setActiveTab] = useState<'approvals' | 'permissions'>('approvals');
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -133,6 +135,24 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
         });
     };
 
+    const handleApproveUser = async (userId: string, approve: boolean) => {
+        setLoading(true);
+        setError(null);
+        setSuccessMessage(null);
+        try {
+            await AuthService.approveUser(userId, approve);
+            setSuccessMessage(`User ${approve ? 'approved' : 'unapproved'} successfully!`);
+            // Reload users to reflect the change
+            const usersData = await AuthService.getAllUsers();
+            setUsers(usersData);
+            setTimeout(() => setSuccessMessage(null), 3000);
+        } catch (err: any) {
+            setError('Failed to update user approval: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
 
     // Recursive tree renderer
     const renderTree = (parentId: number | null = null, depth = 0) => {
@@ -240,49 +260,215 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                     </button>
                 </div>
 
-                <div style={{ padding: '16px', borderBottom: '1px solid #333', backgroundColor: '#252526' }}>
-                    <label style={{ marginRight: '10px', color: '#ccc' }}>Select User:</label>
-                    <select
-                        value={selectedUser}
-                        onChange={(e) => setSelectedUser(e.target.value)}
+                {/* Tab Navigation */}
+                <div style={{ display: 'flex', borderBottom: '1px solid #333', backgroundColor: '#252526' }}>
+                    <button
+                        onClick={() => setActiveTab('approvals')}
                         style={{
-                            padding: '8px',
-                            borderRadius: '4px',
-                            backgroundColor: '#333',
-                            color: '#fff',
-                            border: '1px solid #555',
-                            minWidth: '250px'
+                            flex: 1,
+                            padding: '12px',
+                            backgroundColor: activeTab === 'approvals' ? '#1e1e1e' : 'transparent',
+                            border: 'none',
+                            borderBottom: activeTab === 'approvals' ? '2px solid #007acc' : '2px solid transparent',
+                            color: activeTab === 'approvals' ? '#fff' : '#888',
+                            cursor: 'pointer',
+                            fontSize: '0.95rem',
+                            fontWeight: activeTab === 'approvals' ? 600 : 400
                         }}
                     >
-                        <option value="">-- Select a User --</option>
-                        {users.map(u => (
-                            <option key={u.id} value={u.id}>{u.email}</option>
-                        ))}
-                    </select>
+                        👥 User Approvals
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('permissions')}
+                        style={{
+                            flex: 1,
+                            padding: '12px',
+                            backgroundColor: activeTab === 'permissions' ? '#1e1e1e' : 'transparent',
+                            border: 'none',
+                            borderBottom: activeTab === 'permissions' ? '2px solid #007acc' : '2px solid transparent',
+                            color: activeTab === 'permissions' ? '#fff' : '#888',
+                            cursor: 'pointer',
+                            fontSize: '0.95rem',
+                            fontWeight: activeTab === 'permissions' ? 600 : 400
+                        }}
+                    >
+                        🔐 Permissions
+                    </button>
                 </div>
 
-                <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-                    {loading ? (
-                        <div style={{ color: '#ccc', textAlign: 'center', marginTop: '2rem' }}>Loading...</div>
-                    ) : error ? (
-                        <div style={{ color: '#ff6b6b', textAlign: 'center', marginTop: '2rem' }}>{error}</div>
-                    ) : (
-                        <div style={{ color: '#ccc' }}>
-                            {selectedUser ? (
-                                <>
-                                    <div style={{ marginBottom: '1rem', fontStyle: 'italic', fontSize: '0.9rem', color: '#888' }}>
-                                        Assign permissions to individual nodes. "None" means the user cannot see the node.
+                {/* Success/Error Messages */}
+                {(successMessage || error) && (
+                    <div style={{
+                        padding: '12px 16px',
+                        backgroundColor: successMessage ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                        borderBottom: '1px solid #333',
+                        color: successMessage ? '#10b981' : '#ef4444',
+                        fontSize: '0.9rem'
+                    }}>
+                        {successMessage || error}
+                    </div>
+                )}
+
+                {/* Tab Content */}
+                {activeTab === 'approvals' ? (
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+                        {loading ? (
+                            <div style={{ color: '#ccc', textAlign: 'center', marginTop: '2rem' }}>Loading...</div>
+                        ) : (
+                            <>
+                                <h3 style={{ color: '#fff', marginTop: 0, marginBottom: '1rem' }}>Pending Approvals</h3>
+                                {users.filter(u => !u.approved).length === 0 ? (
+                                    <div style={{ color: '#888', textAlign: 'center', marginTop: '2rem', fontStyle: 'italic' }}>
+                                        No pending user approvals
                                     </div>
-                                    {renderTree()}
-                                </>
+                                ) : (
+                                    <div style={{ marginBottom: '2rem' }}>
+                                        {users.filter(u => !u.approved).map(user => (
+                                            <div key={user.id} style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                padding: '12px',
+                                                backgroundColor: '#252526',
+                                                borderRadius: '4px',
+                                                marginBottom: '8px',
+                                                border: '1px solid #444'
+                                            }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ color: '#fff', fontWeight: 500 }}>{user.email}</div>
+                                                    <div style={{ color: '#888', fontSize: '0.85rem', marginTop: '4px' }}>
+                                                        Registered: {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleApproveUser(user.id, true)}
+                                                    disabled={loading}
+                                                    style={{
+                                                        padding: '8px 16px',
+                                                        backgroundColor: '#10b981',
+                                                        color: '#fff',
+                                                        border: 'none',
+                                                        borderRadius: '4px',
+                                                        cursor: loading ? 'not-allowed' : 'pointer',
+                                                        fontWeight: 600,
+                                                        opacity: loading ? 0.6 : 1
+                                                    }}
+                                                >
+                                                    ✓ Approve
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <h3 style={{ color: '#fff', marginTop: '2rem', marginBottom: '1rem' }}>Approved Users</h3>
+                                {users.filter(u => u.approved).length === 0 ? (
+                                    <div style={{ color: '#888', textAlign: 'center', marginTop: '2rem', fontStyle: 'italic' }}>
+                                        No approved users
+                                    </div>
+                                ) : (
+                                    <div>
+                                        {users.filter(u => u.approved).map(user => (
+                                            <div key={user.id} style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                padding: '12px',
+                                                backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                                                borderRadius: '4px',
+                                                marginBottom: '8px',
+                                                border: '1px solid rgba(16, 185, 129, 0.2)'
+                                            }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ color: '#fff', fontWeight: 500 }}>
+                                                        {user.email}
+                                                        {user.role === 'admin' && (
+                                                            <span style={{
+                                                                marginLeft: '8px',
+                                                                padding: '2px 8px',
+                                                                backgroundColor: '#007acc',
+                                                                borderRadius: '4px',
+                                                                fontSize: '0.75rem',
+                                                                fontWeight: 600
+                                                            }}>
+                                                                ADMIN
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div style={{ color: '#888', fontSize: '0.85rem', marginTop: '4px' }}>
+                                                        Registered: {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}
+                                                    </div>
+                                                </div>
+                                                {user.role !== 'admin' && (
+                                                    <button
+                                                        onClick={() => handleApproveUser(user.id, false)}
+                                                        disabled={loading}
+                                                        style={{
+                                                            padding: '8px 16px',
+                                                            backgroundColor: '#ef4444',
+                                                            color: '#fff',
+                                                            border: 'none',
+                                                            borderRadius: '4px',
+                                                            cursor: loading ? 'not-allowed' : 'pointer',
+                                                            fontWeight: 600,
+                                                            opacity: loading ? 0.6 : 1
+                                                        }}
+                                                    >
+                                                        ✕ Revoke
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                ) : (
+                    <>
+                        <div style={{ padding: '16px', borderBottom: '1px solid #333', backgroundColor: '#252526' }}>
+                            <label style={{ marginRight: '10px', color: '#ccc' }}>Select User:</label>
+                            <select
+                                value={selectedUser}
+                                onChange={(e) => setSelectedUser(e.target.value)}
+                                style={{
+                                    padding: '8px',
+                                    borderRadius: '4px',
+                                    backgroundColor: '#333',
+                                    color: '#fff',
+                                    border: '1px solid #555',
+                                    minWidth: '250px'
+                                }}
+                            >
+                                <option value="">-- Select a User --</option>
+                                {users.filter(u => u.approved).map(u => (
+                                    <option key={u.id} value={u.id}>{u.email}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+                            {loading ? (
+                                <div style={{ color: '#ccc', textAlign: 'center', marginTop: '2rem' }}>Loading...</div>
                             ) : (
-                                <div style={{ textAlign: 'center', marginTop: '4rem', color: '#666' }}>
-                                    Please select a user to manage permissions
+                                <div style={{ color: '#ccc' }}>
+                                    {selectedUser ? (
+                                        <>
+                                            <div style={{ marginBottom: '1rem', fontStyle: 'italic', fontSize: '0.9rem', color: '#888' }}>
+                                                Assign permissions to individual nodes. "None" means the user cannot see the node.
+                                            </div>
+                                            {renderTree()}
+                                        </>
+                                    ) : (
+                                        <div style={{ textAlign: 'center', marginTop: '4rem', color: '#666' }}>
+                                            Please select an approved user to manage permissions
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
-                    )}
-                </div>
+                    </>
+                )}
             </div>
         </div>,
         document.body

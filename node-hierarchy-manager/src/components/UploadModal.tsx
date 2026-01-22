@@ -20,7 +20,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpl
         }
     };
 
-    const determineUrlType = (mimeType: string): 'Video' | 'Audio' | 'Image' | 'Markdown' | 'PDF' | 'PNG' | 'Url' | 'Loop' | 'InfoGraphic' | null => {
+    const determineUrlType = (mimeType: string): 'Video' | 'Audio' | 'Image' | 'Markdown' | 'PDF' | 'PNG' | 'Url' | 'Loop' | 'InfoGraphic' | 'Specification' | null => {
         if (mimeType.startsWith('image/')) return 'Image';
         if (mimeType.startsWith('video/')) return 'Video';
         if (mimeType.startsWith('audio/')) return 'Audio';

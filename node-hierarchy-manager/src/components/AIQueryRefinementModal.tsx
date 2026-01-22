@@ -233,22 +233,24 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
         }
 
         try {
-            const newNotebook = await NotebookService.addNotebook(userId, newNotebookId, newNotebookDesc);
+            // Using description as name for now, and default group 'Other'
+            const newNotebook = await NotebookService.addNotebook(userId, newNotebookId, newNotebookDesc, newNotebookDesc, 'Other');
             setNotebooks(prev => [newNotebook, ...prev]);
             setNewNotebookId('');
             setNewNotebookDesc('');
-        } catch (err: any) {
-            alert('Failed to add notebook: ' + err.message);
+        } catch (err: unknown) {
+            alert('Failed to add notebook: ' + (err instanceof Error ? err.message : 'Unknown error'));
         }
     };
 
-    const handleDeleteNotebook = async (id: string) => {
+    const handleDeleteNotebook = async (id: number) => {
         try {
             await NotebookService.deleteNotebook(id);
             setNotebooks(prev => prev.filter(n => n.id !== id));
-            if (selectedNotebookId === id) setSelectedNotebookId(''); // Note: checking against DB id now, might need adjustment if selectedNotebookId stores the actual notebook ID string
-        } catch (err: any) {
-            alert('Failed to delete notebook: ' + err.message);
+            // Check if deleted notebook was selected (handle string/number mismatch)
+            if (selectedNotebookId === String(id)) setSelectedNotebookId('');
+        } catch (err: unknown) {
+            alert('Failed to delete notebook: ' + (err instanceof Error ? err.message : 'Unknown error'));
         }
     };
 
@@ -591,9 +593,10 @@ Important:
                 );
             }
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('❌ Brainstorm error:', err);
-            setGeneratedResponse(prev => prev + `\n\n❌ Error: ${err.message}\n\nPlease check:\n- All API keys are configured\n- You have internet connection\n- Check browser console for details`);
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+            setGeneratedResponse(prev => prev + `\n\n❌ Error: ${errorMessage}\n\nPlease check:\n- All API keys are configured\n- You have internet connection\n- Check browser console for details`);
         } finally {
             setIsExecuting(false);
             console.log('Brainstorm execution finished');
@@ -722,7 +725,7 @@ Important:
                 setGeneratedResponse(text);
 
             } else if (selectedLLM === 'NotebookLM') {
-                const selectedNotebook = notebooks.find(n => n.id === selectedNotebookId);
+                const selectedNotebook = notebooks.find(n => String(n.id) === selectedNotebookId);
                 if (!selectedNotebook) {
                     throw new Error("Selected notebook not found.");
                 }
@@ -758,6 +761,7 @@ Important:
                 let lastUpdate = 0;
                 let currentText = '';
 
+                // eslint-disable-next-line no-constant-condition
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
@@ -866,8 +870,8 @@ Important:
                 }
             }
 
-        } catch (err: any) {
-            setGeneratedResponse(`Error: ${err.message}`);
+        } catch (err: unknown) {
+            setGeneratedResponse(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
         } finally {
             setIsExecuting(false);
         }
@@ -916,8 +920,8 @@ Important:
                 if (constraints.tone.active) newPrompt += `Tone: ${constraints.tone.value}.${sep}`;
 
                 setPromptText(newPrompt);
-            } catch (err: any) {
-                alert('Failed to generate prompt: ' + err.message);
+            } catch (err: unknown) {
+                alert('Failed to generate prompt: ' + (err instanceof Error ? err.message : 'Unknown error'));
             } finally {
                 setIsGenerating(false);
             }
@@ -977,8 +981,8 @@ Instructions:
                 setPromptText(text.trim());
             }
 
-        } catch (err: any) {
-            alert(`Failed to generate prompt: ${err.message}`);
+        } catch (err: unknown) {
+            alert(`Failed to generate prompt: ${err instanceof Error ? err.message : 'Unknown error'}`);
         } finally {
             setIsGenerating(false);
         }
@@ -1310,7 +1314,7 @@ Instructions:
                                             >
                                                 <option value="">-- Select a Notebook --</option>
                                                 {notebooks.map(nb => (
-                                                    <option key={nb.id} value={nb.id}>{nb.description} ({nb.notebook_id})</option>
+                                                    <option key={nb.id} value={nb.id}>{nb.notebook_desc || nb.notebook_nm} ({nb.notebook_id})</option>
                                                 ))}
                                             </select>
 
@@ -1381,7 +1385,7 @@ Instructions:
                                                             <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0 0' }}>
                                                                 {notebooks.map(nb => (
                                                                     <li key={nb.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem', fontSize: '0.85rem', color: '#ddd' }}>
-                                                                        <span>{nb.description}</span>
+                                                                        <span>{nb.notebook_desc || nb.notebook_nm}</span>
                                                                         <button
                                                                             onClick={() => handleDeleteNotebook(nb.id)}
                                                                             style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem' }}

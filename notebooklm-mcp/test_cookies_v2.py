@@ -8,40 +8,37 @@ log_file = open(log_path, "w", encoding='utf-8', buffering=1)
 sys.stdout = log_file
 sys.stderr = log_file
 
-def load_cookies(path="cookies.txt"):
-    cookies = {}
-    with open(path, "r", encoding="utf-8") as f:
-        content = f.read().strip()
-        # Handle format: KEY=VALUE; KEY=VALUE
-        for part in content.split("; "):
-            if "=" in part:
-                k, v = part.split("=", 1)
-                cookies[k] = v
-    return cookies
-
 def main():
     print("Starting cookie test v2...")
     try:
-        cookies = load_cookies()
-        print(f"Loaded {len(cookies)} cookies.")
+        sys.path.insert(0, os.path.join(os.getcwd(), "src"))
+        from notebooklm_mcp.auth import load_cached_tokens
+        
+        tokens = load_cached_tokens()
+        if not tokens:
+            print("No cached tokens found!")
+            return
+            
+        cookies = tokens.cookies
+        print(f"Loaded {len(cookies)} cookies from auth.json.")
         
         # Headers exactly matching api_client.py
         _PAGE_FETCH_HEADERS = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
             "Sec-Fetch-Dest": "document",
             "Sec-Fetch-Mode": "navigate",
             "Sec-Fetch-Site": "none",
             "Sec-Fetch-User": "?1",
-            "sec-ch-ua": '"Chromium";v="130", "Google Chrome";v="130", "Not?A_Brand";v="99"',
+            "sec-ch-ua": '"Google Chrome";v="143", "Chromium";v="143", "Not A(Brand";v="24"',
             "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": '"macOS"',
+            "sec-ch-ua-platform": '"Windows"',
         }
 
         print("Making request to https://notebooklm.google.com/ ...")
-        with httpx.Client(follow_redirects=True, timeout=20.0) as client:
-            response = client.get("https://notebooklm.google.com/", cookies=cookies, headers=_PAGE_FETCH_HEADERS)
+        with httpx.Client(follow_redirects=True, timeout=20.0, cookies=cookies, headers=_PAGE_FETCH_HEADERS) as client:
+            response = client.get("https://notebooklm.google.com/")
             
             print(f"Status: {response.status_code}")
             print(f"Final URL: {response.url}")

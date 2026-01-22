@@ -99,8 +99,8 @@ export const openMarkdownWindow = async (title: string, url: string) => {
             `);
             markdownWindow.document.close();
         }
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('Failed to display markdown:', err);
-        alert('Failed to load markdown content: ' + err.message);
+        alert('Failed to load markdown content: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
 };

@@ -106,7 +106,7 @@ export const NodeService = {
         // user_id removed from documents table
 
 
-        const { access_level, ...nodeData } = node as any;
+        const { access_level: _access_level, ...nodeData } = node as Partial<DocumentNode> & { access_level?: string };
         const { data, error } = await supabase
             .from('documents')
             .insert([nodeData])
@@ -118,7 +118,7 @@ export const NodeService = {
     },
 
     async updateNode(nodeID: number, updates: Partial<DocumentNode>) {
-        const { access_level, ...updateData } = updates as any;
+        const { access_level: _access_level, ...updateData } = updates as Partial<DocumentNode> & { access_level?: string };
         console.log('NodeService.updateNode:', { nodeID, updateData });
         const { data, error } = await supabase
             .from('documents')
@@ -142,7 +142,7 @@ export const NodeService = {
 
     async bulkUpdateNodes(nodes: Partial<DocumentNode>[]) {
         const safeNodes = nodes.map(n => {
-            const { access_level, ...rest } = n as any;
+            const { access_level: _access_level, ...rest } = n as Partial<DocumentNode> & { access_level?: string };
             return rest;
         });
 

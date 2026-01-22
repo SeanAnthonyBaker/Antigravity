@@ -8,25 +8,17 @@ log_file = open(log_path, "w", encoding='utf-8', buffering=1)
 sys.stdout = log_file
 sys.stderr = log_file
 
-def load_cookies(path="cookies.txt"):
-    cookies = {}
-    with open(path, "r", encoding="utf-8") as f:
-        content = f.read().strip()
-        # Handle format: KEY=VALUE; KEY=VALUE
-        for part in content.split("; "):
-            if "=" in part:
-                k, v = part.split("=", 1)
-                cookies[k] = v
-    return cookies
-
 def main():
     print("Starting cookie test...")
     try:
-        cookies = load_cookies()
-        print(f"Loaded {len(cookies)} cookies.")
-        if not cookies:
-            print("ERROR: No cookies loaded!")
+        sys.path.insert(0, os.path.join(os.getcwd(), "src"))
+        from notebooklm_mcp.auth import load_cached_tokens
+        tokens = load_cached_tokens()
+        if not tokens:
+            print("ERROR: No tokens found!")
             return
+        cookies = tokens.cookies
+        print(f"Loaded {len(cookies)} cookies.")
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
