@@ -39,6 +39,7 @@ An MCP server for **NotebookLM** (notebooklm.google.com).
 | `studio_status` | Check studio artifact generation status |
 | `studio_delete` | Delete studio artifacts (requires confirmation) |
 | `save_auth_tokens` | Save cookies for authentication |
+| **Self-Healing** | **Auto-refreshes expired cookies in the background** |
 
 ## Important Disclaimer
 

@@ -11,7 +11,7 @@ Tested with personal/free tier accounts. May work with Google Workspace accounts
 ## Development Commands
 
 ```bash
-# Install dependencies
+# Install dependencies and tools (From project root)
 uv tool install .
 
 # Reinstall after code changes (ALWAYS clean cache first)
@@ -19,6 +19,9 @@ uv cache clean && uv tool install --force .
 
 # Run the MCP server
 notebooklm-mcp
+
+# Run the Auth CLI
+notebooklm-mcp-auth
 
 # Run tests
 uv run pytest
@@ -33,10 +36,12 @@ uv run pytest tests/test_file.py::test_function -v
 
 **You only need to provide COOKIES!** The CSRF token and session ID are now **automatically extracted** when needed.
 
-### Method 1: Chrome DevTools MCP (Recommended)
+### Method 1: Chrome DevTools MCP (Recommended for Assistants)
+
+If your AI assistant (like Claude) has access to a Chrome DevTools MCP, you can extract tokens without leaving the chat.
 
 **Option A - Fast (Recommended):**
-Extract CSRF token and session ID directly from network request - **no page fetch needed!**
+Extract tokens directly from a `batchexecute` network request.
 
 ```python
 # 1. Navigate to NotebookLM page
@@ -54,13 +59,15 @@ save_auth_tokens(
 ```
 
 **Option B - Minimal (slower first call):**
-Save only cookies, tokens extracted from page on first API call
+Save only cookies; tokens are auto-extracted from page on first API call.
 
 ```python
 save_auth_tokens(cookies=<cookie_header>)
 ```
 
-### Method 2: Environment Variables
+### Method 2: Manual (Environment Variables)
+
+Recommended for CI/CD or specialized environments.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -68,13 +75,15 @@ save_auth_tokens(cookies=<cookie_header>)
 | `NOTEBOOKLM_CSRF_TOKEN` | No | (DEPRECATED - auto-extracted) |
 | `NOTEBOOKLM_SESSION_ID` | No | (DEPRECATED - auto-extracted) |
 
-### Token Expiration
+### Method 3: Auth CLI (Self-contained)
 
-- **Cookies**: Stable for weeks, but some rotate on each request
-- **CSRF token**: Auto-refreshed on each client initialization
-- **Session ID**: Auto-refreshed on each client initialization
+Run `notebooklm-mcp-auth`. It uses a **dedicated Chrome profile** (`~/.notebooklm-mcp/chrome-profile`), so you **don't need to close your main browser**.
 
-When API calls fail with auth errors, re-extract fresh cookies from Chrome DevTools.
+### Token Expiration & Self-Healing
+
+- **Cookies**: Stable for weeks.
+- **CSRF token / Session ID**: Auto-refreshed on client initialization.
+- **Self-Healing**: If cookies expire, the API client attempts to run `notebooklm-mcp-auth --headless` automatically to refresh tokens if a valid Google session exists in the dedicated profile.
 
 ## Architecture
 
@@ -89,7 +98,8 @@ src/notebooklm_mcp/
 
 **Executables:**
 - `notebooklm-mcp` - The MCP server
-- `notebooklm-mcp-auth` - CLI for extracting tokens (requires closing Chrome)
+- `notebooklm-mcp-auth` - CLI for authentication (Auto or File mode)
+- `notebooklm-mcp-auth --file` - Recommended for manual cookie entry
 
 ## MCP Tools Provided
 

@@ -10,7 +10,7 @@ NotebookLM MCP uses browser cookies for authentication (there is no official API
 
 | Method | Best For | Requires |
 |--------|----------|----------|
-| **Auto Mode** (default) | Most users | Chrome installed, can close Chrome |
+| **Auto Mode** (default) | Most users | Chrome installed, separate profile |
 | **File Mode** (`--file`) | Complex setups, troubleshooting | Manual cookie extraction |
 
 ---
@@ -22,12 +22,13 @@ This method launches Chrome automatically and extracts cookies after you log in.
 ### Prerequisites
 
 - Google Chrome installed
-- Chrome must be **completely closed** before running
+- No other instance of the NotebookLM auth profile running
 
 ### Steps
 
 ```bash
-# 1. Close Chrome completely (Cmd+Q on Mac, or quit from taskbar)
+# 1. (Optional) Close your main browser if you want, but NOT required.
+#    Just ensure no other notebooklm-mcp-auth window is already open.
 
 # 2. Run the auth command
 notebooklm-mcp-auth
@@ -152,13 +153,15 @@ Then restart your AI assistant.
 
 ---
 
-## Token Expiration
+## Self-Healing Authentication
 
-- **Cookies:** Generally stable for weeks, but some rotate on each request
-- **CSRF token:** Auto-refreshed on each MCP client initialization
-- **Session ID:** Auto-refreshed on each MCP client initialization
+The NotebookLM MCP includes a **Self-Healing** mechanism. If the MCP server detects that your cookies have expired (e.g., API calls return 401/403), it will:
 
-When you start seeing authentication errors, simply run `notebooklm-mcp-auth` again to refresh.
+1. Attempt to run `notebooklm-mcp-auth --headless` in the background.
+2. If your Google session in the dedicated profile is still active, it will automatically extract new cookies.
+3. Your AI tool will continue working without you needing to manually re-authenticate.
+
+If the session in the dedicated profile also expires, you will see an error message asking you to run `notebooklm-mcp-auth` manually to re-log in.
 
 ---
 

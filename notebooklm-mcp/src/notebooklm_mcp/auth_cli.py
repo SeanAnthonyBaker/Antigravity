@@ -660,9 +660,9 @@ TWO MODES:
    - No Chrome remote debugging required
 
 2. AUTO MODE (default): Automatic extraction via Chrome DevTools
-   - Requires closing Chrome first
+   - Uses a separate profile (~/.notebooklm-mcp/chrome-profile)
+   - Works alongside your main Chrome browser
    - Launches Chrome and extracts cookies automatically
-   - May not work on all systems
 
 EXAMPLES:
   notebooklm-mcp-auth --file               # Guided file import (recommended)

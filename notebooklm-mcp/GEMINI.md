@@ -32,25 +32,28 @@ cd notebooklm-mcp
 uv tool install .
 ```
 
-## Authentication (Simplified!)
+## Authentication (Simplified & Self-Healing)
 
-**You only need to extract cookies** - the CSRF token and session ID are now auto-extracted when the MCP starts.
+**You only need to extract cookies** - the CSRF token and session ID are auto-extracted when the MCP starts.
 
-**Option 1: Chrome DevTools MCP (Recommended)**
+**Option 1: Chrome DevTools MCP (Recommended for Assistants)**
 If your AI assistant has Chrome DevTools MCP:
 1. Navigate to `notebooklm.google.com`
-2. Get cookies from any network request
-3. Call `save_auth_tokens(cookies=<cookie_header>)`
+2. Get cookies from any network request (e.g., `batchexecute`)
+3. Call `save_auth_tokens(cookies=<cookie_header>, request_body=<request_body>, request_url=<request_url>)`
 
-**Option 2: Manual (Environment Variables)**
-Extract the `Cookie` header from Chrome DevTools Network tab:
+**Option 2: Auth CLI (Self-contained Auto Mode)**
+Run `notebooklm-mcp-auth`. It launches a dedicated Chrome profile. Log in once, and your session is saved. This works alongside your main browser.
+
+**Option 3: Manual (Environment Variables)**
+Extract the `Cookie` header from Chrome DevTools:
 ```bash
 export NOTEBOOKLM_COOKIES="SID=xxx; HSID=xxx; SSID=xxx; ..."
 ```
 
-> **Note:** CSRF token and session ID are no longer needed - they are auto-extracted from the page HTML when the MCP initializes.
+> **Self-Healing:** If the MCP detects expired cookies, it will attempt to refresh them automatically in the background using `notebooklm-mcp-auth --headless`.
 
-Cookies last for weeks. When they expire, re-extract fresh cookies.
+Cookies last for weeks. When they expire completely, re-authenticate via the CLI.
 
 ## Development Workflow
 
