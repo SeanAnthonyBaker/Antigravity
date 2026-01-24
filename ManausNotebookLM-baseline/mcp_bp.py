@@ -122,38 +122,137 @@ def health_check():
             "error": str(e)
         }), 500
 
-@mcp_bp.route('/create', methods=['POST'])
-def create_artifact():
-    """Triggers artifact creation via MCP bridge."""
+@mcp_bp.route('/generate_artifact', methods=['POST'])
+def generate_artifact():
+    """Generates an artifact using the direct Python client."""
     data = request.get_json()
-    if not data or 'notebook_id' not in data or 'artifact_type' not in data:
-        return jsonify({"status": "error", "error": "Missing notebook_id or artifact_type"}), 400
+    if not data:
+        return jsonify({"status": "error", "error": "No data provided"}), 400
         
-    logger.info(f"Creating {data['artifact_type']} for notebook {data['notebook_id']} via MCP bridge")
+    notebook_id = data.get('notebook_id')
+    artifact_type = data.get('artifact_type')
+    prompt = data.get('prompt', '')
+    title = data.get('title', 'Generated Artifact')
     
-    payload = {
-        "command": "create",
-        **data
-    }
-    result = run_bridge_command(payload)
-    
-    if result.get("status") == "success":
-        return jsonify(result)
-    else:
-        logger.error(f"MCP create_artifact failed: {result}")
-        return jsonify(result), 500
+    if not notebook_id or not artifact_type:
+        return jsonify({"status": "error", "error": "Missing notebook_id or artifact_type"}), 400
+
+    logger.info(f"Generating {artifact_type} for notebook {notebook_id}...")
+
+    try:
+        # Import the nlm CLI wrapper
+        from nlm_client import NLMClient, NLMClientError
+        
+        try:
+            client = NLMClient(profile="default")
+        except Exception as e:
+            return jsonify({"status": "error", "error": f"Failed to initialize NLM client: {e}"}), 500
+        
+        # Get source IDs (required for most operations)
+        # For simplicity, we'll use ALL sources in the notebook
+        # In a future version, we could allow selecting specific sources
+        sources = client.get_notebook_sources_with_types(notebook_id)
+        source_ids = [s['id'] for s in sources if s.get('id')]
+        
+        if not source_ids:
+             return jsonify({"status": "error", "error": "Notebook has no sources to generate content from."}), 400
+
+        result = None
+        final_url = f"https://notebooklm.google.com/notebook/{notebook_id}"
+        
+        if artifact_type == 'mind_map':
+            # 2-step process for Mind Map
+            gen_res = client.generate_mind_map(source_ids)
+            if gen_res and gen_res.get('mind_map_json'):
+                result = client.save_mind_map(
+                    notebook_id, 
+                    gen_res['mind_map_json'], 
+                    source_ids, 
+                    title=title
+                )
+            else:
+                raise Exception("Failed to generate mind map structure")
+                
+        elif artifact_type == 'audio':
+            result = client.create_audio_overview(notebook_id, source_ids, focus_prompt=prompt)
+            
+        elif artifact_type == 'video':
+            result = client.create_video_overview(notebook_id, source_ids, focus_prompt=prompt)
+            
+        elif artifact_type == 'report':
+            # Map simplified types to specific report formats if needed, or just use default
+            result = client.create_report(notebook_id, source_ids, custom_prompt=prompt, report_format="Briefing Doc" if not prompt else "Create Your Own")
+            
+        elif artifact_type == 'flashcards':
+            result = client.create_flashcards(notebook_id, source_ids)
+            
+        elif artifact_type == 'quiz':
+            result = client.create_quiz(notebook_id, source_ids)
+            
+        elif artifact_type == 'infographic':
+            result = client.create_infographic(notebook_id, source_ids, focus_prompt=prompt)
+            
+        elif artifact_type == 'slide_deck':
+            result = client.create_slide_deck(notebook_id, source_ids, focus_prompt=prompt)
+            
+        elif artifact_type == 'data_table':
+            result = client.create_data_table(notebook_id, source_ids, description=prompt or "Data Table")
+            
+        else:
+            return jsonify({"status": "error", "error": f"Unknown artifact type: {artifact_type}"}), 400
+
+        if result:
+            return jsonify({
+                "status": "success",
+                "message": f"{artifact_type} generation started/completed.",
+                "url": final_url,
+                "details": result
+            })
+        else:
+             return jsonify({"status": "error", "error": "Generation function returned no result"}), 500
+
+    except Exception as e:
+        logger.exception(f"Error generating {artifact_type}")
+        return jsonify({"status": "error", "error": str(e)}), 500
 
 @mcp_bp.route('/status/<notebook_id>', methods=['GET'])
 def get_status(notebook_id):
-    """Checks the status of artifacts for a notebook."""
-    payload = {"command": "status", "notebook_id": notebook_id}
-    result = run_bridge_command(payload)
+    """Checks the status of artifacts for a notebook using direct client."""
+    logger.info(f"Polling status for notebook {notebook_id} via direct client...")
     
-    if result.get("status") == "success":
-        return jsonify(result)
-    else:
-        logger.error(f"MCP get_status failed: {result}")
-        return jsonify(result), 500
+    try:
+        # Import the nlm CLI wrapper
+        from nlm_client import NLMClient, NLMClientError
+        
+        try:
+            client = NLMClient(profile="default")
+        except Exception as e:
+            return jsonify({"status": "error", "error": f"Failed to initialize NLM client: {e}"}), 500
+        artifacts = client.poll_studio_status(notebook_id)
+        
+        # Normalize artifacts
+        normalized = []
+        for a in artifacts:
+            # Map specific URL fields to generic 'url'
+            url = a.get('infographic_url') or a.get('video_url') or a.get('audio_url') or a.get('slide_deck_url')
+            
+            normalized.append({
+                "id": a.get('artifact_id'),
+                "url": url,
+                "status": a.get('status'),
+                "title": a.get('title'),
+                "type": a.get('type'),
+                "created_at": a.get('created_at')
+            })
+            
+        return jsonify({
+            "status": "success", 
+            "artifacts": normalized
+        })
+        
+    except Exception as e:
+        logger.exception(f"Error polling status for {notebook_id}")
+        return jsonify({"status": "error", "error": str(e)}), 500
 
 @mcp_bp.route('/update_cookies', methods=['POST'])
 def update_cookies():
@@ -161,11 +260,16 @@ def update_cookies():
     logger.info("Verifying authentication cache via auth_cli (file check)...")
     
     try:
-        # Import here to avoid circular imports if any
-        from notebooklm_mcp.auth import load_cached_tokens, validate_cookies, REQUIRED_COOKIES
-        from notebooklm_mcp.auth_cli import get_chrome_user_data_dir # Though we might not need this
+        # Check if nlm CLI is accessible
+        from nlm_client import NLMClient, NLMClientError
         
-        tokens = load_cached_tokens()
+        try:
+            client = NLMClient(profile="default")
+            # Try a simple command to verify auth
+            client.list_notebooks()
+            tokens = {"verified": True}
+        except Exception as e:
+            tokens = None
         
         if not tokens:
             return jsonify({

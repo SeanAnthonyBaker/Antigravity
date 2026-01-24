@@ -3,20 +3,27 @@ $ZONE = "us-central1-a"
 $REMOTE_USER = "seanb"
 $APP_DIR = "/home/ubuntu/notebooklm-backend"
 
-$FILES = @("Dockerfile", "Dockerfile.selenium", "entrypoint-selenium.sh", "notebooklm.py", "main.py", "grok.py", "deepseek.py", "user.py", "models.py", "requirements.txt", "docker-compose.yml", "mcp_bp.py")
+$FILES = @("Dockerfile", "Dockerfile.selenium", "entrypoint-selenium.sh", "notebooklm.py", "main.py", "grok.py", "deepseek.py", "user.py", "models.py", "requirements.txt", "docker-compose.yml", "mcp_bp.py", "Caddyfile")
 
 Write-Host "Deploying updates to $VM_NAME..." -ForegroundColor Cyan
 
 # Check/Create Firewall Rule
 Write-Host "Checking firewall rules..." -ForegroundColor Yellow
-$FW_RULE = "allow-vnc-7900"
-gcloud compute firewall-rules describe $FW_RULE --format="value(name)" 2>$null
+$FW_RULE_VNC = "allow-vnc-7900"
+$FW_RULE_HTTP = "allow-http-https"
+
+# VNC Rule
+gcloud compute firewall-rules describe $FW_RULE_VNC --format="value(name)" 2>$null
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "Creating firewall rule: $FW_RULE..." -ForegroundColor Yellow
-    gcloud compute firewall-rules create $FW_RULE --allow tcp:7900 --target-tags=http-server --description="Allow VNC access"
+    Write-Host "Creating firewall rule: $FW_RULE_VNC..." -ForegroundColor Yellow
+    gcloud compute firewall-rules create $FW_RULE_VNC --allow tcp:7900 --target-tags=http-server --description="Allow VNC access"
 }
-else {
-    Write-Host "Firewall rule $FW_RULE already exists." -ForegroundColor Green
+
+# HTTP/HTTPS Rule (for Caddy)
+gcloud compute firewall-rules describe $FW_RULE_HTTP --format="value(name)" 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Creating firewall rule: $FW_RULE_HTTP..." -ForegroundColor Yellow
+    gcloud compute firewall-rules create $FW_RULE_HTTP --allow tcp:80, tcp:443 --target-tags=http-server --description="Allow HTTP/HTTPS access"
 }
 
 foreach ($file in $FILES) {
@@ -60,6 +67,12 @@ $allCommands = $moveCommands + @(
     "sudo chown -R ubuntu:ubuntu /home/ubuntu/notebooklm-mcp",
     "rm /home/$REMOTE_USER/notebooklm-mcp.tar.gz",
     "sudo chown -R ubuntu:ubuntu $APP_DIR",
+
+    # Stop conflicting services
+    "sudo systemctl stop caddy || true",
+    "sudo systemctl disable caddy || true",
+    "sudo systemctl stop nginx || true",
+    "sudo systemctl stop apache2 || true",
 
     "cd $APP_DIR",
     "sudo docker compose down",

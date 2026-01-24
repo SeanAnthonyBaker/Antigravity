@@ -28,7 +28,7 @@ services:
       start_period: 30s # Give the app time for the browser to initialize
     volumes:
       - ../notebooklm-mcp:/notebooklm-mcp:ro
-      - ~/.notebooklm-mcp:/home/appuser/.notebooklm-mcp
+      - ${USERPROFILE}/.nlm:/root/.nlm
 
   selenium:
     build:
@@ -61,3 +61,20 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
+
+  caddy:
+    image: caddy:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

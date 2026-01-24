@@ -24,6 +24,14 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install pipx and notebooklm-cli for nlm command
+RUN pip install --no-cache-dir pipx && \
+    pipx ensurepath && \
+    pipx install notebooklm-cli
+
+# Add pipx bin to PATH so 'nlm' is available
+ENV PATH="/root/.local/bin:${PATH}"
+
 # Copy the application code
 COPY . .
 
