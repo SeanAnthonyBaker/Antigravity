@@ -11,10 +11,17 @@ from flask import Blueprint, request, jsonify, Response, stream_with_context
 mcp_bp = Blueprint('mcp_bp', __name__)
 logger = logging.getLogger(__name__)
 
+import sys
+
 # Configuration - adjust paths as needed
 # Using absolute paths to ensure robustness
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MCP_DIR = os.path.join(BASE_DIR, 'notebooklm-mcp')
+
+# Ensure notebooklm-mcp source is in path for imports
+src_path = os.path.join(MCP_DIR, 'src')
+if src_path not in sys.path:
+    sys.path.append(src_path)
 
 # Deterministic check for environment
 if os.name == 'nt': # Windows
@@ -150,53 +157,42 @@ def get_status(notebook_id):
 
 @mcp_bp.route('/update_cookies', methods=['POST'])
 def update_cookies():
-    """Updates the internal cookies for NotebookLM."""
-    logger.info("Triggering cookie update via auth_cli...")
+    """Verifies that valid cookies exist in the shared cache."""
+    logger.info("Verifying authentication cache via auth_cli (file check)...")
     
     try:
-        # Run headless refresh to get fresh tokens
-        # Ensure it has the right PYTHONPATH
-        env = os.environ.copy()
-        src_path = os.path.join(MCP_DIR, 'src')
-        if src_path not in env.get('PYTHONPATH', ''):
-            env['PYTHONPATH'] = f"{src_path}{os.pathsep}{env.get('PYTHONPATH', '')}"
-
-        process = subprocess.Popen(
-            [MCP_VENV_PYTHON, "-m", "notebooklm_mcp.auth_cli", "--headless"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            cwd=MCP_DIR,
-            env=env
-        )
+        # Import here to avoid circular imports if any
+        from notebooklm_mcp.auth import load_cached_tokens, validate_cookies, REQUIRED_COOKIES
+        from notebooklm_mcp.auth_cli import get_chrome_user_data_dir # Though we might not need this
         
-        stdout, stderr = process.communicate(timeout=120)
+        tokens = load_cached_tokens()
         
-        if process.returncode != 0:
-            logger.error(f"Cookie update failed with return code {process.returncode}")
-            logger.error(f"Stdout: {stdout}")
-            logger.error(f"Stderr: {stderr}")
-            error_msg = stderr if stderr.strip() else stdout
+        if not tokens:
             return jsonify({
-                "status": "error", 
-                "error": f"Cookie update failed: {error_msg}"
-            }), 500
-        
-        logger.info("Cookie update completed successfully")
+                "status": "error",
+                "error": "No cached tokens found. Please run 'authenticate_local.ps1' on your host machine."
+            }), 404
+            
+        if not validate_cookies(tokens.cookies):
+            missing = [k for k in REQUIRED_COOKIES if k not in tokens.cookies]
+            return jsonify({
+                "status": "error",
+                "error": f"Invalid tokens. Missing cookies: {missing}. Please run 'authenticate_local.ps1' on your host machine."
+            }), 401
+            
+        # Optional: Check age
+        if tokens.is_expired():
+             logger.warning("Tokens are old but might still work.")
+             
+        logger.info("Tokens verified successfully.")
         return jsonify({
             "status": "success",
-            "message": "Cookies updated successfully",
-            "output": stdout
+            "message": "Session verified successfully (using shared host credentials).",
+            "token_age_hours": round((time.time() - tokens.extracted_at) / 3600, 1)
         })
         
-    except subprocess.TimeoutExpired:
-        logger.error("Cookie update timed out")
-        return jsonify({
-            "status": "error",
-            "error": "Cookie update timed out after 2 minutes"
-        }), 500
     except Exception as e:
-        logger.exception("Error updating cookies")
+        logger.exception("Error verifying cookies")
         return jsonify({
             "status": "error",
             "error": str(e)

@@ -538,7 +538,7 @@ export const CurationModal: React.FC<CurationModalProps> = ({ node, onClose, onA
                                         transition: 'all 0.2s ease'
                                     }}
                                 >
-                                    {isUpdatingCookies ? '🍪 Updating...' : '🍪 Update Cookies'}
+                                    {isUpdatingCookies ? 'Verifying...' : 'Verify Session'}
                                 </button>
                             </div>
 

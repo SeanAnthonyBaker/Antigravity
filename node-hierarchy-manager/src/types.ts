@@ -1,6 +1,7 @@
 export interface DocumentNode {
     nodeID: number; // int8
     created_at: string;
+    modified_at?: string;
     title: string;
     order: number; // int4
     selected: boolean;
