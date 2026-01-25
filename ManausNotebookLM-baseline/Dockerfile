@@ -24,20 +24,20 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install pipx and notebooklm-cli for nlm command
-RUN pip install --no-cache-dir pipx && \
-    pipx ensurepath && \
-    pipx install notebooklm-cli
-
-# Add pipx bin to PATH so 'nlm' is available
-ENV PATH="/root/.local/bin:${PATH}"
-
 # Copy the application code
 COPY . .
 
 # Create a non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
+
+# Install pipx and notebooklm-cli as appuser
+RUN pip install --user --no-cache-dir pipx && \
+    /home/appuser/.local/bin/pipx ensurepath && \
+    /home/appuser/.local/bin/pipx install notebooklm-cli
+
+# Add pipx bin to PATH so 'nlm' is available for appuser
+ENV PATH="/home/appuser/.local/bin:${PATH}"
 
 # Expose the port
 EXPOSE 5000

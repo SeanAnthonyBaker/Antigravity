@@ -3,7 +3,7 @@ $ZONE = "us-central1-a"
 $REMOTE_USER = "seanb"
 $APP_DIR = "/home/ubuntu/notebooklm-backend"
 
-$FILES = @("Dockerfile", "Dockerfile.selenium", "entrypoint-selenium.sh", "notebooklm.py", "main.py", "grok.py", "deepseek.py", "user.py", "models.py", "requirements.txt", "docker-compose.yml", "mcp_bp.py")
+$FILES = @("Dockerfile", "Dockerfile.selenium", "entrypoint-selenium.sh", "notebooklm.py", "main.py", "grok.py", "deepseek.py", "user.py", "models.py", "requirements.txt", "docker-compose.yml", "mcp_bp.py", "nlm_client.py")
 
 Write-Host "Starting Optimized Deployment to $VM_NAME..." -ForegroundColor Cyan
 
@@ -62,6 +62,7 @@ gcloud compute ssh $VM_NAME --zone=$ZONE --command=$CMD
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Deployment Complete!" -ForegroundColor Green
-} else {
+}
+else {
     Write-Error "Remote command failed!"
 }

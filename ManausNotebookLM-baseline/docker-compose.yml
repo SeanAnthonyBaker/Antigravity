@@ -28,7 +28,7 @@ services:
       start_period: 30s # Give the app time for the browser to initialize
     volumes:
       - ../notebooklm-mcp:/notebooklm-mcp:ro
-      - ${USERPROFILE}/.nlm:/root/.nlm
+      - ${LOCALAPPDATA}/nlm/nlm:/home/appuser/.local/share/nlm:ro
 
   selenium:
     build:

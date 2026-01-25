@@ -55,8 +55,8 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
             });
             setExpandedNodes(initialExpanded);
 
-        } catch (err: any) {
-            setError('Failed to load data: ' + err.message);
+        } catch (err: unknown) {
+            setError('Failed to load data: ' + (err instanceof Error ? err.message : 'Unknown error'));
         } finally {
             setLoading(false);
         }
@@ -69,8 +69,8 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
             const permMap = new Map<number, AccessLevel>();
             perms.forEach(p => permMap.set(p.node_id, p.access_level));
             setPermissions(permMap);
-        } catch (err: any) {
-            setError('Failed to load permissions: ' + err.message);
+        } catch (err: unknown) {
+            setError('Failed to load permissions: ' + (err instanceof Error ? err.message : 'Unknown error'));
         } finally {
             setLoading(false);
         }
@@ -118,8 +118,8 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                     return next;
                 });
             }
-        } catch (err: any) {
-            setError('Failed to update permissions: ' + err.message);
+        } catch (err: unknown) {
+            setError('Failed to update permissions: ' + (err instanceof Error ? err.message : 'Unknown error'));
         }
     };
 
@@ -146,8 +146,8 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
             const usersData = await AuthService.getAllUsers();
             setUsers(usersData);
             setTimeout(() => setSuccessMessage(null), 3000);
-        } catch (err: any) {
-            setError('Failed to update user approval: ' + err.message);
+        } catch (err: unknown) {
+            setError('Failed to update user approval: ' + (err instanceof Error ? err.message : 'Unknown error'));
         } finally {
             setLoading(false);
         }

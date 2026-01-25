@@ -4,7 +4,11 @@
 
 **NotebookLM MCP Server**
 
-This project implements a Model Context Protocol (MCP) server that provides programmatic access to [NotebookLM](https://notebooklm.google.com). It allows AI agents and developers to interact with NotebookLM notebooks, sources, and query capabilities.
+This project implements a Model Context Protocol (MCP) server that provides programmatic access to [NotebookLM](https://notebooklm.google.com). It can be used in three ways:
+
+1. **MCP Server**: For AI assistants (Claude Code, Cursor,Gemini CLI)
+2. **CLI Tool**: Command-line interface (`nlm` command) for automation and scripting
+3. **Python Library**: Direct imports for Python applications
 
 Tested with personal/free tier accounts. May work with Google Workspace accounts but has not been tested. This project relies on reverse-engineered internal APIs (`batchexecute` RPCs).
 
@@ -42,10 +46,17 @@ If your AI assistant has Chrome DevTools MCP:
 2. Get cookies from any network request (e.g., `batchexecute`)
 3. Call `save_auth_tokens(cookies=<cookie_header>, request_body=<request_body>, request_url=<request_url>)`
 
-**Option 2: Auth CLI (Self-contained Auto Mode)**
+**Option 2: Windows Quick Start (Interactive)**
+Run the helper script from the project root:
+```powershell
+.\authenticate_local.ps1
+```
+This launches a dedicated Chrome window. Log in to NotebookLM, and your session cookies will be saved automatically.
+
+**Option 3: Auth CLI (Self-contained Auto Mode)**
 Run `notebooklm-mcp-auth`. It launches a dedicated Chrome profile. Log in once, and your session is saved. This works alongside your main browser.
 
-**Option 3: Manual (Environment Variables)**
+**Option 4: Manual (Environment Variables)**
 Extract the `Cookie` header from Chrome DevTools:
 ```bash
 export NOTEBOOKLM_COOKIES="SID=xxx; HSID=xxx; SSID=xxx; ..."
@@ -54,6 +65,46 @@ export NOTEBOOKLM_COOKIES="SID=xxx; HSID=xxx; SSID=xxx; ..."
 > **Self-Healing:** If the MCP detects expired cookies, it will attempt to refresh them automatically in the background using `notebooklm-mcp-auth --headless`.
 
 Cookies last for weeks. When they expire completely, re-authenticate via the CLI.
+
+## CLI Usage
+
+The `nlm` command-line tool provides direct access to NotebookLM operations. This is useful for:
+- Backend automation (e.g., ManausNotebookLM-baseline uses this)
+- Scripting and batch operations
+- CI/CD pipelines
+
+### Common CLI Commands
+
+```bash
+# List all notebooks
+nlm notebook list --json
+
+# Create an artifact
+nlm notebook create-audio --notebook-id <id> --json
+nlm notebook create-infographic --notebook-id <id> --json
+nlm notebook create-video --notebook-id <id> --json
+
+# Get notebook details
+nlm notebook get --notebook-id <id> --json
+```
+
+### Profile-Based Authentication
+
+The CLI uses profile-based authentication stored at `~/.local/share/nlm/<profile>/`:
+
+```bash
+# Default profile
+nlm login
+
+# Named profile
+nlm login --profile work
+nlm notebook list --profile work --json
+```
+
+This allows:
+- **Multi-user scenarios**: Different profiles for different Google accounts
+- **Shared authentication**: Backend services can mount the auth directory
+- **Isolation**: MCP server and CLI can use separate profiles
 
 ## Development Workflow
 

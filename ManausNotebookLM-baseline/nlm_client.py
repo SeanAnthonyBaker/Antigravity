@@ -30,7 +30,9 @@ def run_nlm_command(args: List[str], profile: str = "default") -> Dict[str, Any]
     Raises:
         NLMClientError: If command fails
     """
-    cmd = ['nlm'] + args + ['--profile', profile]
+    # Use full path to nlm executable
+    nlm_path = '/home/appuser/.local/bin/nlm'
+    cmd = [nlm_path] + args + ['--profile', profile]
     
     try:
         logger.debug(f"Running: {' '.join(cmd)}")

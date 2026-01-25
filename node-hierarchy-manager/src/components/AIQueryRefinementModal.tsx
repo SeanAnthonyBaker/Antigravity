@@ -24,6 +24,18 @@ interface McpNotebook {
     modified_at: string | null;
 }
 
+interface BrainstormGroup {
+    group_title: string;
+    group_description: string;
+    factors: string[];
+}
+
+interface BrainstormData {
+    topic: string;
+    total_unique_factors: number;
+    groups: BrainstormGroup[];
+}
+
 const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initialText, onClose, onPaste }) => {
     // Helper to load from localStorage with fallback
     const usePersistedState = <T,>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] => {
@@ -52,7 +64,7 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
     useEffect(() => {
         console.log(`[AIModal] Mount. InitialText length: ${initialText.length}`);
         return () => console.log(`[AIModal] Unmount`);
-    }, []);
+    }, [initialText.length]);
 
     console.log("[AIModal] Render.");
 
@@ -69,7 +81,7 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
 
     // JSON Viewer State
     const [showJsonViewer, setShowJsonViewer] = useState(false);
-    const [brainstormJsonData, setBrainstormJsonData] = useState<any>(null);
+    const [brainstormJsonData, setBrainstormJsonData] = useState<BrainstormData | null>(null);
 
     // Manual Login / VNC State
     const [authRequired, setAuthRequired] = useState(false);
@@ -238,6 +250,8 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
             setNotebooks(prev => [newNotebook, ...prev]);
             setNewNotebookId('');
             setNewNotebookDesc('');
+            setNewNotebookId('');
+            setNewNotebookDesc('');
         } catch (err: unknown) {
             alert('Failed to add notebook: ' + (err instanceof Error ? err.message : 'Unknown error'));
         }
@@ -270,7 +284,7 @@ const AIQueryRefinementModal: React.FC<AIQueryRefinementModalProps> = ({ initial
         );
     };
 
-    const handleConstraintChange = (key: keyof typeof constraints, field: 'active' | 'value', val: any) => {
+    const handleConstraintChange = (key: keyof typeof constraints, field: 'active' | 'value', val: string | boolean) => {
         setConstraints(prev => ({
             ...prev,
             [key]: { ...prev[key], [field]: val }

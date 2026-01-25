@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import './App.css'
 import { NodeTree } from './components/NodeTree'
 import { Auth } from './components/Auth'
@@ -41,51 +41,17 @@ function App() {
 
   const loadedSessionId = useRef<string | null>(null);
 
-  // Auth Effect
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setAuthLoading(false);
-      if (session) checkAdminStatus();
-    });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-      if (event === 'SIGNED_IN') {
-        checkAdminStatus();
-      }
-      if (event === 'SIGNED_OUT') {
-        // Clear local storage on sign out
-        localStorage.removeItem('hierarchy_nodes');
-        localStorage.removeItem('hierarchy_expanded');
-        setNodes([]);
-        setExpandedNodeIds(new Set());
-        setIsAdmin(false);
-      }
-    });
 
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Node Loading Effect - Only load if authenticated
-  useEffect(() => {
-    if (session?.user?.id && session.user.id !== loadedSessionId.current) {
-      loadedSessionId.current = session.user.id;
-      loadNodes();
-    }
-  }, [session?.user?.id]);
-
-  const checkAdminStatus = async () => {
+  const checkAdminStatus = useCallback(async () => {
     // Check if user is admin
     // Also try to ensure the role exists for the super admin
     // await AuthService.ensureAdminRole(); // Commented out to prevent 403 loop
     const isAdm = await AuthService.checkIsAdmin();
     setIsAdmin(isAdm);
-  };
+  }, []);
 
-  const loadNodes = async (force = false, tagsOverride?: Set<number>, isSilent = false) => {
+  const loadNodes = useCallback(async (force = false, tagsOverride?: Set<number>, isSilent = false) => {
     const tagsToUse = tagsOverride || activeFilterTagIds;
 
     try {
@@ -132,13 +98,64 @@ function App() {
       });
       setExpandedNodeIds(expanded);
 
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
       setLoading(false);
       setIsInitialized(true);
     }
-  };
+  }, [activeFilterTagIds, nodes.length]);
+
+  // Auth Effect
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthLoading(false);
+      if (session) checkAdminStatus();
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setSession(session);
+      if (event === 'SIGNED_IN') {
+        // Check if user is approved (for both OAuth and email/password)
+        if (session?.user) {
+          const { data: roleData, error: roleError } = await supabase
+            .from('user_roles')
+            .select('approved')
+            .eq('user_id', session.user.id)
+            .single();
+
+          if (roleError || !roleData?.approved) {
+            // User not approved - sign them out
+            await supabase.auth.signOut();
+            // Note: The Auth component will handle showing the approval message
+            return;
+          }
+        }
+        checkAdminStatus();
+      }
+      if (event === 'SIGNED_OUT') {
+        // Clear local storage on sign out
+        localStorage.removeItem('hierarchy_nodes');
+        localStorage.removeItem('hierarchy_expanded');
+        setNodes([]);
+        setExpandedNodeIds(new Set());
+        setIsAdmin(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [checkAdminStatus]);
+
+  // Node Loading Effect - Only load if authenticated
+  useEffect(() => {
+    if (session?.user?.id && session.user.id !== loadedSessionId.current) {
+      loadedSessionId.current = session.user.id;
+      loadNodes();
+    }
+  }, [session?.user?.id, loadNodes]);
 
   // Save state to local storage whenever it changes
   useEffect(() => {
@@ -276,8 +293,8 @@ function App() {
 
       setShowSaveMessage(true);
       setTimeout(() => setShowSaveMessage(false), 2000);
-    } catch (err: any) {
-      alert('Failed to save hierarchy: ' + err.message);
+    } catch (err: unknown) {
+      alert('Failed to save hierarchy: ' + (err instanceof Error ? err.message : 'Unknown error'));
     } finally {
       setIsSaving(false);
     }

@@ -393,7 +393,6 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                 <CurationModal
                     node={curatingNode}
                     onClose={() => setCuratingNode(null)}
-                    onArtifactSaved={() => onRefresh(true)}
                 />
             )}
         </div>

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { supabase } from '../lib/supabase';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
@@ -34,20 +35,23 @@ export const McpService = {
         throw new Error(response.data.error || 'Failed to list notebooks');
     },
 
+    /**
+     * Creates an artifact and starts a background poller to track its status.
+     * When complete, it inserts the record into Supabase.
+     */
     async createArtifact(params: {
         notebook_id: string;
-        artifact_type: 'infographic' | 'video' | 'audio' | 'slides';
-        language?: string;
-        prompt?: string;
-        orientation?: number;
-        detail_level?: number;
-        format_code?: number;
-        style_code?: number;
-        length_code?: number;
+        artifact_type: string;
+        title: string;
+        node_id?: number | null; // Optional node ID from hierarchy
+        [key: string]: any; // Allow other params
     }): Promise<any> {
-        const response = await axios.post(`${API_BASE_URL}/api/mcp/create`, params);
+        const response = await axios.post(`${API_BASE_URL}/api/mcp/generate_artifact`, params);
+
         if (response.data.status === 'success') {
-            return response.data.result;
+            // Fire and Forget: Start polling in background
+            this.startPolling(params.notebook_id, params.artifact_type, params.title, params.node_id);
+            return response.data;
         }
         throw new Error(response.data.error || 'Failed to create artifact');
     },
@@ -84,5 +88,109 @@ export const McpService = {
         }
 
         return blob;
+    },
+
+    // --- Background Polling Logic ---
+
+    startPolling(notebookId: string, artifactType: string, title: string, nodeId?: number | null) {
+        console.log(`[McpService] Starting background polling for ${artifactType} in ${notebookId}`);
+
+        const POLL_INTERVAL = 10000; // 10 seconds
+        const MAX_ATTEMPTS = 60; // 10 minutes total
+        let attempts = 0;
+
+        const poll = async () => {
+            attempts++;
+            try {
+                const artifacts = await this.getStatus(notebookId);
+
+                // Find the most recent artifact of this type
+                // Logic: Filter by type, sort by creation time (or assume API returns newest first)
+                // Note: The API returns artifacts with 'created_at' timestamp
+
+                // Simple heuristic: Look for a completed artifact created in the last few minutes
+                // Or just look for the newest one and see if it's completed
+
+                // Map frontend types to backend types if needed, or rely on string match
+                // We'll trust the list is sorted by recent
+                const match = artifacts.find(a =>
+                    (a.type === artifactType || artifactType.includes(a.type)) &&
+                    (a.status === 'completed')
+                );
+
+                if (match) {
+                    console.log(`[McpService] Artifact found and completed:`, match);
+                    await this.saveToSupabase(notebookId, match, title, nodeId);
+                    return; // Stop polling
+                }
+
+                if (attempts >= MAX_ATTEMPTS) {
+                    console.log(`[McpService] Polling timed out for ${notebookId}`);
+                    return;
+                }
+
+                // Continue polling
+                setTimeout(poll, POLL_INTERVAL);
+
+            } catch (err) {
+                console.error(`[McpService] Polling error:`, err);
+                // Retry even on error, unless max attempts reached
+                if (attempts < MAX_ATTEMPTS) setTimeout(poll, POLL_INTERVAL);
+            }
+        };
+
+        // Start the first poll after a delay to allow backend to initialize the task
+        setTimeout(poll, POLL_INTERVAL);
+    },
+
+    async saveToSupabase(notebookId: string, artifact: any, title: string, nodeId?: number | null) {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                console.error('[McpService] Cannot save to Supabase: User not logged in');
+                return;
+            }
+
+            console.log('[McpService] Saving artifact to Supabase...', artifact);
+
+            const artifactId = artifact.id || artifact.artifact_id;
+            if (!artifactId) {
+                console.error('[McpService] No artifact ID found, cannot save to DB');
+                return;
+            }
+
+            const { data: existing } = await supabase
+                .from('generated_artifacts')
+                .select('id')
+                .eq('nlm_artifact_id', artifactId)
+                .single();
+
+            if (existing) {
+                console.log('[McpService] Artifact already exists in DB, skipping insert.');
+                return;
+            }
+
+            const { error } = await supabase
+                .from('generated_artifacts')
+                .insert({
+                    user_id: user.id,
+                    notebook_id: notebookId,
+                    nlm_artifact_id: artifact.id || artifact.artifact_id || null,
+                    artifact_url: artifact.url || artifact.audio_url || artifact.video_url || artifact.infographic_url || artifact.slide_deck_url || null,
+                    artifact_type: artifact.type,
+                    artifact_name: title, // Use the provided title/name
+                    node_id: nodeId,      // Store hierarchy node ID
+                    created_at: new Date().toISOString() // Or artifact.created_at
+                });
+
+            if (error) {
+                console.error('[McpService] Failed to insert into generated_artifacts:', error);
+            } else {
+                console.log('[McpService] Artifact saved to Supabase successfully!');
+            }
+
+        } catch (err) {
+            console.error('[McpService] Error saving to Supabase:', err);
+        }
     }
 };

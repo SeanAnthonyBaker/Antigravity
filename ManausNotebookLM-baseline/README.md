@@ -13,14 +13,14 @@ This backend implements a dual-strategy approach to automation:
     *   Handles VNC-based interactive login sessions.
     *   Manages the headless Chrome browser lifecycle.
 
-2.  **MCP Bridge (`mcp_bp.py`)**:
-    *   Proxies requests to the sibling **[notebooklm-mcp](../notebooklm-mcp)** library.
+2.  **NLM CLI Wrapper (`nlm_client.py`)**:
+    *   Wraps the `nlm` command-line tool from **[notebooklm-mcp-server](https://pypi.org/project/notebooklm-mcp-server/)**.
     *   Used for high-speed artifact generation (Audio, Infographics, Mind Maps).
     *   Leverages the reverse-engineered `batchexecute` API for performance.
 
 ## 🚀 Key Features
 
-*   **Universal Auth**: Authenticate once via VNC; sessions are shared with the MCP layer.
+*   **Universal Auth**: Authenticate once via VNC or NLM CLI; sessions are shared across layers.
 *   **Artifact Factory**: Generate Briefing Docs, Podcasts, and Infographics programmatically.
 *   **Supabase Integration**: Persists user data and generated artifact metadata.
 *   **Self-Healing**: Automatically detects and refreshes expired sessions.
@@ -31,13 +31,17 @@ This backend implements a dual-strategy approach to automation:
 
 *   **Docker & Docker Compose**: For running the containerized stack.
 *   **Python 3.11+**: For local development.
-*   **Sibling Repo**: The `notebooklm-mcp` directory must exist at `../notebooklm-mcp`.
+*   **NLM CLI**: Install on host: `uv tool install notebooklm-mcp-server`
 
 ### 1. Connection (Authentication)
 
-Authentication is handled via a secure VNC tunnel to a headless Chrome instance running in Docker.
+Authentication can be done via:
+- **Interactive VNC**: Manual login via secure VNC tunnel to headless Chrome
+- **NLM CLI**: Authenticate using `nlm login` on host machine
 
-**Windows Quick Start:**
+Both methods save credentials that are shared with the backend via Docker volume mounts.
+
+**Windows Quick Start (VNC):**
 
 ```powershell
 .\connect_vnc.ps1
@@ -47,7 +51,17 @@ Authentication is handled via a secure VNC tunnel to a headless Chrome instance 
 2.  Navigate to `http://localhost:7900` in your browser.
 3.  Password: `secret`
 4.  Log in to Google/NotebookLM inside the VNC window.
-5.  **Success!** The backend automatically extracts your cookies and shares them with the MCP layer.
+5.  **Success!** The backend automatically extracts your cookies.
+
+**Alternative: NLM CLI Authentication:**
+
+```powershell
+# On host machine
+uv tool install notebooklm-mcp-server
+nlm login
+```
+
+This creates an auth profile at `~/.local/share/nlm/` that is automatically mounted into the Docker container.
 
 ### 2. Deployment
 
@@ -67,7 +81,8 @@ Authentication is handled via a secure VNC tunnel to a headless Chrome instance 
 
 *   `app.py` / `main.py`: Flask entry point.
 *   `notebooklm.py`: Selenium orchestration logic.
-*   `mcp_bp.py`: Bridge to the `notebooklm-mcp` library.
+*   `mcp_bp.py`: API blueprint for artifact generation.
+*   `nlm_client.py`: Wrapper around `nlm` CLI tool.
 *   `connect_vnc.ps1`: Script to establishing VNC auth sessions.
 *   `Dockerfile`: Defines the automation environment.
 

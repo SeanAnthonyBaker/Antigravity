@@ -822,9 +822,6 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                 <CurationModal
                     node={currentNode}
                     onClose={() => setShowCurationModal(false)}
-                    onArtifactSaved={() => {
-                        if (onUpdate) onUpdate();
-                    }}
                 />
             )}
         </>

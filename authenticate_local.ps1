@@ -11,7 +11,9 @@ if (Test-Path "notebooklm-mcp") {
 # Run the auth tool using uv from the source directory
 # This uses the python environment managed by uv to run the auth script
 Try {
-    uv run python -m notebooklm_mcp.auth_cli
+    # uv run python -m notebooklm_mcp.auth_cli
+    # Fallback to direct execution for older uv versions
+    .\.venv\Scripts\python.exe -m notebooklm_mcp.auth_cli
 }
 Catch {
     Write-Error "Failed to run auth tool. Make sure 'uv' is installed."

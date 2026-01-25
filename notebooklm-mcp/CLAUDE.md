@@ -6,6 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **NotebookLM MCP Server** - Provides programmatic access to NotebookLM (notebooklm.google.com) using reverse-engineered internal APIs.
 
+**Three usage modes:**
+1. **MCP Server**: For AI assistants (Claude Code, Cursor, Gemini CLI)
+2. **CLI Tool** (`nlm`): For automation, scripting, and backend integration
+3. **Python Library**: Direct imports for custom applications
+
 Tested with personal/free tier accounts. May work with Google Workspace accounts but has not been tested.
 
 ## Development Commands
@@ -22,6 +27,11 @@ notebooklm-mcp
 
 # Run the Auth CLI
 notebooklm-mcp-auth
+
+# Use the CLI tool
+nlm --help
+nlm notebook list --json
+nlm notebook create-audio --notebook-id <id> --json
 
 # Run tests
 uv run pytest
@@ -65,7 +75,15 @@ Save only cookies; tokens are auto-extracted from page on first API call.
 save_auth_tokens(cookies=<cookie_header>)
 ```
 
-### Method 2: Manual (Environment Variables)
+### Method 2: Windows Quick Start (Interactive)
+
+Run the helper script from the project root:
+```powershell
+.\authenticate_local.ps1
+```
+This launches a dedicated Chrome window for login.
+
+### Method 3: Manual (Environment Variables)
 
 Recommended for CI/CD or specialized environments.
 
@@ -75,7 +93,7 @@ Recommended for CI/CD or specialized environments.
 | `NOTEBOOKLM_CSRF_TOKEN` | No | (DEPRECATED - auto-extracted) |
 | `NOTEBOOKLM_SESSION_ID` | No | (DEPRECATED - auto-extracted) |
 
-### Method 3: Auth CLI (Self-contained)
+### Method 4: Auth CLI (Self-contained)
 
 Run `notebooklm-mcp-auth`. It uses a **dedicated Chrome profile** (`~/.notebooklm-mcp/chrome-profile`), so you **don't need to close your main browser**.
 
@@ -100,6 +118,46 @@ src/notebooklm_mcp/
 - `notebooklm-mcp` - The MCP server
 - `notebooklm-mcp-auth` - CLI for authentication (Auto or File mode)
 - `notebooklm-mcp-auth --file` - Recommended for manual cookie entry
+- `nlm` - CLI tool for automation and scripting
+
+### CLI Usage Patterns
+
+The `nlm` CLI is extensively used by backend services (e.g., ManausNotebookLM-baseline):
+
+**List notebooks:**
+```bash
+nlm notebook list --json
+```
+
+**Create artifacts:**
+```bash
+nlm notebook create-audio --notebook-id abc123 --json
+nlm notebook create-infographic --notebook-id abc123 --focus-prompt "Marketing overview" --json
+nlm notebook create-video --notebook-id abc123 --json
+```
+
+**Profile management:**
+```bash
+# Use default profile
+nlm notebook list --json
+
+# Use named profile
+nlm notebook list --profile work --json
+```
+
+**Backend integration:**
+```python
+import subprocess
+import json
+
+def run_nlm_command(args, profile="default"):
+    cmd = ["nlm"] + args + ["--profile", profile, "--json"]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    return json.loads(result.stdout)
+
+# Use it
+notebooks = run_nlm_command(["notebook", "list"])
+```
 
 ## MCP Tools Provided
 

@@ -2,7 +2,12 @@
 
 ![NotebookLM MCP Header](docs/media/header.jpeg)
 
-An MCP server for **NotebookLM** (notebooklm.google.com).
+An MCP server and CLI tool for **NotebookLM** (notebooklm.google.com).
+
+**Three ways to use:**
+1. **MCP Server**: For AI assistants (Claude Code, Cursor, Gemini CLI)
+2. **CLI Tool** (`nlm`): For automation, scripting, and backend integration ([see CLI usage](#cli-usage))
+3. **Python Library**: Direct imports for custom applications
 
 > **Note:** Tested with Pro/free tier accounts. May work with NotebookLM Enterprise accounts but has not been tested.
 
@@ -105,6 +110,9 @@ After upgrading, restart your AI tool to reconnect to the updated MCP server:
 Before using the MCP, you need to authenticate with NotebookLM. Run:
 
 ```bash
+# Windows Quick Start (Interactive)
+.\authenticate_local.ps1
+
 # Recommended: Auto mode (launches Chrome, you log in)
 notebooklm-mcp-auth
 
@@ -119,6 +127,93 @@ notebooklm-mcp-auth --file
 After successful auth, add the MCP to your AI tool and restart.
 
 For detailed instructions, troubleshooting, and how the authentication system works, see **[docs/AUTHENTICATION.md](docs/AUTHENTICATION.md)**.
+
+## CLI Usage
+
+> **Note:** The `nlm` CLI uses the same authentication as the MCP server (from `~/.local/share/nlm/`). Authenticate once via `nlm login` and both the MCP and CLI will work.
+
+### Installation
+
+The `nlm` command is installed automatically when you install the package:
+
+```bash
+# With uv
+uv tool install notebooklm-mcp-server
+
+# With pip
+pip install notebooklm-mcp-server
+
+# Verify installation
+nlm --version
+```
+
+### Authentication
+
+```bash
+# Login (creates default profile)
+nlm login
+
+# Login with named profile
+nlm login --profile work
+```
+
+### Common Commands
+
+```bash
+# List all notebooks
+nlm notebook list --json
+
+# Get notebook details
+nlm notebook get --notebook-id abc123 --json
+
+# Create artifacts
+nlm notebook create-audio --notebook-id abc123 --json
+nlm notebook create-infographic --notebook-id abc123 --focus-prompt "Marketing summary" --json
+nlm notebook create-video --notebook-id abc123 --json
+nlm notebook create-slide-deck --notebook-id abc123 --json
+
+# Use specific profile
+nlm notebook list --profile work --json
+```
+
+### Backend Integration Example
+
+The CLI is designed for backend automation (e.g., used by ManausNotebookLM-baseline):
+
+```python
+import subprocess
+import json
+
+def run_nlm(args, profile="default"):
+    """Run nlm CLI command and return parsed JSON."""
+    cmd = ["nlm"] + args + ["--profile", profile, "--json"]
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    return json.loads(result.stdout)
+
+# Example usage
+notebooks = run_nlm(["notebook", "list"])
+for nb in notebooks:
+    print(f"{nb['id']}: {nb['title']}")
+
+# Create artifact
+result = run_nlm([
+    "notebook", "create-audio",
+    "--notebook-id", "abc123",
+    "--focus-prompt", "Technical deep dive"
+])
+print(f"Audio URL: {result['audio_url']}")
+```
+
+### Profile Management
+
+Profiles are stored at `~/.local/share/nlm/<profile>/` and contain:
+- `auth.json`: Authentication tokens
+- `config.json`: Profile-specific settings (future)
+
+**Benefits:**
+- **Multi-account**: Different profiles for different Google accounts
+- **Shared auth**: Backend services can mount the auth directory
+- **Isolation**: MCP server and CLI can use different profiles
 
 ## MCP Configuration
 
