@@ -4,9 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**ManausNotebookLM-baseline** - The automation backend for the Antigravity platform. Provides a Flask-based API that automates interactions with NotebookLM using a **Hybrid Architecture**:
+**ManausNotebookLM-baseline** - The automation backend for the Antigravity platform. Provides a Flask-based API that automates interactions with NotebookLM using a **Sidecar Container Architecture**:
 
-1. **Selenium** (`notebooklm.py`): For VNC-based interactive authentication and complex browser automation
+1. **App Container** (`notebooklm-backend-app`): Flask API + NLM CLI orchestration
+2. **Selenium Sidecar** (`notebooklm-backend-selenium`): Headless Chrome + VNC server
+
+The app container uses two automation strategies:
+1. **Selenium WebDriver** (`notebooklm.py`): Connects to sidecar for VNC-based interactive authentication and complex browser automation
 2. **NLM CLI Wrapper** (`nlm_client.py`): For high-speed artifact generation via the `nlm` command-line tool
 
 ## Development Commands
@@ -63,10 +67,24 @@ Creates auth profile at `~/.local/share/nlm/` which is auto-mounted into Docker 
 ## Architecture
 
 ```
-Frontend → Flask (main.py)
-  ├─→ notebooklm_bp (notebooklm.py) → Selenium → Chrome
-  └─→ mcp_bp (mcp_bp.py) → nlm_client.py → nlm CLI → NotebookLM API
+Frontend → Flask API (main.py) [App Container]
+  ├─→ notebooklm_bp (notebooklm.py) → Selenium Hub → Chrome [Selenium Sidecar]
+  ├─→ mcp_bp (mcp_bp.py) → nlm_client.py → nlm CLI → NotebookLM API
+  └─→ user_bp (user.py) → User Management
 ```
+
+### Sidecar Pattern
+
+**App Container** (`notebooklm-backend-app`):
+- Flask application and blueprints
+- NLM CLI orchestration via `nlm_client.py`
+- Connects to selenium sidecar via `http://selenium:4444/wd/hub`
+
+**Selenium Sidecar** (`notebooklm-backend-selenium`):
+- Standalone Chrome environment
+- VNC server on port 7900
+- Selenium Hub on port 4444
+- Persists Chrome profile in `./chrome-data`
 
 ### Key Files
 
@@ -98,25 +116,30 @@ Selenium-based endpoints for complex workflows not yet supported by CLI.
 
 ### Services
 
-1. **app**: Flask backend (port 5000)
-   - Mounts: `../notebooklm-mcp`, NLM auth directory
-   - Depends on: selenium
+1. **app** (`notebooklm-backend-app`): Flask backend (port 5000)
+   - Mounts: `../notebooklm-mcp` (reference), NLM auth directory
+   - Depends on: selenium sidecar
+   - Connects to: `http://selenium:4444/wd/hub`
 
-2. **selenium**: Headless Chrome + VNC (ports 4444, 7900, 5900)
-   - Mounts: Chrome profile data, gcloud credentials
+2. **selenium** (`notebooklm-backend-selenium`): Headless Chrome + VNC
+   - Ports: 4444 (Selenium Hub), 7900 (VNC Web), 5900 (VNC)
+   - Mounts: Chrome profile data (`./chrome-data`), gcloud credentials
    - Provides: VNC interface for manual login
 
 3. **caddy**: Reverse proxy (ports 80, 443)
    - Terminates SSL, routes to backend
+   - Only needed for production deployments
 
 ### Critical Volume Mounts
 
 ```yaml
-# NLM CLI authentication (read-only)
-- ${LOCALAPPDATA}/nlm/nlm:/home/appuser/.local/share/nlm:ro
+# App Container
+- ../notebooklm-mcp:/notebooklm-mcp:ro          # MCP library reference
+- ${LOCALAPPDATA}/nlm/nlm:/home/appuser/.local/share/nlm:ro  # NLM CLI auth
 
-# NotebookLM MCP library (for reference, not used by nlm_client.py)
-- ../notebooklm-mcp:/notebooklm-mcp:ro
+# Selenium Container
+- ./chrome-data:/data                           # Chrome profile persistence
+- ./.gcloud:/gcloud_creds_ro:ro                # GCloud credentials (optional)
 ```
 
 ## Artifact Generation Flow

@@ -5,6 +5,8 @@ import tulkahLogo from '../assets/tulkah-logo.png';
 export const Auth: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
+    const [magicLinkLoading, setMagicLinkLoading] = useState(false);
+    const [magicLinkSent, setMagicLinkSent] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isSignUp, setIsSignUp] = useState(false);
@@ -30,6 +32,40 @@ export const Auth: React.FC = () => {
                 text: error.error_description || error.message || 'Failed to sign in with Google. Please ensure Google OAuth is configured in Supabase.'
             });
             setGoogleLoading(false);
+        }
+    };
+
+    const handleMagicLinkSignIn = async () => {
+        if (!email) {
+            setMessage({ type: 'error', text: 'Please enter your email address' });
+            return;
+        }
+
+        setMagicLinkLoading(true);
+        setMessage(null);
+
+        try {
+            const { error } = await supabase.auth.signInWithOtp({
+                email,
+                options: {
+                    emailRedirectTo: window.location.origin,
+                },
+            });
+
+            if (error) throw error;
+
+            setMagicLinkSent(true);
+            setMessage({
+                type: 'success',
+                text: 'Check your email! We sent you a magic link to sign in.'
+            });
+        } catch (error: any) {
+            setMessage({
+                type: 'error',
+                text: error.error_description || error.message || 'Failed to send magic link. Please try again.'
+            });
+        } finally {
+            setMagicLinkLoading(false);
         }
     };
 
@@ -208,7 +244,7 @@ export const Auth: React.FC = () => {
                 {/* Google Sign-In Button */}
                 <button
                     onClick={handleGoogleSignIn}
-                    disabled={googleLoading || loading}
+                    disabled={googleLoading || loading || magicLinkLoading}
                     style={{
                         width: '100%',
                         padding: '0.75rem',
@@ -217,8 +253,8 @@ export const Auth: React.FC = () => {
                         backgroundColor: '#fff',
                         color: '#3c4043',
                         fontSize: '1rem',
-                        cursor: (googleLoading || loading) ? 'not-allowed' : 'pointer',
-                        opacity: (googleLoading || loading) ? 0.7 : 1,
+                        cursor: (googleLoading || loading || magicLinkLoading) ? 'not-allowed' : 'pointer',
+                        opacity: (googleLoading || loading || magicLinkLoading) ? 0.7 : 1,
                         fontWeight: 500,
                         display: 'flex',
                         alignItems: 'center',
@@ -227,7 +263,7 @@ export const Auth: React.FC = () => {
                         transition: 'all 0.2s ease',
                     }}
                     onMouseEnter={(e) => {
-                        if (!googleLoading && !loading) {
+                        if (!googleLoading && !loading && !magicLinkLoading) {
                             e.currentTarget.style.backgroundColor = '#f8f9fa';
                             e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.12)';
                         }
@@ -254,12 +290,67 @@ export const Auth: React.FC = () => {
                     )}
                 </button>
 
+                {/* Magic Link Sign-In Button */}
+                <button
+                    onClick={handleMagicLinkSignIn}
+                    disabled={magicLinkLoading || loading || googleLoading || magicLinkSent}
+                    style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        borderRadius: '4px',
+                        border: '1px solid var(--color-border)',
+                        backgroundColor: magicLinkSent ? '#10b981' : 'var(--color-bg-primary)',
+                        color: magicLinkSent ? '#fff' : 'var(--color-text-primary)',
+                        fontSize: '1rem',
+                        cursor: (magicLinkLoading || loading || googleLoading || magicLinkSent) ? 'not-allowed' : 'pointer',
+                        opacity: (magicLinkLoading || loading || googleLoading) ? 0.7 : 1,
+                        fontWeight: 500,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.75rem',
+                        transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                        if (!magicLinkLoading && !loading && !googleLoading && !magicLinkSent) {
+                            e.currentTarget.style.backgroundColor = 'var(--color-bg-secondary)';
+                            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.12)';
+                        }
+                    }}
+                    onMouseLeave={(e) => {
+                        if (!magicLinkSent) {
+                            e.currentTarget.style.backgroundColor = 'var(--color-bg-primary)';
+                            e.currentTarget.style.boxShadow = 'none';
+                        }
+                    }}
+                >
+                    {magicLinkLoading ? (
+                        'Sending magic link...'
+                    ) : magicLinkSent ? (
+                        <>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            Magic link sent!
+                        </>
+                    ) : (
+                        <>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            Sign in with Magic Link
+                        </>
+                    )}
+                </button>
+
                 <button
                     onClick={() => {
                         setIsSignUp(!isSignUp);
                         setMessage(null);
                         setEmail('');
                         setPassword('');
+                        setMagicLinkSent(false);
                     }}
                     style={{
                         marginTop: '1rem',

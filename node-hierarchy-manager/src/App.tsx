@@ -119,21 +119,22 @@ function App() {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       if (event === 'SIGNED_IN') {
+        // APPROVAL CHECK TEMPORARILY DISABLED
         // Check if user is approved (for both OAuth and email/password)
-        if (session?.user) {
-          const { data: roleData, error: roleError } = await supabase
-            .from('user_roles')
-            .select('approved')
-            .eq('user_id', session.user.id)
-            .single();
+        // if (session?.user) {
+        //   const { data: roleData, error: roleError } = await supabase
+        //     .from('user_roles')
+        //     .select('approved')
+        //     .eq('user_id', session.user.id)
+        //     .single();
 
-          if (roleError || !roleData?.approved) {
-            // User not approved - sign them out
-            await supabase.auth.signOut();
-            // Note: The Auth component will handle showing the approval message
-            return;
-          }
-        }
+        //   if (roleError || !roleData?.approved) {
+        //     // User not approved - sign them out
+        //     await supabase.auth.signOut();
+        //     // Note: The Auth component will handle showing the approval message
+        //     return;
+        //   }
+        // }
         checkAdminStatus();
       }
       if (event === 'SIGNED_OUT') {
