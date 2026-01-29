@@ -34,6 +34,7 @@ export const CurationModal: React.FC<CurationModalProps> = ({ node, onClose /*, 
     const [statusMessage, setStatusMessage] = useState('');
     // const [generatedUrl, setGeneratedUrl] = useState<string | null>(null); // Removed as per "fire and forget"
     const [isUpdatingCookies, setIsUpdatingCookies] = useState(false);
+    const [isRefreshingNotebooks, setIsRefreshingNotebooks] = useState(false);
 
     // 4. Save/Tagging State (Removed as per "fire and forget")
     // const [showSaveFields, setShowSaveFields] = useState(false);
@@ -99,6 +100,25 @@ export const CurationModal: React.FC<CurationModalProps> = ({ node, onClose /*, 
             localStorage.setItem('lastArtifactDetailName', artifactDetailName);
         }
     }, [artifactDetailName]);
+
+    const handleRefreshNotebooks = async () => {
+        setIsRefreshingNotebooks(true);
+        setStatusMessage('Refreshing notebooks from NotebookLM...');
+        try {
+            await NotebookLMService.refreshNotebooks();
+            // Reload the notebooks list
+            const nbList = await NotebookLMService.fetchNotebooks();
+            setNotebooks(nbList);
+            setStatusMessage(`Found ${nbList.length} notebooks!`);
+            setTimeout(() => setStatusMessage(''), 3000);
+        } catch (err: any) {
+            console.error('Failed to refresh notebooks:', err);
+            setStatusMessage('');
+            alert('Failed to refresh notebooks: ' + err.message);
+        } finally {
+            setIsRefreshingNotebooks(false);
+        }
+    };
 
 
     const handleVerifySession = async () => {
@@ -269,10 +289,29 @@ export const CurationModal: React.FC<CurationModalProps> = ({ node, onClose /*, 
                     <>
                         {/* 1. Notebook Selection */}
                         <div style={{ marginBottom: '1.5rem', position: 'relative' }} ref={dropdownRef}>
-                            {/* Bold and Left Adjusted Header as requested */}
-                            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8', fontSize: '0.95rem', fontWeight: 'bold', textAlign: 'left' }}>
-                                Select Notebook:
-                            </label>
+                            {/* Bold and Left Adjusted Header with Refresh Button */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                <label style={{ color: '#94a3b8', fontSize: '0.95rem', fontWeight: 'bold' }}>
+                                    Select Notebook:
+                                </label>
+                                <button
+                                    onClick={handleRefreshNotebooks}
+                                    disabled={isRefreshingNotebooks || isLoadingNotebooks}
+                                    style={{
+                                        background: 'none',
+                                        border: '1px solid #3b82f6',
+                                        color: '#3b82f6',
+                                        padding: '0.25rem 0.5rem',
+                                        borderRadius: '4px',
+                                        cursor: isRefreshingNotebooks ? 'not-allowed' : 'pointer',
+                                        fontSize: '0.75rem',
+                                        opacity: isRefreshingNotebooks ? 0.7 : 1
+                                    }}
+                                    title="Fetch latest notebooks from NotebookLM"
+                                >
+                                    {isRefreshingNotebooks ? '↻ Refreshing...' : '↻ Refresh'}
+                                </button>
+                            </div>
                             <div
                                 className={`custom-select ${isDropdownOpen ? 'open' : ''}`}
                                 onClick={() => !isLoadingNotebooks && setIsDropdownOpen(!isDropdownOpen)}
@@ -346,7 +385,7 @@ export const CurationModal: React.FC<CurationModalProps> = ({ node, onClose /*, 
                                     />
                                     {groupedNotebooks.map(group => (
                                         <div key={group.name}>
-                                            <div style={{ padding: '0.5rem', fontSize: '0.8rem', color: '#94a3b8', background: '#252f3f' }}>{group.name}</div>
+                                            <div style={{ padding: '0.5rem 1rem', fontSize: '1rem', color: '#fbbf24', background: '#252f3f', textAlign: 'left', fontWeight: 'bold', fontStyle: 'italic' }}>{group.name}</div>
                                             {group.notebooks.map(nb => (
                                                 <div
                                                     key={nb.notebook_id}
@@ -358,9 +397,6 @@ export const CurationModal: React.FC<CurationModalProps> = ({ node, onClose /*, 
                                                     }}
                                                 >
                                                     <div style={{ fontWeight: 'bold' }}>{nb.notebook_nm}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
-                                                        https://notebooklm.google.com/notebook/{nb.notebook_id}
-                                                    </div>
                                                 </div>
                                             ))}
                                         </div>

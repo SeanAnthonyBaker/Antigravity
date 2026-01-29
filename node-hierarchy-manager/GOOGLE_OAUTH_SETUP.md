@@ -14,12 +14,7 @@ This document provides step-by-step instructions for configuring Google OAuth au
    - Go to https://console.cloud.google.com
    - Select or create a project
 
-2. **Enable Google+ API** (if not already enabled):
-   - Go to "APIs & Services" > "Library"
-   - Search for "Google+ API"
-   - Click "Enable"
-
-3. **Configure OAuth Consent Screen**:
+2. **Configure OAuth Consent Screen**:
    - Go to "APIs & Services" > "OAuth consent screen"
    - Choose "External" for user type (or "Internal" if using Google Workspace)
    - Fill in required fields:
@@ -31,12 +26,11 @@ This document provides step-by-step instructions for configuring Google OAuth au
    - Add test users if using External type
    - Click "Save and Continue"
 
-4. **Create OAuth 2.0 Client ID**:
+3. **Create OAuth 2.0 Client ID**:
    - Go to "APIs & Services" > "Credentials"
    - Click "+ CREATE CREDENTIALS" > "OAuth client ID"
    - Select "Web application" as the application type
    - Name: "Antigravity Supabase Auth"
-   - **Authorized JavaScript origins**: Leave empty or add your production domain
    - **Authorized redirect URIs**: Add the following:
      ```
      https://ryeoceystuqrdynbtsvt.supabase.co/auth/v1/callback
@@ -44,7 +38,6 @@ This document provides step-by-step instructions for configuring Google OAuth au
      For local development, also add:
      ```
      http://localhost:5173/auth/v1/callback
-     http://localhost:3000/auth/v1/callback
      ```
    - Click "Create"
    - **Save the Client ID and Client Secret** - you'll need these in the next step
@@ -61,15 +54,21 @@ This document provides step-by-step instructions for configuring Google OAuth au
 3. **Enter Google OAuth Credentials**:
    - **Client ID**: Paste the Client ID from Google Cloud Console
    - **Client Secret**: Paste the Client Secret from Google Cloud Console
+   - Click "Save"
 
-4. **Configure Additional Settings** (optional):
-   - **Skip nonce check**: Leave unchecked (recommended for security)
-   - **Allowed redirect URLs**: Your application URL will be automatically configured
+## Step 3: Configure URL Settings in Supabase
 
-5. **Save Changes**:
-   - Click "Save" to apply the configuration
+1. **Navigate to URL Configuration**:
+   - Go to Authentication > URL Configuration in Supabase Dashboard
 
-## Step 3: Test the Integration
+2. **Set Site URL and Redirect URLs**:
+   - **Site URL**: `http://localhost:5173` (for local) or your production URL
+   - **Redirect URLs**: Add `http://localhost:5173/**` (wildcard pattern)
+
+> [!IMPORTANT]
+> The exact Site URL must match your development environment origin. Mismatched URLs cause `server_error` or `unexpected_failure` during OAuth callback.
+
+## Step 4: Test the Integration
 
 1. **Start your local development server**:
    ```bash
@@ -103,20 +102,20 @@ This document provides step-by-step instructions for configuring Google OAuth au
 
 ### User stuck on "pending approval"
 - **Cause**: The user doesn't have an approved entry in the `user_roles` table
-- **Solution**: 
-  1. Sign in as an admin user
-  2. Click the "Admin" button
-  3. Find the new user and click "Approve"
+- **Solution**: Sign in as an admin, navigate to the Admin panel, find the new user, and click "Approve"
 
-### OAuth sign-in works but email/password doesn't (or vice versa)
-- **Cause**: These are separate authentication methods
-- **Solution**: This is expected behavior. Users can use either method, but they create separate credentials
+### OAuth sign-in returns `server_error`
+- **Cause**: URL configuration mismatch between Supabase Dashboard and your application origin
+- **Solution**: 
+  1. Go to Supabase Dashboard > Authentication > URL Configuration
+  2. Ensure Site URL exactly matches your app origin (e.g., `http://localhost:5173`)
+  3. Ensure Redirect URLs includes wildcard pattern (e.g., `http://localhost:5173/**`)
 
 ## Security Considerations
 
 1. **Client Secret**: Never commit your Google Client Secret to version control
 2. **Redirect URIs**: Only add trusted domains to the authorized redirect URIs
-3. **User Approval**: The existing user approval workflow ensures that only authorized users can access the system, regardless of authentication method
+3. **User Approval**: The platform enforces mandatory admin approval for all new users, regardless of authentication method
 4. **Email Verification**: Google OAuth users have their email automatically verified by Google
 
 ## Additional Resources

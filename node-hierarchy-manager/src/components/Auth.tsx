@@ -9,6 +9,7 @@ export const Auth: React.FC = () => {
     const [magicLinkSent, setMagicLinkSent] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [isSignUp, setIsSignUp] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error' | 'warning', text: string } | null>(null);
 
@@ -194,22 +195,46 @@ export const Auth: React.FC = () => {
                             fontSize: '1rem'
                         }}
                     />
-                    <input
-                        type="password"
-                        placeholder="Your password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        minLength={6}
-                        style={{
-                            padding: '0.75rem',
-                            borderRadius: '4px',
-                            border: '1px solid var(--color-border)',
-                            backgroundColor: 'var(--color-bg-primary)',
-                            color: 'var(--color-text-primary)',
-                            fontSize: '1rem'
-                        }}
-                    />
+                    <div style={{ position: 'relative' }}>
+                        <input
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="Your password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            minLength={6}
+                            style={{
+                                width: '100%',
+                                padding: '0.75rem',
+                                paddingRight: '3rem',
+                                borderRadius: '4px',
+                                border: '1px solid var(--color-border)',
+                                backgroundColor: 'var(--color-bg-primary)',
+                                color: 'var(--color-text-primary)',
+                                fontSize: '1rem',
+                                boxSizing: 'border-box'
+                            }}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            style={{
+                                position: 'absolute',
+                                right: '0.5rem',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                background: 'none',
+                                border: 'none',
+                                color: '#9ca3af',
+                                cursor: 'pointer',
+                                padding: '0.25rem',
+                                fontSize: '0.75rem'
+                            }}
+                            title={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                            {showPassword ? '🙈' : '👁️'}
+                        </button>
+                    </div>
                     <button
                         type="submit"
                         disabled={loading}

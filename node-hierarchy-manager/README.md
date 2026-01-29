@@ -18,6 +18,15 @@ This is the frontend component of the Antigravity platform. It provides a visual
 - **Lucide React** (Icons)
 - **Supabase SDK**
 
+## Authentication
+
+The platform supports three authentication methods:
+- **Email/Password**: Traditional account-based authentication with admin approval workflow
+- **Magic Link (OTP)**: Passwordless sign-in via email link
+- **Google OAuth**: One-click  sign-in with Google accounts
+
+> **Note**: All new users require admin approval regardless of authentication method. See `GOOGLE_OAUTH_SETUP.md` for OAuth configuration details.
+
 ## Getting Started
 
 ### Prerequisites

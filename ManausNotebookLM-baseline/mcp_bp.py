@@ -82,17 +82,53 @@ def run_bridge_command(command_payload):
 
 @mcp_bp.route('/notebooks', methods=['GET'])
 def list_notebooks():
-    """Fetches the list of notebooks from the MCP server."""
-    logger.info("Fetching notebooks via MCP bridge...")
+    """Fetches the list of notebooks using the NLM CLI client."""
+    logger.info("Fetching notebooks via NLM CLI...")
     
-    payload = {"command": "list"}
-    result = run_bridge_command(payload)
-    
-    if result.get("status") == "success":
-        return jsonify(result)
-    else:
-        logger.error(f"MCP list_notebooks failed: {result}")
-        return jsonify(result), 500
+    try:
+        from nlm_client import NLMClient, NLMClientError
+        
+        try:
+            client = NLMClient(profile="default")
+            notebooks = client.list_notebooks()
+            
+            # Format notebooks for frontend compatibility
+            formatted = []
+            for nb in notebooks:
+                formatted.append({
+                    "id": nb.get("id") or nb.get("notebook_id"),
+                    "title": nb.get("title") or nb.get("name", "Untitled"),
+                    "source_count": nb.get("source_count", 0),
+                    "url": f"https://notebooklm.google.com/notebook/{nb.get('id') or nb.get('notebook_id')}",
+                    "ownership": nb.get("ownership", "owned"),
+                    "is_shared": nb.get("is_shared", False),
+                    "created_at": nb.get("created_at"),
+                    "modified_at": nb.get("modified_at")
+                })
+            
+            return jsonify({
+                "status": "success",
+                "notebooks": formatted
+            })
+            
+        except NLMClientError as e:
+            logger.error(f"NLM client error listing notebooks: {e}")
+            return jsonify({
+                "status": "error",
+                "error": f"NLM authentication failed: {str(e)}. Please run 'nlm login' on your host machine."
+            }), 401
+            
+    except ImportError:
+        return jsonify({
+            "status": "error",
+            "error": "NLM client not available"
+        }), 500
+    except Exception as e:
+        logger.exception("Error listing notebooks")
+        return jsonify({
+            "status": "error",
+            "error": str(e)
+        }), 500
 
 @mcp_bp.route('/health', methods=['GET'])
 def health_check():
@@ -256,47 +292,46 @@ def get_status(notebook_id):
 
 @mcp_bp.route('/update_cookies', methods=['POST'])
 def update_cookies():
-    """Verifies that valid cookies exist in the shared cache."""
-    logger.info("Verifying authentication cache via auth_cli (file check)...")
+    """Verifies that valid NLM CLI authentication exists."""
+    logger.info("Verifying NLM CLI authentication...")
     
     try:
-        # Check if nlm CLI is accessible
+        # Check if nlm CLI is accessible and authenticated
         from nlm_client import NLMClient, NLMClientError
         
         try:
             client = NLMClient(profile="default")
-            # Try a simple command to verify auth
-            client.list_notebooks()
-            tokens = {"verified": True}
-        except Exception as e:
-            tokens = None
-        
-        if not tokens:
-            return jsonify({
-                "status": "error",
-                "error": "No cached tokens found. Please run 'authenticate_local.ps1' on your host machine."
-            }), 404
+            # Try to list notebooks - this verifies auth is working
+            notebooks = client.list_notebooks()
             
-        if not validate_cookies(tokens.cookies):
-            missing = [k for k in REQUIRED_COOKIES if k not in tokens.cookies]
+            logger.info(f"NLM auth verified successfully. Found {len(notebooks) if notebooks else 0} notebooks.")
+            return jsonify({
+                "status": "success",
+                "message": "Session verified successfully (using NLM CLI authentication).",
+                "notebook_count": len(notebooks) if notebooks else 0
+            })
+            
+        except NLMClientError as e:
+            logger.error(f"NLM client error: {e}")
             return jsonify({
                 "status": "error",
-                "error": f"Invalid tokens. Missing cookies: {missing}. Please run 'authenticate_local.ps1' on your host machine."
+                "error": f"NLM authentication failed: {str(e)}. Please run 'nlm login' on your host machine."
             }), 401
             
-        # Optional: Check age
-        if tokens.is_expired():
-             logger.warning("Tokens are old but might still work.")
-             
-        logger.info("Tokens verified successfully.")
-        return jsonify({
-            "status": "success",
-            "message": "Session verified successfully (using shared host credentials).",
-            "token_age_hours": round((time.time() - tokens.extracted_at) / 3600, 1)
-        })
+        except Exception as e:
+            logger.error(f"NLM client initialization failed: {e}")
+            return jsonify({
+                "status": "error",
+                "error": f"No cached tokens found. Please run 'nlm login' on your host machine."
+            }), 404
         
+    except ImportError:
+        return jsonify({
+            "status": "error",
+            "error": "NLM client not available. Please ensure 'nlm_client.py' exists in the backend."
+        }), 500
     except Exception as e:
-        logger.exception("Error verifying cookies")
+        logger.exception("Error verifying NLM authentication")
         return jsonify({
             "status": "error",
             "error": str(e)
