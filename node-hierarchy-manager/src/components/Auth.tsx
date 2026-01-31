@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { McpService } from '../services/McpService';
 import tulkahLogo from '../assets/tulkah-logo.png';
 
 export const Auth: React.FC = () => {
@@ -7,6 +8,7 @@ export const Auth: React.FC = () => {
     const [googleLoading, setGoogleLoading] = useState(false);
     const [magicLinkLoading, setMagicLinkLoading] = useState(false);
     const [magicLinkSent, setMagicLinkSent] = useState(false);
+    const [nlmLoading, setNlmLoading] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -33,6 +35,39 @@ export const Auth: React.FC = () => {
                 text: error.error_description || error.message || 'Failed to sign in with Google. Please ensure Google OAuth is configured in Supabase.'
             });
             setGoogleLoading(false);
+        }
+    };
+
+    const handleNlmLogin = async () => {
+        setNlmLoading(true);
+        setMessage(null);
+
+        try {
+            const result = await McpService.triggerNlmLogin();
+
+            if (result.status === 'success') {
+                setMessage({
+                    type: 'success',
+                    text: result.message || 'Login window opened. Complete authentication in the browser.'
+                });
+            } else if (result.status === 'manual_required') {
+                setMessage({
+                    type: 'warning',
+                    text: result.message || 'Please run "nlm login" in your terminal.'
+                });
+            } else {
+                setMessage({
+                    type: 'error',
+                    text: result.error || 'Failed to trigger login'
+                });
+            }
+        } catch (error: any) {
+            setMessage({
+                type: 'error',
+                text: error.response?.data?.error || error.message || 'Failed to connect to NotebookLM service'
+            });
+        } finally {
+            setNlmLoading(false);
         }
     };
 
@@ -365,6 +400,55 @@ export const Auth: React.FC = () => {
                                 <polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                             Sign in with Magic Link
+                        </>
+                    )}
+                </button>
+
+                {/* NotebookLM Connect Button */}
+                <button
+                    onClick={handleNlmLogin}
+                    disabled={nlmLoading || loading || googleLoading || magicLinkLoading}
+                    style={{
+                        width: '100%',
+                        marginTop: '0.75rem',
+                        padding: '0.75rem',
+                        borderRadius: '4px',
+                        border: '1px solid #f97316',
+                        backgroundColor: nlmLoading ? '#fdba74' : '#fff7ed',
+                        color: '#c2410c',
+                        fontSize: '1rem',
+                        cursor: (nlmLoading || loading || googleLoading || magicLinkLoading) ? 'not-allowed' : 'pointer',
+                        opacity: (nlmLoading || loading || googleLoading || magicLinkLoading) ? 0.7 : 1,
+                        fontWeight: 500,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.75rem',
+                        transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                        if (!nlmLoading && !loading && !googleLoading && !magicLinkLoading) {
+                            e.currentTarget.style.backgroundColor = '#fed7aa';
+                            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.12)';
+                        }
+                    }}
+                    onMouseLeave={(e) => {
+                        if (!nlmLoading) {
+                            e.currentTarget.style.backgroundColor = '#fff7ed';
+                            e.currentTarget.style.boxShadow = 'none';
+                        }
+                    }}
+                >
+                    {nlmLoading ? (
+                        'Opening login window...'
+                    ) : (
+                        <>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M2 17l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            Connect NotebookLM
                         </>
                     )}
                 </button>

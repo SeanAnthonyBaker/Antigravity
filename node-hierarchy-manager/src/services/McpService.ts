@@ -46,11 +46,21 @@ export const McpService = {
         node_id?: number | null; // Optional node ID from hierarchy
         [key: string]: any; // Allow other params
     }): Promise<any> {
-        const response = await axios.post(`${API_BASE_URL}/api/mcp/generate_artifact`, params);
+        // Get user ID from Supabase session for backend DB save
+        const { data: { user } } = await supabase.auth.getUser();
+        const payload = {
+            ...params,
+            user_id: user?.id || null,
+        };
+
+        const response = await axios.post(`${API_BASE_URL}/api/mcp/generate_artifact`, payload);
 
         if (response.data.status === 'success') {
-            // Fire and Forget: Start polling in background
-            this.startPolling(params.notebook_id, params.artifact_type, params.title, params.node_id);
+            // Backend now saves to DB directly - polling is backup/optional
+            if (!response.data.saved_to_db) {
+                // Fallback: Fire and Forget polling if backend didn't save
+                this.startPolling(params.notebook_id, params.artifact_type, params.title, params.node_id);
+            }
             return response.data;
         }
         throw new Error(response.data.error || 'Failed to create artifact');
@@ -66,6 +76,11 @@ export const McpService = {
 
     getProxyUrl(url: string): string {
         return `${API_BASE_URL}/api/mcp/proxy_artifact?url=${encodeURIComponent(url)}`;
+    },
+
+    async triggerNlmLogin(): Promise<{ status: string, message?: string, error?: string }> {
+        const response = await axios.post(`${API_BASE_URL}/api/mcp/trigger_login`);
+        return response.data;
     },
 
     async fetchBlob(url: string): Promise<Blob> {

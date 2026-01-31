@@ -6,3 +6,4 @@ requests
 fastmcp
 httpx
 websocket-client
+supabase

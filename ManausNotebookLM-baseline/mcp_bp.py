@@ -169,6 +169,8 @@ def generate_artifact():
     artifact_type = data.get('artifact_type')
     prompt = data.get('prompt', '')
     title = data.get('title', 'Generated Artifact')
+    user_id = data.get('user_id')  # Supabase user UUID
+    node_id = data.get('node_id')  # Document hierarchy node ID
     
     if not notebook_id or not artifact_type:
         return jsonify({"status": "error", "error": "Missing notebook_id or artifact_type"}), 400
@@ -238,11 +240,41 @@ def generate_artifact():
             return jsonify({"status": "error", "error": f"Unknown artifact type: {artifact_type}"}), 400
 
         if result:
+            # Save to Supabase if user_id is provided
+            saved_record = None
+            if user_id:
+                try:
+                    from supabase_client import save_generated_artifact
+                    
+                    # Extract artifact URL from result based on type
+                    artifact_url = None
+                    nlm_artifact_id = None
+                    if isinstance(result, dict):
+                        artifact_url = result.get('url') or result.get('audio_url') or result.get('video_url') or result.get('infographic_url') or result.get('slide_deck_url')
+                        nlm_artifact_id = result.get('id') or result.get('artifact_id')
+                    
+                    saved_record = save_generated_artifact(
+                        user_id=user_id,
+                        notebook_id=notebook_id,
+                        artifact_type=artifact_type,
+                        artifact_name=title,
+                        nlm_artifact_id=nlm_artifact_id,
+                        artifact_url=artifact_url,
+                        node_id=node_id
+                    )
+                    if saved_record:
+                        logger.info(f"Artifact saved to Supabase with ID: {saved_record.get('id')}")
+                except Exception as save_err:
+                    logger.warning(f"Failed to save artifact to Supabase: {save_err}")
+                    # Don't fail the request if DB save fails
+            
             return jsonify({
                 "status": "success",
                 "message": f"{artifact_type} generation started/completed.",
                 "url": final_url,
-                "details": result
+                "details": result,
+                "saved_to_db": saved_record is not None,
+                "db_record_id": saved_record.get('id') if saved_record else None
             })
         else:
              return jsonify({"status": "error", "error": "Generation function returned no result"}), 500
@@ -332,6 +364,46 @@ def update_cookies():
         }), 500
     except Exception as e:
         logger.exception("Error verifying NLM authentication")
+        return jsonify({
+            "status": "error",
+            "error": str(e)
+        }), 500
+
+@mcp_bp.route('/trigger_login', methods=['POST'])
+def trigger_login():
+    """Triggers the NLM CLI login flow on the host machine."""
+    import shutil
+    
+    logger.info("Triggering NLM CLI login...")
+    
+    # Check if nlm CLI is available
+    nlm_path = shutil.which('nlm')
+    if not nlm_path:
+        return jsonify({
+            "status": "error",
+            "error": "NLM CLI not found. Please install with: uv tool install notebooklm-mcp-server"
+        }), 404
+    
+    # In Docker, we can't open a browser - return instructions
+    if os.path.exists('/.dockerenv'):
+        return jsonify({
+            "status": "manual_required",
+            "message": "Running in Docker. Please run 'nlm login' on your host machine, then restart Docker."
+        }), 200
+    
+    try:
+        # Launch login in background (it opens a Chrome window)
+        # Use CREATE_NEW_CONSOLE on Windows so the user can see the login progress
+        creation_flags = subprocess.CREATE_NEW_CONSOLE if os.name == 'nt' else 0
+        subprocess.Popen([nlm_path, 'login'], creationflags=creation_flags)
+        
+        logger.info("NLM login window opened successfully")
+        return jsonify({
+            "status": "success",
+            "message": "Login window opened. Complete authentication in the browser, then refresh this page."
+        })
+    except Exception as e:
+        logger.exception("Error triggering NLM login")
         return jsonify({
             "status": "error",
             "error": str(e)
