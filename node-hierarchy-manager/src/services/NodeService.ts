@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { DocumentNode } from '../types';
-import { AuthService } from './AuthService';
+
 
 export const NodeService = {
     async fetchNodes() {
@@ -26,33 +26,46 @@ export const NodeService = {
     },
 
     async _enrichNodesWithPermissions(nodes: DocumentNode[]) {
-        // 2. Check if user is Admin
-        const isAdmin = await AuthService.checkIsAdmin();
+        // 2. Check if user is Admin (Removed usage, so removing fetching to fix lint)
+        // const isAdmin = await AuthService.checkIsAdmin();
 
         // 3. Fetch permissions for the current user
         const { data: user } = await supabase.auth.getUser();
         let permissions: { node_id: number; access_level: 'read_only' | 'full_access' }[] = [];
 
-        if (user?.user && !isAdmin) {
-            const { data: perms } = await supabase
+        if (user?.user) {
+            console.log('[NodeService] Fetching permissions for user:', user.user.id, user.user.email);
+            const { data: perms, error: permError } = await supabase
                 .from('document_permissions')
                 .select('node_id, access_level')
                 .eq('user_id', user.user.id);
 
-            if (perms) {
-                permissions = perms as any[];
+            if (permError) {
+                console.error('[NodeService] Error fetching permissions:', permError);
             }
+
+            if (perms) {
+                console.log(`[NodeService] Found ${perms.length} permission records`);
+                if (perms.length > 0) {
+                    console.log('[NodeService] Sample perm:', perms[0]);
+                }
+                permissions = perms as any[];
+            } else {
+                console.log('[NodeService] No permissions found (data is null)');
+            }
+        } else {
+            console.log('[NodeService] No authenticated user found for permissions');
         }
 
         // 4. Merge permissions
         return nodes.map(node => {
-            // Admin has full access implicit
-            if (isAdmin) {
-                return { ...node, access_level: 'full_access' as const };
-            }
+            // Admin override removed per user request - explicit permissions required
+            // if (isAdmin) {
+            //     return { ...node, access_level: 'full_access' as const };
+            // }
 
-            // Check explicit permissions
-            const perm = permissions.find(p => p.node_id === node.nodeID);
+            // Check explicit permissions (using loose equality for potential string/number mismatch)
+            const perm = permissions.find(p => p.node_id == node.nodeID);
             if (perm) {
                 return { ...node, access_level: perm.access_level };
             }
@@ -72,11 +85,11 @@ export const NodeService = {
         if (error) throw error;
         const node = data as DocumentNode;
 
-        // Check if user is Admin
-        const isAdmin = await AuthService.checkIsAdmin();
-        if (isAdmin) {
-            return { ...node, access_level: 'full_access' as const };
-        }
+        // Admin override removed per user request
+        // const isAdmin = await AuthService.checkIsAdmin();
+        // if (isAdmin) {
+        //     return { ...node, access_level: 'full_access' as const };
+        // }
 
         // Fetch permissions for this node
         const { data: user } = await supabase.auth.getUser();

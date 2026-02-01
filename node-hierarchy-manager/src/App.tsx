@@ -8,6 +8,7 @@ import { TagMaintenanceModal } from './components/TagMaintenanceModal'
 import { ClassificationModal } from './components/ClassificationModal'
 import { TagFilterModal } from './components/TagFilterModal'
 import bannerImage from './assets/tulkah-banner.png'
+
 import { NodeService } from './services/NodeService'
 import { AuthService } from './services/AuthService'
 import type { DocumentNode } from './types'
@@ -20,6 +21,7 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
 
   // App State
+
   const [nodes, setNodes] = useState<DocumentNode[]>([]);
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false); // Node loading

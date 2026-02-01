@@ -1,0 +1,227 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "NotebookLM Artifact Generation Schema",
+    "description": "Specification of parameters required for generating different NotebookLM artifacts.",
+    "type": "object",
+    "definitions": {
+        "artifact_types": {
+            "audio": {
+                "title": "Audio Overview",
+                "description": "Generate a podcast-style audio overview.",
+                "params": {
+                    "format": {
+                        "type": "string",
+                        "enum": [
+                            "deep_dive",
+                            "brief",
+                            "critique",
+                            "debate"
+                        ],
+                        "default": "deep_dive",
+                        "description": "The style of the conversation.",
+                        "required": false
+                    },
+                    "length": {
+                        "type": "string",
+                        "enum": [
+                            "short",
+                            "default",
+                            "long"
+                        ],
+                        "default": "default",
+                        "description": "Target duration of the audio.",
+                        "required": false
+                    },
+                    "language": {
+                        "type": "string",
+                        "description": "Two-letter language code (e.g., 'en', 'es', 'ja').",
+                        "default": "en",
+                        "required": false
+                    },
+                    "focus": {
+                        "type": "string",
+                        "description": "Specific topic or angle to focus on.",
+                        "required": false
+                    }
+                }
+            },
+            "video": {
+                "title": "Video Overview",
+                "description": "Generate a video presentation.",
+                "params": {
+                    "format": {
+                        "type": "string",
+                        "enum": [
+                            "explainer",
+                            "brief"
+                        ],
+                        "default": "explainer",
+                        "required": false
+                    },
+                    "style": {
+                        "type": "string",
+                        "enum": [
+                            "auto_select",
+                            "classic",
+                            "whiteboard",
+                            "kawaii",
+                            "anime",
+                            "watercolor",
+                            "retro_print"
+                        ],
+                        "default": "auto_select",
+                        "required": false
+                    },
+                    "focus": {
+                        "type": "string",
+                        "description": "Specific topic to cover.",
+                        "required": false
+                    }
+                }
+            },
+            "infographic": {
+                "title": "Infographic",
+                "description": "Generate a visual infographic.",
+                "params": {
+                    "orientation": {
+                        "type": "string",
+                        "enum": [
+                            "landscape",
+                            "portrait",
+                            "square"
+                        ],
+                        "default": "landscape",
+                        "required": false
+                    },
+                    "detail_level": {
+                        "type": "string",
+                        "enum": [
+                            "concise",
+                            "standard",
+                            "detailed"
+                        ],
+                        "default": "standard",
+                        "required": false
+                    },
+                    "focus": {
+                        "type": "string",
+                        "description": "Key points to visualize.",
+                        "required": false
+                    }
+                }
+            },
+            "slide_deck": {
+                "title": "Slide Deck",
+                "description": "Generate a presentation slide deck.",
+                "params": {
+                    "format": {
+                        "type": "string",
+                        "enum": [
+                            "detailed_deck",
+                            "presenter_slides"
+                        ],
+                        "default": "detailed_deck",
+                        "required": false
+                    },
+                    "length": {
+                        "type": "string",
+                        "enum": [
+                            "short",
+                            "default"
+                        ],
+                        "default": "default",
+                        "required": false
+                    },
+                    "focus": {
+                        "type": "string",
+                        "description": "Topic or audience for the slides.",
+                        "required": false
+                    }
+                }
+            },
+            "report": {
+                "title": "Report / Document",
+                "description": "Generate a text-based document.",
+                "params": {
+                    "format": {
+                        "type": "string",
+                        "enum": [
+                            "Briefing Doc",
+                            "Study Guide",
+                            "Blog Post",
+                            "Create Your Own"
+                        ],
+                        "default": "Briefing Doc",
+                        "required": false
+                    },
+                    "prompt": {
+                        "type": "string",
+                        "description": "Custom instructions. REQUIRED if format is 'Create Your Own'.",
+                        "required": false
+                    }
+                }
+            },
+            "quiz": {
+                "title": "Quiz",
+                "description": "Generate a multiple-choice quiz.",
+                "params": {
+                    "questions": {
+                        "type": "integer",
+                        "default": 5,
+                        "minimum": 1,
+                        "maximum": 20,
+                        "required": false
+                    },
+                    "difficulty": {
+                        "type": "string",
+                        "enum": [
+                            "easy",
+                            "medium",
+                            "hard"
+                        ],
+                        "default": "medium",
+                        "required": false
+                    }
+                }
+            },
+            "flashcards": {
+                "title": "Flashcards",
+                "description": "Generate study flashcards.",
+                "params": {
+                    "difficulty": {
+                        "type": "string",
+                        "enum": [
+                            "easy",
+                            "medium",
+                            "hard"
+                        ],
+                        "default": "medium",
+                        "required": false
+                    }
+                }
+            },
+            "data_table": {
+                "title": "Data Table",
+                "description": "Extract structured data into a table.",
+                "params": {
+                    "description": {
+                        "type": "string",
+                        "description": "Description of the data to extract (e.g., 'Compare revenue by year').",
+                        "required": true
+                    }
+                }
+            },
+            "mind_map": {
+                "title": "Mind Map",
+                "description": "Generate a visual mind map.",
+                "params": {
+                    "title": {
+                        "type": "string",
+                        "description": "Title of the mind map.",
+                        "required": false
+                    }
+                }
+            }
+        }
+    }
+}

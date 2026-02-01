@@ -77,6 +77,17 @@ export const AuthService = {
     },
 
     /**
+     * Delete a user (Admin only)
+     */
+    async deleteUser(userId: string): Promise<void> {
+        const { error } = await supabase.rpc('delete_user', { target_user_id: userId });
+        if (error) {
+            console.error('Error deleting user:', error);
+            throw new Error('Failed to delete user');
+        }
+    },
+
+    /**
      * Get permissions for a specific user
      */
     async getUserPermissions(userId: string): Promise<DocumentPermission[]> {

@@ -11,6 +11,29 @@ export interface NotebookLMNotebook {
     updated_at?: string;
 }
 
+export type ArtifactType = 'audio' | 'video' | 'infographic' | 'slides' | 'report' | 'quiz' | 'flashcards' | 'data_table' | 'mind_map';
+
+export interface ArtifactGenerationParams {
+    notebook_id: string;
+    artifact_type: ArtifactType;
+    title?: string;
+    user_id?: string;
+    node_id?: number | string;
+
+    // Type-specific optional params
+    format?: string; // audio, video, slides, report
+    length?: string; // audio, slides
+    language?: string; // audio
+    focus?: string; // audio, video, infographic, slides
+    style?: string; // video
+    orientation?: string; // infographic
+    detail_level?: string; // infographic
+    prompt?: string; // report, data_table (as description)
+    difficulty?: string; // quiz, flashcards
+    questions?: number; // quiz
+    description?: string; // data_table
+}
+
 export const NotebookLMService = {
     /**
      * Fetch all notebooks from Supabase cache
@@ -101,6 +124,85 @@ export const NotebookLMService = {
     },
 
     /**
+     * Trigger the NLM CLI login flow on the host machine
+     */
+    async triggerLogin(): Promise<{ status: string; message: string }> {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/mcp/trigger_login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                throw new Error(errorData.error || 'Failed to trigger login');
+            }
+
+            const result = await response.json();
+            if (result.status === 'error') {
+                throw new Error(result.error);
+            }
+
+            // Success or manual_required
+            return {
+                status: result.status,
+                message: result.message
+            };
+        } catch (err: unknown) {
+            console.error('Error triggering login:', err);
+            throw new Error('Failed to trigger login: ' + (err instanceof Error ? err.message : 'Unknown error'));
+        }
+    },
+
+    /**
+     * Launch browser in Docker sidecar (for VNC manual login)
+     */
+    async launchBrowser(): Promise<void> {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/login_browser`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                throw new Error(errorData.error || 'Failed to launch browser');
+            }
+        } catch (err: unknown) {
+            console.error('Error launching browser:', err);
+            throw new Error('Failed to launch browser: ' + (err instanceof Error ? err.message : 'Unknown error'));
+        }
+    },
+
+    /**
+     * Sync auth from Selenium browser to NLM CLI profile
+     */
+    async syncAuth(): Promise<{ status: string; message: string }> {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
+        const response = await fetch(`${API_BASE_URL}/api/sync_auth`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.error || 'Failed to sync auth');
+        }
+        return result;
+    },
+
+    /**
      * Update cookies via backend endpoint
      */
     async updateCookies(): Promise<void> {
@@ -126,6 +228,29 @@ export const NotebookLMService = {
         } catch (err: unknown) {
             console.error('Error updating cookies:', err);
             throw new Error('Failed to update cookies: ' + (err instanceof Error ? err.message : 'Unknown error'));
+        }
+    },
+
+    /**
+     * Check browser status for VNC auto-detection
+     * Returns: 'ready' (on NotebookLM), 'authentication_required' (on login page), 'no_browser', or 'error'
+     */
+    async checkBrowserStatus(): Promise<{ status: string; current_url?: string; message?: string }> {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/status`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+            return result;
+        } catch (err: unknown) {
+            console.error('Error checking browser status:', err);
+            return { status: 'error', message: err instanceof Error ? err.message : 'Unknown error' };
         }
     }
 };

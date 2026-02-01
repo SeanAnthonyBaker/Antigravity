@@ -153,6 +153,28 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
         }
     };
 
+    const handleRemoveUser = async (userId: string) => {
+        if (!confirm('Are you sure you want to permanently delete this user? This action cannot be undone.')) {
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+        setSuccessMessage(null);
+        try {
+            await AuthService.deleteUser(userId);
+            setSuccessMessage('User removed successfully!');
+            // Reload users
+            const usersData = await AuthService.getAllUsers();
+            setUsers(usersData);
+            setTimeout(() => setSuccessMessage(null), 3000);
+        } catch (err: unknown) {
+            setError('Failed to remove user: ' + (err instanceof Error ? err.message : 'Unknown error'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
 
     // Recursive tree renderer
     const renderTree = (parentId: number | null = null, depth = 0) => {
@@ -355,6 +377,23 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                                                     }}
                                                 >
                                                     ✓ Approve
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRemoveUser(user.id)}
+                                                    disabled={loading}
+                                                    style={{
+                                                        padding: '8px 16px',
+                                                        backgroundColor: '#ef4444',
+                                                        color: '#fff',
+                                                        border: 'none',
+                                                        borderRadius: '4px',
+                                                        cursor: loading ? 'not-allowed' : 'pointer',
+                                                        fontWeight: 600,
+                                                        opacity: loading ? 0.6 : 1,
+                                                        marginLeft: '8px'
+                                                    }}
+                                                >
+                                                    ✕ Remove
                                                 </button>
                                             </div>
                                         ))}

@@ -15,6 +15,8 @@ services:
       - NOTEBOOKLM_BASE_URL=${NOTEBOOKLM_BASE_URL}
       - NOTEBOOKLM_INITIAL_URL=${NOTEBOOKLM_INITIAL_URL}
       - FLASK_SECRET_KEY=${FLASK_SECRET_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
     depends_on:
       selenium:
         condition: service_healthy
@@ -28,7 +30,7 @@ services:
       start_period: 30s # Give the app time for the browser to initialize
     volumes:
       - ../notebooklm-mcp:/notebooklm-mcp:ro
-      - ${LOCALAPPDATA}/nlm/nlm:/home/appuser/.local/share/nlm:ro
+      - ${LOCALAPPDATA}/nlm/nlm:/home/appuser/.local/share/nlm:rw
 
   selenium:
     build:
