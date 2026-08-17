@@ -7,9 +7,10 @@ import type { UserProfile, DocumentNode, AccessLevel } from '../types';
 interface AdminModalProps {
     isOpen: boolean;
     onClose: () => void;
+    nodes?: DocumentNode[];
 }
 
-export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
+export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, nodes: propNodes }) => {
     const [users, setUsers] = useState<UserProfile[]>([]);
     const [selectedUser, setSelectedUser] = useState<string>('');
     const [permissions, setPermissions] = useState<Map<number, AccessLevel>>(new Map());
@@ -25,7 +26,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
         if (isOpen) {
             loadInitialData();
         }
-    }, [isOpen]);
+    }, [isOpen, propNodes]);
 
     useEffect(() => {
         if (selectedUser) {
@@ -38,20 +39,33 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     const loadInitialData = async () => {
         setLoading(true);
         try {
-            const [usersData, nodesData] = await Promise.all([
-                AuthService.getAllUsers(),
-                NodeService.fetchNodes() // We need all nodes to assign permissions
-            ]);
+            const usersData = await AuthService.getAllUsers();
             setUsers(usersData);
-            setUsers(usersData);
-            setNodes(nodesData);
+            if (usersData.length > 0) {
+                setSelectedUser(prev => prev || usersData[0].id);
+            }
 
-            // Initialize expanded nodes (Level 0 and 1)
-            const initialExpanded = new Set<number>();
-            nodesData.forEach(node => {
-                if (node.level < 2) {
-                    initialExpanded.add(node.nodeID);
+            let targetNodes: DocumentNode[] = propNodes && propNodes.length > 0 ? propNodes : [];
+            if (targetNodes.length === 0) {
+                const savedNodesStr = localStorage.getItem('hierarchy_nodes');
+                if (savedNodesStr) {
+                    try {
+                        targetNodes = JSON.parse(savedNodesStr);
+                    } catch (e) {
+                        console.error('Failed to parse localStorage nodes in AdminModal:', e);
+                    }
                 }
+            }
+            if (targetNodes.length === 0) {
+                targetNodes = await NodeService.fetchNodes();
+            }
+
+            setNodes(targetNodes);
+
+            // Initialize expanded nodes
+            const initialExpanded = new Set<number>();
+            (targetNodes || []).forEach(node => {
+                initialExpanded.add(node.nodeID);
             });
             setExpandedNodes(initialExpanded);
 
@@ -98,6 +112,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
         const affectedNodeIds = affectedNodes.map(n => n.nodeID);
 
         try {
+            setError(null);
             if (level === 'none') {
                 await AuthService.bulkRemovePermissions(selectedUser, affectedNodeIds);
                 setPermissions(prev => {
@@ -118,6 +133,8 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                     return next;
                 });
             }
+            setSuccessMessage(`Updated access to "${level.replace('_', ' ')}" for ${affectedNodes.length} node(s)`);
+            setTimeout(() => setSuccessMessage(null), 3000);
         } catch (err: unknown) {
             setError('Failed to update permissions: ' + (err instanceof Error ? err.message : 'Unknown error'));
         }
@@ -180,64 +197,78 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     const renderTree = (parentId: number | null = null, depth = 0) => {
         const children = nodes
             .filter(n => (n.parentNodeID) === parentId || (parentId === null && (!n.parentNodeID || n.parentNodeID === 0 || n.parentNodeID === -1)))
-            .sort((a, b) => a.order - b.order);
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
 
-        return children.map(node => (
-            <div key={node.nodeID} style={{ marginLeft: depth > 0 ? '20px' : '0' }}>
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '8px',
-                    borderBottom: '1px solid #333',
-                    backgroundColor: depth % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent'
-                }}>
-                    <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
-                        {node.children && (
-                            <button
-                                onClick={() => toggleExpand(node.nodeID)}
-                                style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: '#ccc',
-                                    cursor: 'pointer',
-                                    fontSize: '12px',
-                                    padding: '0',
-                                    width: '100%',
-                                    textAlign: 'center'
-                                }}
-                            >
-                                {expandedNodes.has(node.nodeID) ? '▼' : '▶'}
-                            </button>
-                        )}
-                    </div>
-
-                    <span style={{ marginRight: '8px', opacity: node.children ? 1 : 0.5 }}>
-                        {node.children ? '📁' : '📄'}
-                    </span>
-                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {node.title}
-                    </span>
-
-                    <select
-                        value={permissions.get(node.nodeID) || 'none'}
-                        onChange={(e) => handlePermissionChange(node.nodeID, e.target.value as AccessLevel | 'none')}
-                        disabled={!selectedUser}
-                        style={{
-                            backgroundColor: '#252526',
-                            color: '#fff',
-                            border: '1px solid #444',
-                            borderRadius: '4px',
-                            padding: '4px 8px'
-                        }}
-                    >
-                        <option value="none">None (Hidden)</option>
-                        <option value="read_only">Read Only</option>
-                        <option value="full_access">Full Access</option>
-                    </select>
+        if (children.length === 0 && depth === 0) {
+            return (
+                <div style={{ textAlign: 'center', marginTop: '2rem', color: '#aaa', padding: '2rem', border: '1px dashed #444', borderRadius: '8px' }}>
+                    <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: '#fff' }}>📁 No hierarchy nodes available in database.</p>
+                    <p style={{ fontSize: '0.85rem', color: '#888' }}>
+                        Create top-level root nodes or upload documents in the main application first to assign user permissions.
+                    </p>
                 </div>
-                {expandedNodes.has(node.nodeID) && renderTree(node.nodeID, depth + 1)}
-            </div>
-        ));
+            );
+        }
+
+        return children.map(node => {
+            const hasChildren = nodes.some(n => n.parentNodeID === node.nodeID);
+            return (
+                <div key={node.nodeID} style={{ marginLeft: depth > 0 ? '20px' : '0' }}>
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '8px',
+                        borderBottom: '1px solid #333',
+                        backgroundColor: depth % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent'
+                    }}>
+                        <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
+                            {hasChildren && (
+                                <button
+                                    onClick={() => toggleExpand(node.nodeID)}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#ccc',
+                                        cursor: 'pointer',
+                                        fontSize: '12px',
+                                        padding: '0',
+                                        width: '100%',
+                                        textAlign: 'center'
+                                    }}
+                                >
+                                    {expandedNodes.has(node.nodeID) ? '▼' : '▶'}
+                                </button>
+                            )}
+                        </div>
+
+                        <span style={{ marginRight: '8px', opacity: hasChildren ? 1 : 0.5 }}>
+                            {hasChildren ? '📁' : '📄'}
+                        </span>
+                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#fff' }}>
+                            {node.title}
+                        </span>
+
+                        <select
+                            value={permissions.get(node.nodeID) || 'none'}
+                            onChange={(e) => handlePermissionChange(node.nodeID, e.target.value as AccessLevel | 'none')}
+                            disabled={!selectedUser}
+                            style={{
+                                backgroundColor: '#252526',
+                                color: '#fff',
+                                border: '1px solid #444',
+                                borderRadius: '4px',
+                                padding: '4px 8px'
+                            }}
+                        >
+                            <option value="none">None (Hidden)</option>
+                            <option value="read_only">Read Only</option>
+                            <option value="full_access">Full Access</option>
+                        </select>
+                    </div>
+                    {expandedNodes.has(node.nodeID) && renderTree(node.nodeID, depth + 1)}
+                </div>
+            );
+        });
     };
 
 
