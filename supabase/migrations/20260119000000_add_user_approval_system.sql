@@ -92,13 +92,13 @@ BEGIN
     END IF;
 
     -- Update the user's approved status
-    UPDATE public.user_roles
-    SET approved = true
-    WHERE user_id = target_user_id;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'User not found';
-    END IF;
+    -- FIXED: Use UPSERT to handle cases where user_role record might be missing
+    INSERT INTO public.user_roles (user_id, role, approved)
+    VALUES (target_user_id, 'user', true)
+    ON CONFLICT (user_id) 
+    DO UPDATE SET approved = true;
+    
+    -- No EXCEPTION needed as upsert succeeds
 END;
 $$;
 
@@ -117,8 +117,8 @@ AS $$
 BEGIN
     -- Check if the calling user is an admin
     IF NOT EXISTS (
-        SELECT 1 FROM public.user_roles 
-        WHERE user_id = auth.uid() AND role = 'admin'
+        SELECT 1 FROM public.user_roles ur
+        WHERE ur.user_id = auth.uid() AND ur.role = 'admin'
     ) THEN
         RAISE EXCEPTION 'Access Denied: User is not an admin';
     END IF;

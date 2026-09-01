@@ -792,6 +792,97 @@ def process_query():
 
     return Response(stream_with_context(generate_full_process_response()), mimetype='text/event-stream')
 
+@notebooklm_bp.route('/login_browser', methods=['POST'])
+def launch_browser_for_login():
+    """
+    Spawns a Chrome instance and navigates to NotebookLM for manual VNC login.
+    Does not wait for login to complete; just opens the window.
+    """
+    logger.info("Launcher: Opening browser for manual VNC login...")
+    global browser_instance
+    with browser_lock:
+        try:
+            # 1. Initialize if needed
+            if not browser_instance:
+                success, error_msg = initialize_browser()
+                if not success:
+                    return jsonify({"status": "error", "error": f"Failed to init browser: {error_msg}"}), 500
+            
+            # 2. Navigate to Google
+            browser_instance.get("https://notebooklm.google.com/")
+            logger.info("Launcher: Navigated to NotebookLM login page.")
+            
+            return jsonify({
+                "status": "success", 
+                "message": "Browser launched. Please check VNC."
+            })
+            
+        except Exception as e:
+            logger.error(f"Launcher failed: {e}")
+            return jsonify({"status": "error", "error": str(e)}), 500
+
+
+
+@notebooklm_bp.route('/sync_auth', methods=['POST'])
+def sync_auth_from_selenium():
+    """
+    Extracts cookies from the Selenium browser session and saves them
+    in the NLM CLI profile format for use by generate_artifact.
+    """
+    logger.info("SyncAuth: Extracting cookies from Selenium...")
+    global browser_instance
+    
+    with browser_lock:
+        try:
+            if not browser_instance:
+                return jsonify({"status": "error", "error": "No browser session available. Please log in via VNC first."}), 400
+            
+            # Check if we're on a NotebookLM page (authenticated)
+            current_url = browser_instance.current_url
+            if 'accounts.google.com' in current_url or 'signin' in current_url.lower():
+                return jsonify({"status": "error", "error": "Browser is on login page. Please complete login in VNC."}), 400
+            
+            # Extract all cookies from the browser
+            cookies = browser_instance.get_cookies()
+            logger.info(f"SyncAuth: Extracted {len(cookies)} cookies")
+            
+            # Format cookies as dict {name: value} - this is what NLM CLI expects
+            cookies_dict = {c['name']: c['value'] for c in cookies}
+            
+            # NLM CLI profile directory (mounted from host)
+            # CLI expects: ~/.local/share/nlm/profiles/<profile_name>/cookies.json
+            nlm_profile_dir = os.path.expanduser("~/.local/share/nlm/profiles/default")
+            os.makedirs(nlm_profile_dir, exist_ok=True)
+            
+            # Save cookies.json - just the cookies dict (notebooklm-cli format)
+            cookies_path = os.path.join(nlm_profile_dir, "cookies.json")
+            with open(cookies_path, 'w') as f:
+                json.dump(cookies_dict, f, indent=2)
+            
+            # Also create metadata.json with profile info
+            from datetime import datetime
+            metadata = {
+                "name": "default",
+                "email": None,
+                "last_validated": datetime.now().isoformat()
+            }
+            metadata_path = os.path.join(nlm_profile_dir, "metadata.json")
+            with open(metadata_path, 'w') as f:
+                json.dump(metadata, f, indent=2)
+            
+            logger.info(f"SyncAuth: Saved cookies to {cookies_path} with {len(cookies_dict)} cookies")
+            
+            return jsonify({
+                "status": "success",
+                "message": f"Synced {len(cookies_dict)} cookies to NLM CLI profile",
+                "profile_path": cookies_path
+            })
+            
+        except Exception as e:
+            logger.error(f"SyncAuth failed: {e}")
+            return jsonify({"status": "error", "error": str(e)}), 500
+
+
 @notebooklm_bp.route('/status', methods=['GET'])
 def get_status():
     """Endpoint 2: Checks the status of the browser instance."""

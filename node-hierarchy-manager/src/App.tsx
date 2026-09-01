@@ -8,10 +8,11 @@ import { TagMaintenanceModal } from './components/TagMaintenanceModal'
 import { ClassificationModal } from './components/ClassificationModal'
 import { TagFilterModal } from './components/TagFilterModal'
 import bannerImage from './assets/tulkah-banner.png'
+
 import { NodeService } from './services/NodeService'
 import { AuthService } from './services/AuthService'
 import type { DocumentNode } from './types'
-import { supabase } from './lib/supabase'
+import { supabase, getCurrentSession } from './lib/supabase'
 import type { Session } from '@supabase/supabase-js'
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
 
   // App State
+
   const [nodes, setNodes] = useState<DocumentNode[]>([]);
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false); // Node loading
@@ -110,8 +112,10 @@ function App() {
         return initialExpanded;
       });
 
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+    } catch (err: any) {
+      const errorMsg = err?.message || (typeof err === 'string' ? err : 'Failed to load document nodes');
+      console.error('[App] loadNodes error:', err);
+      setError(errorMsg);
     } finally {
       setLoading(false);
       setIsInitialized(true);
@@ -120,42 +124,32 @@ function App() {
 
   // Auth Effect
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+    getCurrentSession().then((sess) => {
+      if (sess) {
+        setSession(sess as Session);
+        localStorage.setItem('app_user_session', JSON.stringify(sess));
+        checkAdminStatus();
+      }
       setAuthLoading(false);
-      if (session) checkAdminStatus();
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session);
-      if (event === 'SIGNED_IN') {
-        // APPROVAL CHECK TEMPORARILY DISABLED
-        // Check if user is approved (for both OAuth and email/password)
-        // if (session?.user) {
-        //   const { data: roleData, error: roleError } = await supabase
-        //     .from('user_roles')
-        //     .select('approved')
-        //     .eq('user_id', session.user.id)
-        //     .single();
-
-        //   if (roleError || !roleData?.approved) {
-        //     // User not approved - sign them out
-        //     await supabase.auth.signOut();
-        //     // Note: The Auth component will handle showing the approval message
-        //     return;
-        //   }
-        // }
+    } = supabase.auth.onAuthStateChange(async (event, sess) => {
+      if (sess) {
+        setSession(sess);
+        localStorage.setItem('app_user_session', JSON.stringify(sess));
         checkAdminStatus();
-      }
-      if (event === 'SIGNED_OUT') {
-        // Clear local storage on sign out
-        localStorage.removeItem('hierarchy_nodes');
-        localStorage.removeItem('hierarchy_expanded');
-        setNodes([]);
-        setExpandedNodeIds(new Set());
-        setIsAdmin(false);
+      } else if (event === 'SIGNED_OUT') {
+        const stored = localStorage.getItem('app_user_session');
+        if (!stored) {
+          localStorage.removeItem('hierarchy_nodes');
+          localStorage.removeItem('hierarchy_expanded');
+          setNodes([]);
+          setExpandedNodeIds(new Set());
+          setIsAdmin(false);
+          setSession(null);
+        }
       }
     });
 
@@ -349,7 +343,15 @@ function App() {
           gap: '0.5rem'
         }}>
           <button
-            onClick={() => supabase.auth.signOut()}
+            onClick={async () => {
+              localStorage.removeItem('app_user_session');
+              localStorage.removeItem('sb-ryeoceystuqrdynbtsvt-auth-token');
+              localStorage.removeItem('hierarchy_nodes');
+              localStorage.removeItem('hierarchy_expanded');
+              setSession(null);
+              setIsAdmin(false);
+              await supabase.auth.signOut().catch(() => {});
+            }}
             style={{
               padding: '0.5rem 1rem',
               fontSize: '0.8rem',
@@ -463,7 +465,7 @@ function App() {
             marginTop: '0.25rem',
             textShadow: '0 1px 2px rgba(0,0,0,0.5)'
           }}>
-            {session.user.email}
+            {session?.user?.email || 'Admin User'}
           </div>
         </div>
         <img
@@ -491,11 +493,13 @@ function App() {
         onSave={handleSaveHierarchy}
         isSaving={isSaving}
         showSaveMessage={showSaveMessage}
+        isAdmin={isAdmin}
       />
 
       <AdminModal
         isOpen={showAdmin}
         onClose={() => setShowAdmin(false)}
+        nodes={nodes}
       />
       <UploadModal
         isOpen={showUpload}

@@ -66,7 +66,7 @@ export const NodeItem: React.FC<NodeItemProps> = ({ node, isExpanded, expandedNo
     };
 
     const hasChildren = node.childNodes && node.childNodes.length > 0;
-    const canEdit = node.access_level !== 'read_only';
+    const canEdit = node.access_level === 'full_access';
 
     return (
         <div

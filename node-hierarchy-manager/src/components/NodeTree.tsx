@@ -6,7 +6,7 @@ import { NodeDetailsModal } from './NodeDetailsModal';
 import { CurationModal } from './CurationModal';
 import HierarchyCreationModal from './HierarchyCreationModal';
 import { ApiKeyService } from '../services/ApiKeyService';
-import { supabase } from '../lib/supabase';
+import { getCurrentUser } from '../lib/supabase';
 
 import { ThemeToggle } from './ThemeToggle';
 
@@ -24,6 +24,7 @@ interface NodeTreeProps {
     onSave: () => void;
     isSaving: boolean;
     showSaveMessage: boolean;
+    isAdmin?: boolean;
 }
 
 export const NodeTree: React.FC<NodeTreeProps> = ({
@@ -39,7 +40,8 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
     onNodeDeleted,
     onSave,
     isSaving,
-    showSaveMessage
+    showSaveMessage,
+    isAdmin = false
 }) => {
     const [selectedNode, setSelectedNode] = useState<DocumentNode | null>(null);
     const [draggedNodeId, setDraggedNodeId] = useState<number | null>(null);
@@ -47,17 +49,56 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
     const [hierarchyParentId, setHierarchyParentId] = useState<number | null>(null);
     const [curatingNode, setCuratingNode] = useState<DocumentNode | null>(null);
     const [geminiApiKey, setGeminiApiKey] = useState('');
+    const [showActions, setShowActions] = useState(false);
 
-    const buildTree = (flatNodes: DocumentNode[]): NodeTreeItem[] => {
+    // Sync selectedNode when nodes prop changes
+    React.useEffect(() => {
+        if (selectedNode) {
+            const matches = (nodes || []).filter(n => n.nodeID === selectedNode.nodeID);
+            if (matches.length > 0) {
+                const fresh = matches[0];
+                if (fresh.modified_at !== selectedNode.modified_at || fresh.text !== selectedNode.text || fresh.url !== selectedNode.url) {
+                    console.log("[NodeTree] Syncing selectedNode with fresh data");
+                    setSelectedNode(fresh);
+                }
+            }
+        }
+    }, [nodes, selectedNode]);
+
+    // Fetch Gemini API key on mount
+    React.useEffect(() => {
+        const fetchApiKey = async () => {
+            const user = await getCurrentUser();
+            if (user) {
+                try {
+                    const apiKeys = await ApiKeyService.fetchApiKeys(user.id);
+                    if (apiKeys.gemini) {
+                        setGeminiApiKey(apiKeys.gemini);
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch API key:', err);
+                }
+            }
+        };
+        fetchApiKey();
+    }, []);
+
+    const buildTree = (flatNodes: DocumentNode[] = []): NodeTreeItem[] => {
+        const safeFlatNodes = Array.isArray(flatNodes) ? flatNodes : [];
         const nodeMap = new Map<number, NodeTreeItem>();
         const roots: NodeTreeItem[] = [];
 
-        flatNodes.forEach(node => {
-            nodeMap.set(node.nodeID, { ...node, childNodes: [] });
+        safeFlatNodes.forEach(node => {
+            if (node && typeof node.nodeID === 'number') {
+                nodeMap.set(node.nodeID, { ...node, childNodes: [] });
+            }
         });
 
-        flatNodes.forEach(node => {
-            const treeNode = nodeMap.get(node.nodeID)!;
+        safeFlatNodes.forEach(node => {
+            if (!node || typeof node.nodeID !== 'number') return;
+            const treeNode = nodeMap.get(node.nodeID);
+            if (!treeNode) return;
+
             if (node.parentNodeID === null || node.parentNodeID === 0 || node.parentNodeID === -1) {
                 roots.push(treeNode);
             } else {
@@ -83,24 +124,6 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
 
         return roots;
     };
-
-    // Fetch Gemini API key on mount
-    React.useEffect(() => {
-        const fetchApiKey = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                try {
-                    const apiKeys = await ApiKeyService.fetchApiKeys(user.id);
-                    if (apiKeys.gemini) {
-                        setGeminiApiKey(apiKeys.gemini);
-                    }
-                } catch (err) {
-                    console.error('Failed to fetch API key:', err);
-                }
-            }
-        };
-        fetchApiKey();
-    }, []);
 
     const handleCreateHierarchy = (parentId: number) => {
         setHierarchyParentId(parentId);
@@ -272,31 +295,12 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
         }
     };
 
-    const [showActions, setShowActions] = useState(false);
-
     const treeData = buildTree(nodes);
 
-    // Removed early return for loading to prevent unmounting children (modals)
     if (error) {
         console.log("[NodeTree] Error:", error);
-        return <div style={{ color: 'red' }}>Error: {error}</div>;
+        return <div style={{ color: 'red', padding: '2rem' }}>Error: {error}</div>;
     }
-
-    // Sync selectedNode when nodes prop changes (preserve details view after background refresh)
-    React.useEffect(() => {
-        if (selectedNode) {
-            const matches = nodes.filter(n => n.nodeID === selectedNode.nodeID);
-            if (matches.length > 0) {
-                // Check if object has changed meaningfully before updating state
-                // This prevents some unnecessary re-renders
-                const fresh = matches[0];
-                if (fresh.modified_at !== selectedNode.modified_at || fresh.text !== selectedNode.text || fresh.url !== selectedNode.url) {
-                    console.log("[NodeTree] Syncing selectedNode with fresh data");
-                    setSelectedNode(fresh);
-                }
-            }
-        }
-    }, [nodes]);
 
     return (
         <div className="tree-container" style={{ position: 'relative' }}>
@@ -325,6 +329,24 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                 <h2 style={{ margin: 0 }}>Expert quality assured Knowledge</h2>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     {showSaveMessage && <span style={{ color: '#4ade80', fontWeight: 'bold', animation: 'fadeIn 0.3s ease-in-out' }}>Hierarchy Saved</span>}
+                    {isAdmin && (
+                        <button
+                            onClick={() => handleAddNode(null)}
+                            disabled={loading}
+                            style={{
+                                backgroundColor: '#2563eb',
+                                color: '#fff',
+                                border: 'none',
+                                fontWeight: '600',
+                                borderRadius: '4px',
+                                padding: '0.5rem 1rem',
+                                cursor: 'pointer'
+                            }}
+                            title="Add a top-level root node"
+                        >
+                            ➕ Add Root Node
+                        </button>
+                    )}
                     <button onClick={onSave} disabled={isSaving || loading}>
                         {isSaving ? 'Saving...' : 'Save View'}
                     </button>
@@ -355,7 +377,39 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
             </div>
 
             {treeData.length === 0 ? (
-                <div style={{ color: '#6b7280', fontStyle: 'italic' }}>No nodes found.</div>
+                <div style={{
+                    padding: '3rem 2rem',
+                    textAlign: 'center',
+                    backgroundColor: 'var(--color-bg-secondary)',
+                    borderRadius: '8px',
+                    border: '1px dashed var(--color-border)',
+                    marginTop: '1rem'
+                }}>
+                    <p style={{ color: '#9ca3af', marginBottom: '1.5rem', fontSize: '1.1rem' }}>
+                        No hierarchy nodes exist yet.
+                    </p>
+                    {isAdmin && (
+                        <button
+                            onClick={() => handleAddNode(null)}
+                            style={{
+                                padding: '0.75rem 1.5rem',
+                                backgroundColor: '#2563eb',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '1rem',
+                                fontWeight: '600',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                boxShadow: '0 2px 4px rgba(37, 99, 235, 0.3)'
+                            }}
+                        >
+                            ➕ Create Top Node
+                        </button>
+                    )}
+                </div>
             ) : (
                 treeData.map(node => (
                     <NodeItem

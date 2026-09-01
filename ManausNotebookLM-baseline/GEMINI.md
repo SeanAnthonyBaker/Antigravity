@@ -83,7 +83,7 @@ Uses the `nlm` command-line tool for high-speed artifact generation.
 ### Auth "No Cached Tokens"
 *   **Symptom:** MCP endpoints return 401 or "No cached tokens found".
 *   **Fix:** The NLM CLI cannot find authentication profile.
-    1.  Ensure NLM CLI is installed: `uv tool install notebooklm-mcp-server`
+    1.  Ensure NLM CLI is installed: `uv tool install --force notebooklm-mcp-cli`
     2.  Authenticate via CLI: `nlm login` (or use VNC method and ensure auth profile is created)
     3.  Verify auth file exists: Check `~/.local/share/nlm/` for profile data
     4.  Restart Docker to ensure volume mount picks up new auth: `docker-compose restart app`
@@ -91,7 +91,7 @@ Uses the `nlm` command-line tool for high-speed artifact generation.
 ### NLM CLI Not Found
 *   **Symptom:** `NLMClientError: Command 'nlm' not found` or subprocess errors
 *   **Fix:** Install the NLM CLI tool on the **host machine** (not inside Docker):
-    1.  `uv tool install notebooklm-mcp-server`
+    1.  `uv tool install --force notebooklm-mcp-cli`
     2.  Verify installation: `nlm --version`
     3.  Authenticate: `nlm login`
     4.  Restart Docker: `docker-compose restart app`

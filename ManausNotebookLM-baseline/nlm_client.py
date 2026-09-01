@@ -233,11 +233,10 @@ class NLMClient:
         description: str = "Data Table"
     ) -> Dict[str, Any]:
         """Create a data table"""
-        args = ['data-table', 'create', notebook_id]
+        args = ['data-table', 'create', notebook_id, description]  # description is positional
         
         if source_ids:
             args.extend(['--source-ids', ','.join(source_ids)])
-        args.extend(['--description', description])
         args.append('--confirm')
         
         return run_nlm_command(args, self.profile)

@@ -158,6 +158,55 @@ def health_check():
             "error": str(e)
         }), 500
 
+    except Exception as e:
+        logger.exception(f"Error generating {artifact_type}")
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+# Load schema on module level
+SCHEMA_PATH = os.path.join(BASE_DIR, 'ManausNotebookLM-baseline', 'artifact_schema.json')
+ARTIFACT_SCHEMA = None
+
+def load_schema():
+    global ARTIFACT_SCHEMA
+    try:
+        if os.path.exists(SCHEMA_PATH):
+            with open(SCHEMA_PATH, 'r') as f:
+                ARTIFACT_SCHEMA = json.load(f)
+            logger.info(f"Loaded artifact schema from {SCHEMA_PATH}")
+        else:
+            logger.warning(f"Artifact schema not found at {SCHEMA_PATH}")
+    except Exception as e:
+        logger.error(f"Failed to load artifact schema: {e}")
+
+# Initial load
+load_schema()
+
+def validate_artifact_params(artifact_type, params):
+    """Validates parameters against the loaded JSON schema."""
+    if not ARTIFACT_SCHEMA:
+        load_schema()
+        if not ARTIFACT_SCHEMA:
+            return None # Skip validation if schema missing
+
+    type_def = ARTIFACT_SCHEMA.get('definitions', {}).get('artifact_types', {}).get(artifact_type)
+    if not type_def:
+        return f"Unknown artifact type: {artifact_type}"
+    
+    schema_params = type_def.get('params', {})
+    
+    # Check required params
+    for param_name, config in schema_params.items():
+        if config.get('required') and param_name not in params:
+             return f"Missing required parameter for {artifact_type}: '{param_name}'"
+        
+        # Check enums if present and value is provided
+        if param_name in params:
+            allowed = config.get('enum')
+            if allowed and params[param_name] not in allowed:
+                return f"Invalid value for '{param_name}'. Allowed: {allowed}, Got: '{params[param_name]}'"
+
+    return None
+
 @mcp_bp.route('/generate_artifact', methods=['POST'])
 def generate_artifact():
     """Generates an artifact using the direct Python client."""
@@ -167,13 +216,21 @@ def generate_artifact():
         
     notebook_id = data.get('notebook_id')
     artifact_type = data.get('artifact_type')
-    prompt = data.get('prompt', '')
+    
+    # Extract known optional parameters to pass explicitly or via **kwargs
+    # We maintain 'prompt' for backward compatibility but map it to specific fields below
+    prompt = data.get('prompt', '') 
     title = data.get('title', 'Generated Artifact')
-    user_id = data.get('user_id')  # Supabase user UUID
-    node_id = data.get('node_id')  # Document hierarchy node ID
+    user_id = data.get('user_id')
+    node_id = data.get('node_id')
     
     if not notebook_id or not artifact_type:
         return jsonify({"status": "error", "error": "Missing notebook_id or artifact_type"}), 400
+
+    # VALIDATION
+    validation_error = validate_artifact_params(artifact_type, data)
+    if validation_error:
+        return jsonify({"status": "error", "error": validation_error}), 400
 
     logger.info(f"Generating {artifact_type} for notebook {notebook_id}...")
 
@@ -187,8 +244,6 @@ def generate_artifact():
             return jsonify({"status": "error", "error": f"Failed to initialize NLM client: {e}"}), 500
         
         # Get source IDs (required for most operations)
-        # For simplicity, we'll use ALL sources in the notebook
-        # In a future version, we could allow selecting specific sources
         sources = client.get_notebook_sources_with_types(notebook_id)
         source_ids = [s['id'] for s in sources if s.get('id')]
         
@@ -198,43 +253,73 @@ def generate_artifact():
         result = None
         final_url = f"https://notebooklm.google.com/notebook/{notebook_id}"
         
+        # Dispatch based on type
         if artifact_type == 'mind_map':
-            # 2-step process for Mind Map
-            gen_res = client.generate_mind_map(source_ids)
-            if gen_res and gen_res.get('mind_map_json'):
-                result = client.save_mind_map(
-                    notebook_id, 
-                    gen_res['mind_map_json'], 
-                    source_ids, 
-                    title=title
-                )
-            else:
-                raise Exception("Failed to generate mind map structure")
+            # Mind map: just call save_mind_map directly (generate_mind_map is a placeholder)
+            result = client.save_mind_map(
+                notebook_id, 
+                {},  # mind_map_json not actually used by CLI
+                source_ids, 
+                title=title
+            )
                 
         elif artifact_type == 'audio':
-            result = client.create_audio_overview(notebook_id, source_ids, focus_prompt=prompt)
+            result = client.create_audio_overview(
+                notebook_id, 
+                source_ids, 
+                focus_prompt=data.get('focus') or prompt,
+                format=data.get('format', 'deep_dive'),
+                length=data.get('length', 'default'),
+                language=data.get('language', 'en')
+            )
             
         elif artifact_type == 'video':
-            result = client.create_video_overview(notebook_id, source_ids, focus_prompt=prompt)
+            result = client.create_video_overview(
+                notebook_id, 
+                source_ids, 
+                focus_prompt=data.get('focus') or prompt
+            )
             
         elif artifact_type == 'report':
-            # Map simplified types to specific report formats if needed, or just use default
-            result = client.create_report(notebook_id, source_ids, custom_prompt=prompt, report_format="Briefing Doc" if not prompt else "Create Your Own")
+            result = client.create_report(
+                notebook_id, 
+                source_ids, 
+                custom_prompt=data.get('prompt') or prompt, # Maps to 'prompt' in schema
+                report_format=data.get('format', 'Briefing Doc')
+            )
             
         elif artifact_type == 'flashcards':
-            result = client.create_flashcards(notebook_id, source_ids)
+            result = client.create_flashcards(
+                notebook_id, 
+                source_ids
+            )
             
         elif artifact_type == 'quiz':
-            result = client.create_quiz(notebook_id, source_ids)
+            result = client.create_quiz(
+                notebook_id, 
+                source_ids
+            )
             
         elif artifact_type == 'infographic':
-            result = client.create_infographic(notebook_id, source_ids, focus_prompt=prompt)
+            result = client.create_infographic(
+                notebook_id, 
+                source_ids, 
+                focus_prompt=data.get('focus') or prompt
+            )
             
         elif artifact_type == 'slide_deck':
-            result = client.create_slide_deck(notebook_id, source_ids, focus_prompt=prompt)
+            result = client.create_slide_deck(
+                notebook_id, 
+                source_ids, 
+                focus_prompt=data.get('focus') or prompt
+            )
             
         elif artifact_type == 'data_table':
-            result = client.create_data_table(notebook_id, source_ids, description=prompt or "Data Table")
+            result = client.create_data_table(
+                notebook_id, 
+                source_ids, 
+                description=data.get('description') or prompt
+            )
             
         else:
             return jsonify({"status": "error", "error": f"Unknown artifact type: {artifact_type}"}), 400
