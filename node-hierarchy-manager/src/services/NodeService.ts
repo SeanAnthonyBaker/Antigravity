@@ -132,12 +132,37 @@ export const NodeService = {
     },
 
     async deleteNode(nodeID: number) {
-        const { error } = await supabase
-            .from('documents')
-            .delete()
-            .eq('nodeID', nodeID);
+        // Try RPC first for recursive database delete
+        const { error: rpcError } = await supabase.rpc('delete_node', { node_id: nodeID });
+        
+        if (rpcError) {
+            console.warn('RPC delete_node failed, falling back to recursive query delete:', rpcError);
+            // Fallback: fetch all descendant IDs and delete them in one batch
+            const { data: allNodes, error: fetchError } = await supabase
+                .from('documents')
+                .select('nodeID, parentNodeID');
 
-        if (error) throw error;
+            if (fetchError) throw fetchError;
+
+            const idsToDelete = new Set<number>([nodeID]);
+            let added = true;
+            while (added) {
+                added = false;
+                allNodes?.forEach(n => {
+                    if (n.parentNodeID && idsToDelete.has(n.parentNodeID) && !idsToDelete.has(n.nodeID)) {
+                        idsToDelete.add(n.nodeID);
+                        added = true;
+                    }
+                });
+            }
+
+            const { error: delError } = await supabase
+                .from('documents')
+                .delete()
+                .in('nodeID', Array.from(idsToDelete));
+
+            if (delError) throw delError;
+        }
     },
 
     async bulkUpdateNodes(nodes: Partial<DocumentNode>[]) {

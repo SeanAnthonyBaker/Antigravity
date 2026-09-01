@@ -60,25 +60,8 @@ function App() {
         setLoading(true);
       }
 
-      if (!force && tagsToUse.size === 0) {
-        const savedNodes = localStorage.getItem('hierarchy_nodes');
-        const savedExpanded = localStorage.getItem('hierarchy_expanded');
-
-        if (savedNodes) {
-          try {
-            setNodes(JSON.parse(savedNodes));
-            if (savedExpanded) {
-              setExpandedNodeIds(new Set(JSON.parse(savedExpanded)));
-            } else {
-              setExpandedNodeIds(new Set());
-            }
-            if (!isSilent) setLoading(false);
-            return;
-          } catch (e) {
-            console.error('Failed to parse saved state:', e);
-          }
-        }
-      }
+      // Clean up legacy cached nodes from localStorage to avoid stale state
+      localStorage.removeItem('hierarchy_nodes');
 
       let data: DocumentNode[];
       if (tagsToUse.size > 0) {
@@ -89,14 +72,43 @@ function App() {
 
       setNodes(data);
 
-      // Infer expansion state
-      const expanded = new Set<number>();
-      data.forEach(node => {
-        if (node.visible && node.parentNodeID) {
-          expanded.add(node.parentNodeID);
+      // Preserve existing expanded node state across reloads/refreshes
+      setExpandedNodeIds(prev => {
+        if (prev.size > 0) {
+          const validIds = new Set(data.map(n => n.nodeID));
+          const preserved = new Set<number>();
+          prev.forEach(id => {
+            if (validIds.has(id)) preserved.add(id);
+          });
+          return preserved;
         }
+
+        const savedExpanded = localStorage.getItem('hierarchy_expanded');
+        if (savedExpanded) {
+          try {
+            const parsed = JSON.parse(savedExpanded);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              const validIds = new Set(data.map(n => n.nodeID));
+              const preserved = new Set<number>();
+              parsed.forEach((id: number) => {
+                if (validIds.has(id)) preserved.add(id);
+              });
+              return preserved;
+            }
+          } catch (e) {
+            console.error('Failed to parse saved expanded state:', e);
+          }
+        }
+
+        // Default initial fallback only
+        const initialExpanded = new Set<number>();
+        data.forEach(node => {
+          if (node.visible && node.parentNodeID && node.parentNodeID > 0) {
+            initialExpanded.add(node.parentNodeID);
+          }
+        });
+        return initialExpanded;
       });
-      setExpandedNodeIds(expanded);
 
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -158,14 +170,7 @@ function App() {
     }
   }, [session?.user?.id, loadNodes]);
 
-  // Save state to local storage whenever it changes
-  useEffect(() => {
-    // Only save if NO filter is active
-    if (isInitialized && nodes.length > 0 && activeFilterTagIds.size === 0) {
-      localStorage.setItem('hierarchy_nodes', JSON.stringify(nodes));
-    }
-  }, [nodes, isInitialized, activeFilterTagIds]);
-
+  // Save expansion state to local storage whenever it changes
   useEffect(() => {
     if (isInitialized && activeFilterTagIds.size === 0) {
       localStorage.setItem('hierarchy_expanded', JSON.stringify(Array.from(expandedNodeIds)));
@@ -194,6 +199,16 @@ function App() {
   const handleNodesUpdated = (updatedNodes: DocumentNode[]) => {
     const updateMap = new Map(updatedNodes.map(node => [node.nodeID, node]));
     setNodes(prev => prev.map(node => updateMap.get(node.nodeID) || node));
+  };
+
+  const handleNodeDeleted = (deletedIds: number[]) => {
+    const deletedSet = new Set(deletedIds);
+    setNodes(prev => prev.filter(node => !deletedSet.has(node.nodeID)));
+    setExpandedNodeIds(prev => {
+      const next = new Set(prev);
+      deletedIds.forEach(id => next.delete(id));
+      return next;
+    });
   };
 
   const handleToggleNode = (nodeId: number) => {
@@ -472,6 +487,7 @@ function App() {
         onNodeAdded={handleNodeAdded}
         onNodeUpdated={handleNodeUpdated}
         onNodesUpdated={handleNodesUpdated}
+        onNodeDeleted={handleNodeDeleted}
         onSave={handleSaveHierarchy}
         isSaving={isSaving}
         showSaveMessage={showSaveMessage}

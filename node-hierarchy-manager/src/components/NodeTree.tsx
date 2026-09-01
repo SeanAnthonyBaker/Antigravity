@@ -20,6 +20,7 @@ interface NodeTreeProps {
     onNodeAdded: (newNode: DocumentNode) => void;
     onNodeUpdated: (updatedNode: DocumentNode) => void;
     onNodesUpdated: (updatedNodes: DocumentNode[]) => void;
+    onNodeDeleted?: (deletedIds: number[]) => void;
     onSave: () => void;
     isSaving: boolean;
     showSaveMessage: boolean;
@@ -35,6 +36,7 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
     onNodeAdded,
     onNodeUpdated,
     onNodesUpdated,
+    onNodeDeleted,
     onSave,
     isSaving,
     showSaveMessage
@@ -146,27 +148,34 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
         const nodeToDelete = nodes.find(n => n.nodeID === nodeId);
         if (!nodeToDelete) return;
 
-        // Count children to warn user about cascade delete
-        const countDescendants = (parentId: number): number => {
+        // Collect all descendant IDs for complete cascade removal
+        const getDescendantIds = (parentId: number): number[] => {
             const children = nodes.filter(n => n.parentNodeID === parentId);
-            return children.reduce((count, child) => {
-                return count + 1 + countDescendants(child.nodeID);
-            }, 0);
+            const ids: number[] = [];
+            children.forEach(child => {
+                ids.push(child.nodeID);
+                ids.push(...getDescendantIds(child.nodeID));
+            });
+            return ids;
         };
 
-        const descendantCount = countDescendants(nodeId);
+        const descendantIds = getDescendantIds(nodeId);
+        const allDeletedIds = [nodeId, ...descendantIds];
 
         let confirmMessage = `Are you sure you want to delete "${nodeToDelete.title}"?`;
-        if (descendantCount > 0) {
-            confirmMessage += `\n\nThis will also delete ${descendantCount} descendant node${descendantCount > 1 ? 's' : ''}.`;
+        if (descendantIds.length > 0) {
+            confirmMessage += `\n\nThis will also delete ${descendantIds.length} descendant node${descendantIds.length > 1 ? 's' : ''}.`;
         }
 
         if (!confirm(confirmMessage)) return;
 
         try {
             await NodeService.deleteNode(nodeId);
-            // Refresh to sync with cascade deletes from database
-            onRefresh();
+            if (onNodeDeleted) {
+                onNodeDeleted(allDeletedIds);
+            }
+            // Silent refresh to sync with database without resetting UI state or expanding nodes
+            onRefresh(true);
         } catch (err: any) {
             alert('Failed to delete node: ' + err.message);
         }
