@@ -12,7 +12,7 @@ import bannerImage from './assets/tulkah-banner.png'
 import { NodeService } from './services/NodeService'
 import { AuthService } from './services/AuthService'
 import type { DocumentNode } from './types'
-import { supabase } from './lib/supabase'
+import { supabase, getCurrentSession } from './lib/supabase'
 import type { Session } from '@supabase/supabase-js'
 
 function App() {
@@ -62,24 +62,8 @@ function App() {
         setLoading(true);
       }
 
-      if (!force && tagsToUse.size === 0) {
-        const savedNodes = localStorage.getItem('hierarchy_nodes');
-        const savedExpanded = localStorage.getItem('hierarchy_expanded');
-
-        if (savedNodes) {
-          try {
-            setNodes(JSON.parse(savedNodes));
-            if (savedExpanded) {
-              setExpandedNodeIds(new Set(JSON.parse(savedExpanded)));
-            } else {
-              setExpandedNodeIds(new Set());
-            }
-            // Stale-while-revalidate: continue to fetch fresh data from server
-          } catch (e) {
-            console.error('Failed to parse saved state:', e);
-          }
-        }
-      }
+      // Clean up legacy cached nodes from localStorage to avoid stale state
+      localStorage.removeItem('hierarchy_nodes');
 
       let data: DocumentNode[];
       if (tagsToUse.size > 0) {
@@ -101,46 +85,51 @@ function App() {
         });
         setExpandedNodeIds(filterExpanded);
       } else {
-        // Normal hierarchy mode: PRESERVE existing expanded nodes
+        // Normal hierarchy mode: PRESERVE existing expanded nodes across reloads
         setExpandedNodeIds(prev => {
           if (prev && prev.size > 0) {
-            // Keep existing expanded nodes, retaining valid IDs
             const validIds = new Set(data.map(n => n.nodeID));
-            const retained = new Set<number>();
+            const preserved = new Set<number>();
             prev.forEach(id => {
               if (validIds.has(id)) {
-                retained.add(id);
+                preserved.add(id);
               }
             });
-            return retained.size > 0 ? retained : prev;
+            return preserved.size > 0 ? preserved : prev;
           }
 
-          // Check if there is saved expansion state in localStorage
           const savedExpanded = localStorage.getItem('hierarchy_expanded');
           if (savedExpanded) {
             try {
               const parsed = JSON.parse(savedExpanded);
               if (Array.isArray(parsed) && parsed.length > 0) {
-                return new Set<number>(parsed);
+                const validIds = new Set(data.map(n => n.nodeID));
+                const preserved = new Set<number>();
+                parsed.forEach((id: number) => {
+                  if (validIds.has(id)) preserved.add(id);
+                });
+                return preserved;
               }
             } catch (e) {
               console.error('Failed to parse saved hierarchy_expanded:', e);
             }
           }
 
-          // Initial fallback only: Infer expansion state from visible nodes
-          const expanded = new Set<number>();
+          // Default initial fallback only
+          const initialExpanded = new Set<number>();
           data.forEach(node => {
-            if (node.visible && node.parentNodeID) {
-              expanded.add(node.parentNodeID);
+            if (node.visible && node.parentNodeID && node.parentNodeID > 0) {
+              initialExpanded.add(node.parentNodeID);
             }
           });
-          return expanded;
+          return initialExpanded;
         });
       }
 
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+    } catch (err: any) {
+      const errorMsg = err?.message || (typeof err === 'string' ? err : 'Failed to load document nodes');
+      console.error('[App] loadNodes error:', err);
+      setError(errorMsg);
     } finally {
       setLoading(false);
       setIsInitialized(true);
@@ -149,42 +138,32 @@ function App() {
 
   // Auth Effect
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+    getCurrentSession().then((sess) => {
+      if (sess) {
+        setSession(sess as Session);
+        localStorage.setItem('app_user_session', JSON.stringify(sess));
+        checkAdminStatus();
+      }
       setAuthLoading(false);
-      if (session) checkAdminStatus();
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session);
-      if (event === 'SIGNED_IN') {
-        // APPROVAL CHECK TEMPORARILY DISABLED
-        // Check if user is approved (for both OAuth and email/password)
-        // if (session?.user) {
-        //   const { data: roleData, error: roleError } = await supabase
-        //     .from('user_roles')
-        //     .select('approved')
-        //     .eq('user_id', session.user.id)
-        //     .single();
-
-        //   if (roleError || !roleData?.approved) {
-        //     // User not approved - sign them out
-        //     await supabase.auth.signOut();
-        //     // Note: The Auth component will handle showing the approval message
-        //     return;
-        //   }
-        // }
+    } = supabase.auth.onAuthStateChange(async (event, sess) => {
+      if (sess) {
+        setSession(sess);
+        localStorage.setItem('app_user_session', JSON.stringify(sess));
         checkAdminStatus();
-      }
-      if (event === 'SIGNED_OUT') {
-        // Clear local storage on sign out
-        localStorage.removeItem('hierarchy_nodes');
-        localStorage.removeItem('hierarchy_expanded');
-        setNodes([]);
-        setExpandedNodeIds(new Set());
-        setIsAdmin(false);
+      } else if (event === 'SIGNED_OUT') {
+        const stored = localStorage.getItem('app_user_session');
+        if (!stored) {
+          localStorage.removeItem('hierarchy_nodes');
+          localStorage.removeItem('hierarchy_expanded');
+          setNodes([]);
+          setExpandedNodeIds(new Set());
+          setIsAdmin(false);
+          setSession(null);
+        }
       }
     });
 
@@ -199,14 +178,7 @@ function App() {
     }
   }, [session?.user?.id, loadNodes]);
 
-  // Save state to local storage whenever it changes
-  useEffect(() => {
-    // Only save if NO filter is active
-    if (isInitialized && nodes.length > 0 && activeFilterTagIds.size === 0) {
-      localStorage.setItem('hierarchy_nodes', JSON.stringify(nodes));
-    }
-  }, [nodes, isInitialized, activeFilterTagIds]);
-
+  // Save expansion state to local storage whenever it changes
   useEffect(() => {
     if (isInitialized && activeFilterTagIds.size === 0) {
       localStorage.setItem('hierarchy_expanded', JSON.stringify(Array.from(expandedNodeIds)));
@@ -249,6 +221,16 @@ function App() {
   const handleNodesUpdated = (updatedNodes: DocumentNode[]) => {
     const updateMap = new Map(updatedNodes.map(node => [node.nodeID, node]));
     setNodes(prev => prev.map(node => updateMap.get(node.nodeID) || node));
+  };
+
+  const handleNodeDeleted = (deletedIds: number[]) => {
+    const deletedSet = new Set(deletedIds);
+    setNodes(prev => prev.filter(node => !deletedSet.has(node.nodeID)));
+    setExpandedNodeIds(prev => {
+      const next = new Set(prev);
+      deletedIds.forEach(id => next.delete(id));
+      return next;
+    });
   };
 
   const handleToggleNode = (nodeId: number) => {
@@ -389,7 +371,15 @@ function App() {
           gap: '0.5rem'
         }}>
           <button
-            onClick={() => supabase.auth.signOut()}
+            onClick={async () => {
+              localStorage.removeItem('app_user_session');
+              localStorage.removeItem('sb-ryeoceystuqrdynbtsvt-auth-token');
+              localStorage.removeItem('hierarchy_nodes');
+              localStorage.removeItem('hierarchy_expanded');
+              setSession(null);
+              setIsAdmin(false);
+              await supabase.auth.signOut().catch(() => {});
+            }}
             style={{
               padding: '0.5rem 1rem',
               fontSize: '0.8rem',
@@ -503,7 +493,7 @@ function App() {
             marginTop: '0.25rem',
             textShadow: '0 1px 2px rgba(0,0,0,0.5)'
           }}>
-            {session.user.email}
+            {session?.user?.email || 'Admin User'}
           </div>
         </div>
         <img
@@ -527,9 +517,11 @@ function App() {
         onNodeAdded={handleNodeAdded}
         onNodeUpdated={handleNodeUpdated}
         onNodesUpdated={handleNodesUpdated}
+        onNodeDeleted={handleNodeDeleted}
         onSave={handleSaveHierarchy}
         isSaving={isSaving}
         showSaveMessage={showSaveMessage}
+        isAdmin={isAdmin}
       />
 
       <AdminModal
@@ -538,6 +530,7 @@ function App() {
           setShowAdmin(false);
           loadNodes(true);
         }}
+        nodes={nodes}
       />
       <UploadModal
         isOpen={showUpload}

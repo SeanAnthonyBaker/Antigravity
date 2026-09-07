@@ -8,9 +8,10 @@ import { buildTree, getAllDescendants } from '../utils/treeUtils';
 interface AdminModalProps {
     isOpen: boolean;
     onClose: () => void;
+    nodes?: DocumentNode[];
 }
 
-export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
+export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose, nodes: propNodes }) => {
     const [users, setUsers] = useState<UserProfile[]>([]);
     const [selectedUser, setSelectedUser] = useState<string>('');
     const [permissions, setPermissions] = useState<Map<number, AccessLevel>>(new Map());
@@ -29,7 +30,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
         if (isOpen) {
             loadInitialData();
         }
-    }, [isOpen]);
+    }, [isOpen, propNodes]);
 
     useEffect(() => {
         if (selectedUser) {
@@ -42,15 +43,21 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     const loadInitialData = async () => {
         setLoading(true);
         try {
-            const [usersData, nodesData] = await Promise.all([
-                AuthService.getAllUsers(),
-                NodeService.fetchNodes() // We need all nodes to assign permissions
-            ]);
+            const usersData = await AuthService.getAllUsers();
             setUsers(usersData);
-            setNodes(nodesData);
+            if (usersData.length > 0) {
+                setSelectedUser(prev => prev || usersData[0].id);
+            }
+
+            let targetNodes: DocumentNode[] = propNodes && propNodes.length > 0 ? propNodes : [];
+            if (targetNodes.length === 0) {
+                targetNodes = await NodeService.fetchNodes();
+            }
+
+            setNodes(targetNodes);
 
             // Initialize expanded nodes (Level 0 and 1 of the built tree)
-            const built = buildTree(nodesData);
+            const built = buildTree(targetNodes);
             const initialExpanded = new Set<number>();
             built.forEach(root => {
                 initialExpanded.add(root.nodeID);
@@ -61,7 +68,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                 }
             });
             setExpandedNodes(initialExpanded);
-
         } catch (err: unknown) {
             setError('Failed to load data: ' + (err instanceof Error ? err.message : 'Unknown error'));
         } finally {
@@ -105,6 +111,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
         const affectedNodeIds = affectedNodes.map(n => n.nodeID);
 
         try {
+            setError(null);
             if (level === 'none') {
                 await AuthService.bulkRemovePermissions(selectedUser, affectedNodeIds);
                 setPermissions(prev => {
@@ -125,6 +132,8 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                     return next;
                 });
             }
+            setSuccessMessage(`Updated access to "${level.replace('_', ' ')}" for ${affectedNodes.length} node(s)`);
+            setTimeout(() => setSuccessMessage(null), 3000);
         } catch (err: unknown) {
             setError('Failed to update permissions: ' + (err instanceof Error ? err.message : 'Unknown error'));
         }

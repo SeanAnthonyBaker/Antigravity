@@ -6,7 +6,7 @@ import { NodeDetailsModal } from './NodeDetailsModal';
 import { CurationModal } from './CurationModal';
 import HierarchyCreationModal from './HierarchyCreationModal';
 import { ApiKeyService } from '../services/ApiKeyService';
-import { supabase } from '../lib/supabase';
+import { getCurrentUser } from '../lib/supabase';
 
 import { ThemeToggle } from './ThemeToggle';
 import { ContextCanvas } from './ContextCanvas';
@@ -24,9 +24,11 @@ interface NodeTreeProps {
     onNodeAdded: (newNode: DocumentNode) => void;
     onNodeUpdated: (updatedNode: DocumentNode) => void;
     onNodesUpdated: (updatedNodes: DocumentNode[]) => void;
+    onNodeDeleted?: (deletedIds: number[]) => void;
     onSave: () => void;
     isSaving: boolean;
     showSaveMessage: boolean;
+    isAdmin?: boolean;
 }
 
 export const NodeTree: React.FC<NodeTreeProps> = ({
@@ -39,9 +41,11 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
     onNodeAdded,
     onNodeUpdated,
     onNodesUpdated,
+    onNodeDeleted,
     onSave,
     isSaving,
-    showSaveMessage
+    showSaveMessage,
+    isAdmin = false
 }) => {
     const [viewMode, setViewMode] = useState<'split' | 'classic'>(() => {
         return (localStorage.getItem('traversal_view_mode') as 'split' | 'classic') || 'split';
@@ -58,11 +62,12 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
     const [showThumbnails, setShowThumbnails] = useState<boolean>(() => {
         return localStorage.getItem('hierarchy_show_thumbnails') !== 'false';
     });
+    const [showActions, setShowActions] = useState(false);
 
     // Fetch Gemini API key on mount
     React.useEffect(() => {
         const fetchApiKey = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const user = await getCurrentUser();
             if (user) {
                 try {
                     const apiKeys = await ApiKeyService.fetchApiKeys(user.id);
@@ -123,27 +128,34 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
         const nodeToDelete = nodes.find(n => n.nodeID === nodeId);
         if (!nodeToDelete) return;
 
-        // Count children to warn user about cascade delete
-        const countDescendants = (parentId: number): number => {
+        // Collect all descendant IDs for complete cascade removal
+        const getDescendantIds = (parentId: number): number[] => {
             const children = nodes.filter(n => n.parentNodeID === parentId);
-            return children.reduce((count, child) => {
-                return count + 1 + countDescendants(child.nodeID);
-            }, 0);
+            const ids: number[] = [];
+            children.forEach(child => {
+                ids.push(child.nodeID);
+                ids.push(...getDescendantIds(child.nodeID));
+            });
+            return ids;
         };
 
-        const descendantCount = countDescendants(nodeId);
+        const descendantIds = getDescendantIds(nodeId);
+        const allDeletedIds = [nodeId, ...descendantIds];
 
         let confirmMessage = `Are you sure you want to delete "${nodeToDelete.title}"?`;
-        if (descendantCount > 0) {
-            confirmMessage += `\n\nThis will also delete ${descendantCount} descendant node${descendantCount > 1 ? 's' : ''}.`;
+        if (descendantIds.length > 0) {
+            confirmMessage += `\n\nThis will also delete ${descendantIds.length} descendant node${descendantIds.length > 1 ? 's' : ''}.`;
         }
 
         if (!confirm(confirmMessage)) return;
 
         try {
             await NodeService.deleteNode(nodeId);
-            // Refresh to sync with cascade deletes from database
-            onRefresh();
+            if (onNodeDeleted) {
+                onNodeDeleted(allDeletedIds);
+            }
+            // Silent refresh to sync with database without resetting UI state or expanding nodes
+            onRefresh(true);
         } catch (err: any) {
             alert('Failed to delete node: ' + err.message);
         }
@@ -240,14 +252,11 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
         }
     };
 
-    const [showActions, setShowActions] = useState(false);
-
     const treeData = buildTree(nodes);
 
-    // Removed early return for loading to prevent unmounting children (modals)
     if (error) {
         console.log("[NodeTree] Error:", error);
-        return <div style={{ color: 'red' }}>Error: {error}</div>;
+        return <div style={{ color: 'red', padding: '2rem' }}>Error: {error}</div>;
     }
 
     // Auto-select root node for traversal view if none active
@@ -309,7 +318,6 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
             />
         ))
     );
-
     return (
         <div className="tree-container" style={{ position: 'relative' }}>
             {loading && (
@@ -337,7 +345,6 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                 <h2 style={{ margin: 0 }}>Expert quality assured Knowledge</h2>
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     {showSaveMessage && <span style={{ color: '#4ade80', fontWeight: 'bold', animation: 'fadeIn 0.3s ease-in-out' }}>Hierarchy Saved</span>}
-                    
                     <button
                         onClick={() => {
                             const nextVal = !showThumbnails;
@@ -382,6 +389,24 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                         {viewMode === 'split' ? '◫ Traversal View' : '☰ Classic Tree'}
                     </button>
 
+                    {isAdmin && (
+                        <button
+                            onClick={() => handleAddNode(null)}
+                            disabled={loading}
+                            style={{
+                                backgroundColor: '#2563eb',
+                                color: '#fff',
+                                border: 'none',
+                                fontWeight: '600',
+                                borderRadius: '4px',
+                                padding: '0.5rem 1rem',
+                                cursor: 'pointer'
+                            }}
+                            title="Add a top-level root node"
+                        >
+                            ➕ Add Root Node
+                        </button>
+                    )}
                     <button onClick={onSave} disabled={isSaving || loading}>
                         {isSaving ? 'Saving...' : 'Save View'}
                     </button>
@@ -411,7 +436,41 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                 </div>
             </div>
 
-            {viewMode === 'split' ? (
+            {treeData.length === 0 ? (
+                <div style={{
+                    padding: '3rem 2rem',
+                    textAlign: 'center',
+                    backgroundColor: 'var(--color-bg-secondary)',
+                    borderRadius: '8px',
+                    border: '1px dashed var(--color-border)',
+                    marginTop: '1rem'
+                }}>
+                    <p style={{ color: '#9ca3af', marginBottom: '1.5rem', fontSize: '1.1rem' }}>
+                        No hierarchy nodes exist yet.
+                    </p>
+                    {isAdmin && (
+                        <button
+                            onClick={() => handleAddNode(null)}
+                            style={{
+                                padding: '0.75rem 1.5rem',
+                                backgroundColor: '#2563eb',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '1rem',
+                                fontWeight: '600',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                boxShadow: '0 2px 4px rgba(37, 99, 235, 0.3)'
+                            }}
+                        >
+                            ➕ Create Top Node
+                        </button>
+                    )}
+                </div>
+            ) : viewMode === 'split' ? (
                 <div className="traversal-workspace">
                     <div className="traversal-tree-pane">
                         {renderedTreeItems}
