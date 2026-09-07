@@ -1,0 +1,182 @@
+{
+  "successful": [
+    {
+      "success": true,
+      "endpoint": "User Teams (to find team ID)",
+      "url": "https://graph.microsoft.com/v1.0/me/joinedTeams",
+      "data": {
+        "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#teams",
+        "@odata.count": 1,
+        "value": [
+          {
+            "id": "06ca04f4-e98a-4616-a706-3f862a12f35f",
+            "createdDateTime": null,
+            "displayName": "Tulkah AI Management Team",
+            "description": "This is a team for managing the Tulkah AI business",
+            "internalId": null,
+            "classification": null,
+            "specialization": null,
+            "visibility": null,
+            "webUrl": null,
+            "isArchived": false,
+            "tenantId": "2bec83ec-133e-4dff-b5e4-45045d92b1c8",
+            "isMembershipLimitedToOwners": null,
+            "memberSettings": null,
+            "guestSettings": null,
+            "messagingSettings": null,
+            "funSettings": null,
+            "discoverySettings": null,
+            "tagSettings": null,
+            "summary": null
+          }
+        ]
+      }
+    }
+  ],
+  "failed": [
+    {
+      "success": false,
+      "endpoint": "Project for the Web API (Beta)",
+      "url": "https://graph.microsoft.com/beta/solutions/projectManagement/projects/fe864a34-8a67-4ed4-bdaf-806faaccc9c3",
+      "error": {
+        "error": {
+          "code": "BadRequest",
+          "message": "Resource not found for the segment 'projectManagement'.",
+          "innerError": {
+            "date": "2026-02-02T14:48:11",
+            "request-id": "352c02cb-0558-45a6-ade3-b41e7f55945e",
+            "client-request-id": "352c02cb-0558-45a6-ade3-b41e7f55945e"
+          }
+        }
+      }
+    },
+    {
+      "success": false,
+      "endpoint": "Direct Project API (Beta)",
+      "url": "https://graph.microsoft.com/beta/projects/fe864a34-8a67-4ed4-bdaf-806faaccc9c3",
+      "error": {
+        "error": {
+          "code": "BadRequest",
+          "message": "Resource not found for the segment 'projects'.",
+          "innerError": {
+            "date": "2026-02-02T14:48:11",
+            "request-id": "c14487f6-5cc7-4947-8e33-6f72a2ac9c6a",
+            "client-request-id": "c14487f6-5cc7-4947-8e33-6f72a2ac9c6a"
+          }
+        }
+      }
+    },
+    {
+      "success": false,
+      "endpoint": "Project for the Web API (v1.0)",
+      "url": "https://graph.microsoft.com/v1.0/solutions/projectManagement/projects/fe864a34-8a67-4ed4-bdaf-806faaccc9c3",
+      "error": {
+        "error": {
+          "code": "BadRequest",
+          "message": "Resource not found for the segment 'projectManagement'.",
+          "innerError": {
+            "date": "2026-02-02T14:48:11",
+            "request-id": "615e5a36-1b5a-4dbc-93a9-604a5111695a",
+            "client-request-id": "615e5a36-1b5a-4dbc-93a9-604a5111695a"
+          }
+        }
+      }
+    },
+    {
+      "success": false,
+      "endpoint": "Planner Premium Plan API",
+      "url": "https://graph.microsoft.com/beta/planner/plans/fe864a34-8a67-4ed4-bdaf-806faaccc9c3",
+      "error": {
+        "error": {
+          "code": "",
+          "message": "The requested item is not found.",
+          "innerError": {
+            "date": "2026-02-02T14:48:11",
+            "request-id": "0b10b980-dd07-4d64-80ae-9ce622dfc729",
+            "client-request-id": "0b10b980-dd07-4d64-80ae-9ce622dfc729"
+          }
+        }
+      }
+    },
+    {
+      "success": false,
+      "endpoint": "Planner Roster Plans",
+      "url": "https://graph.microsoft.com/beta/planner/rosters/fe864a34-8a67-4ed4-bdaf-806faaccc9c3/plans",
+      "error": {
+        "error": {
+          "code": "",
+          "message": "The requested item is not found.",
+          "innerError": {
+            "date": "2026-02-02T14:48:11",
+            "request-id": "6186eb93-743e-471b-9a00-d775d13b2892",
+            "client-request-id": "6186eb93-743e-471b-9a00-d775d13b2892"
+          }
+        }
+      }
+    },
+    {
+      "success": false,
+      "endpoint": "Project Tasks API",
+      "url": "https://graph.microsoft.com/beta/solutions/projectManagement/projects/fe864a34-8a67-4ed4-bdaf-806faaccc9c3/tasks",
+      "error": {
+        "error": {
+          "code": "BadRequest",
+          "message": "Resource not found for the segment 'projectManagement'.",
+          "innerError": {
+            "date": "2026-02-02T14:48:11",
+            "request-id": "7a676470-199a-4dda-a102-5017e681fee8",
+            "client-request-id": "7a676470-199a-4dda-a102-5017e681fee8"
+          }
+        }
+      }
+    },
+    {
+      "success": false,
+      "endpoint": "Plan Buckets",
+      "url": "https://graph.microsoft.com/beta/planner/plans/fe864a34-8a67-4ed4-bdaf-806faaccc9c3/buckets",
+      "error": {
+        "error": {
+          "code": "",
+          "message": "The requested item is not found.",
+          "innerError": {
+            "date": "2026-02-02T14:48:12",
+            "request-id": "cbe509f8-22b4-414d-8f5d-bea8254eb151",
+            "client-request-id": "cbe509f8-22b4-414d-8f5d-bea8254eb151"
+          }
+        }
+      }
+    },
+    {
+      "success": false,
+      "endpoint": "Plan Tasks",
+      "url": "https://graph.microsoft.com/beta/planner/plans/fe864a34-8a67-4ed4-bdaf-806faaccc9c3/tasks",
+      "error": {
+        "error": {
+          "code": "",
+          "message": "The requested item is not found.",
+          "innerError": {
+            "date": "2026-02-02T14:48:12",
+            "request-id": "76debe81-f569-4292-bbaa-236a443ace75",
+            "client-request-id": "76debe81-f569-4292-bbaa-236a443ace75"
+          }
+        }
+      }
+    },
+    {
+      "success": false,
+      "endpoint": "Organization Projects",
+      "url": "https://graph.microsoft.com/beta/organization/2bec83ec-133e-4dff-b5e4-45045d92b1c8/projects/fe864a34-8a67-4ed4-bdaf-806faaccc9c3",
+      "error": {
+        "error": {
+          "code": "Request_BadRequest",
+          "message": "Unexpected segment DynamicPathSegment. Expected property/$value.",
+          "innerError": {
+            "date": "2026-02-02T14:48:12",
+            "request-id": "92d90cbf-330e-48f4-a204-3d9caefa024c",
+            "client-request-id": "92d90cbf-330e-48f4-a204-3d9caefa024c"
+          }
+        }
+      }
+    }
+  ]
+}

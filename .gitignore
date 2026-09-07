@@ -36,3 +36,7 @@ cookies_debug.log
 test_cookies.log
 script_run.log
 mindmap_run.log
+venv_out.txt
+
+# Standalone repositories
+darkslope-poc/

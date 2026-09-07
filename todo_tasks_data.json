@@ -1,0 +1,43 @@
+{
+  "Tasks": {
+    "listId": "AAMkAGZhYzdhMjllLTU1Y2QtNDlhMC04Zjg1LTA0NjNiYTc5ZWI5NAAuAAAAAAD1avb4CdyqR7da1xJjtrH9AQBxLWzRaAQURqdFYfa26LD2AAEfSxnIAAA=",
+    "tasks": []
+  },
+  "myplan": {
+    "listId": "AAMkAGZhYzdhMjllLTU1Y2QtNDlhMC04Zjg1LTA0NjNiYTc5ZWI5NAAuAAAAAAD1avb4CdyqR7da1xJjtrH9AQBxLWzRaAQURqdFYfa26LD2AAFsq1WkAAA=",
+    "tasks": [
+      {
+        "@odata.etag": "W/\"cS1s0WgEFEanRWH2tuiw9gABbBn9wA==\"",
+        "importance": "normal",
+        "isReminderOn": false,
+        "status": "notStarted",
+        "title": "ft",
+        "createdDateTime": "2025-11-08T07:38:41.6189143Z",
+        "lastModifiedDateTime": "2025-11-08T07:38:41.6953117Z",
+        "hasAttachments": false,
+        "categories": [],
+        "id": "AAMkAGZhYzdhMjllLTU1Y2QtNDlhMC04Zjg1LTA0NjNiYTc5ZWI5NABGAAAAAAD1avb4CdyqR7da1xJjtrH9BwBxLWzRaAQURqdFYfa26LD2AAFsq1WkAABxLWzRaAQURqdFYfa26LD2AAFsq2VLAAA=",
+        "body": {
+          "content": "",
+          "contentType": "text"
+        }
+      },
+      {
+        "@odata.etag": "W/\"cS1s0WgEFEanRWH2tuiw9gABbBn9uw==\"",
+        "importance": "normal",
+        "isReminderOn": false,
+        "status": "notStarted",
+        "title": "a task",
+        "createdDateTime": "2025-11-08T07:38:37.6586653Z",
+        "lastModifiedDateTime": "2025-11-08T07:38:37.7712014Z",
+        "hasAttachments": false,
+        "categories": [],
+        "id": "AAMkAGZhYzdhMjllLTU1Y2QtNDlhMC04Zjg1LTA0NjNiYTc5ZWI5NABGAAAAAAD1avb4CdyqR7da1xJjtrH9BwBxLWzRaAQURqdFYfa26LD2AAFsq1WkAABxLWzRaAQURqdFYfa26LD2AAFsq2VKAAA=",
+        "body": {
+          "content": "",
+          "contentType": "text"
+        }
+      }
+    ]
+  }
+}

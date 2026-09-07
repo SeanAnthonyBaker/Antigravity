@@ -1,0 +1,39 @@
+{
+  "project": {
+    "id": "fe864a34-8a67-4ed4-bdaf-806faaccc9c3",
+    "name": "Tulkah.AI 6 Week Value Roadmap"
+  },
+  "buckets": [
+    {
+      "@odata.etag": "W/\"10165182\"",
+      "modifiedon": "2026-02-01T16:13:38Z",
+      "_owninguser_value": "1d6ee25a-9d09-ef11-9f8a-00224842b77f",
+      "_msdyn_pfwcreatedby_value": "1d6ee25a-9d09-ef11-9f8a-00224842b77f",
+      "overriddencreatedon": null,
+      "msdyn_displayorder": 0,
+      "msdyn_projectbucketid": "4c9f7cbb-9ac9-4e38-8159-6d4c34f62663",
+      "importsequencenumber": null,
+      "_modifiedonbehalfby_value": null,
+      "statecode": 0,
+      "_msdyn_pfwmodifiedby_value": null,
+      "versionnumber": 10165182,
+      "utcconversiontimezonecode": null,
+      "_createdonbehalfby_value": null,
+      "_modifiedby_value": "7230ea02-f109-ef11-9f89-000d3ad5e4ac",
+      "createdon": "2026-02-01T16:13:38Z",
+      "_owningbusinessunit_value": "2b67e25a-9d09-ef11-9f8a-00224842b77f",
+      "msdyn_name": "Bucket 1",
+      "statuscode": 1,
+      "_msdyn_project_value": "fe864a34-8a67-4ed4-bdaf-806faaccc9c3",
+      "_owningteam_value": null,
+      "_createdby_value": "7230ea02-f109-ef11-9f89-000d3ad5e4ac",
+      "_ownerid_value": "1d6ee25a-9d09-ef11-9f8a-00224842b77f",
+      "timezoneruleversionnumber": null
+    }
+  ],
+  "tasks": [],
+  "summary": {
+    "totalTasks": 0,
+    "totalBuckets": 1
+  }
+}

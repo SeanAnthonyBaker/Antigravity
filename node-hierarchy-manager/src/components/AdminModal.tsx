@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { AuthService } from '../services/AuthService';
 import { NodeService } from '../services/NodeService';
-import type { UserProfile, DocumentNode, AccessLevel } from '../types';
+import type { UserProfile, DocumentNode, AccessLevel, NodeTreeItem } from '../types';
+import { buildTree, getAllDescendants } from '../utils/treeUtils';
 
 interface AdminModalProps {
     isOpen: boolean;
@@ -15,11 +16,14 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     const [permissions, setPermissions] = useState<Map<number, AccessLevel>>(new Map());
     const [nodes, setNodes] = useState<DocumentNode[]>([]);
     const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
+    const [searchQuery, setSearchQuery] = useState<string>('');
     const [activeTab, setActiveTab] = useState<'approvals' | 'permissions'>('approvals');
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+    const treeData = useMemo(() => buildTree(nodes), [nodes]);
 
     useEffect(() => {
         if (isOpen) {
@@ -43,14 +47,17 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                 NodeService.fetchNodes() // We need all nodes to assign permissions
             ]);
             setUsers(usersData);
-            setUsers(usersData);
             setNodes(nodesData);
 
-            // Initialize expanded nodes (Level 0 and 1)
+            // Initialize expanded nodes (Level 0 and 1 of the built tree)
+            const built = buildTree(nodesData);
             const initialExpanded = new Set<number>();
-            nodesData.forEach(node => {
-                if (node.level < 2) {
-                    initialExpanded.add(node.nodeID);
+            built.forEach(root => {
+                initialExpanded.add(root.nodeID);
+                if (root.childNodes) {
+                    root.childNodes.forEach(child => {
+                        initialExpanded.add(child.nodeID);
+                    });
                 }
             });
             setExpandedNodes(initialExpanded);
@@ -67,7 +74,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
         try {
             const perms = await AuthService.getUserPermissions(userId);
             const permMap = new Map<number, AccessLevel>();
-            perms.forEach(p => permMap.set(p.node_id, p.access_level));
+            perms.forEach(p => permMap.set(Number(p.node_id), p.access_level));
             setPermissions(permMap);
         } catch (err: unknown) {
             setError('Failed to load permissions: ' + (err instanceof Error ? err.message : 'Unknown error'));
@@ -76,24 +83,24 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
         }
     };
 
-    // Helper to get all descendants recursively
-    const getAllDescendants = (nodeId: number, allNodes: DocumentNode[]): DocumentNode[] => {
-        const children = allNodes.filter(n => n.parentNodeID === nodeId);
-        let descendants = [...children];
-        children.forEach(child => {
-            descendants = [...descendants, ...getAllDescendants(child.nodeID, allNodes)];
-        });
-        return descendants;
-    };
-
     const handlePermissionChange = async (targetNodeId: number, level: AccessLevel | 'none') => {
         if (!selectedUser) return;
 
-        // Find target node and all descendants
-        const targetNode = nodes.find(n => n.nodeID === targetNodeId);
+        const findNode = (items: NodeTreeItem[]): NodeTreeItem | null => {
+            for (const item of items) {
+                if (item.nodeID === targetNodeId) return item;
+                if (item.childNodes) {
+                    const found = findNode(item.childNodes);
+                    if (found) return found;
+                }
+            }
+            return null;
+        };
+
+        const targetNode = findNode(treeData);
         if (!targetNode) return;
 
-        const descendants = getAllDescendants(targetNodeId, nodes);
+        const descendants = getAllDescendants(targetNode);
         const affectedNodes = [targetNode, ...descendants];
         const affectedNodeIds = affectedNodes.map(n => n.nodeID);
 
@@ -133,6 +140,57 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
             }
             return next;
         });
+    };
+
+    const handleExpandAll = () => {
+        const allIds = new Set<number>();
+        const collect = (items: NodeTreeItem[]) => {
+            items.forEach(item => {
+                allIds.add(item.nodeID);
+                if (item.childNodes) collect(item.childNodes);
+            });
+        };
+        collect(treeData);
+        setExpandedNodes(allIds);
+    };
+
+    const handleCollapseAll = () => {
+        setExpandedNodes(new Set());
+    };
+
+    const handleSearchChange = (q: string) => {
+        setSearchQuery(q);
+        if (q.trim()) {
+            const queryLower = q.toLowerCase().trim();
+            const toExpand = new Set<number>();
+            const checkItem = (item: NodeTreeItem, ancestors: number[]): boolean => {
+                const selfMatch = item.title.toLowerCase().includes(queryLower);
+                let childMatch = false;
+                if (item.childNodes) {
+                    item.childNodes.forEach(child => {
+                        if (checkItem(child, [...ancestors, item.nodeID])) {
+                            childMatch = true;
+                        }
+                    });
+                }
+                if (selfMatch || childMatch) {
+                    ancestors.forEach(id => toExpand.add(id));
+                    toExpand.add(item.nodeID);
+                    return true;
+                }
+                return false;
+            };
+            treeData.forEach(root => checkItem(root, []));
+            setExpandedNodes(prev => new Set([...prev, ...toExpand]));
+        }
+    };
+
+    const nodeMatchesSearch = (item: NodeTreeItem, query: string): boolean => {
+        if (item.title.toLowerCase().includes(query)) return true;
+        if (item.childNodes) {
+            return item.childNodes.some(c => nodeMatchesSearch(c, query));
+        }
+        return false;
     };
 
     const handleApproveUser = async (userId: string, approve: boolean) => {
@@ -175,69 +233,98 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
         }
     };
 
+    // Recursive tree renderer using buildTree data
+    const renderTreeNode = (node: NodeTreeItem, depth = 0): React.ReactNode => {
+        const hasChildren = Boolean(node.childNodes && node.childNodes.length > 0);
+        const isExpanded = expandedNodes.has(node.nodeID);
+        const q = searchQuery.toLowerCase().trim();
 
-    // Recursive tree renderer
-    const renderTree = (parentId: number | null = null, depth = 0) => {
-        const children = nodes
-            .filter(n => (n.parentNodeID) === parentId || (parentId === null && (!n.parentNodeID || n.parentNodeID === 0 || n.parentNodeID === -1)))
-            .sort((a, b) => a.order - b.order);
+        if (q && !nodeMatchesSearch(node, q)) {
+            return null;
+        }
 
-        return children.map(node => (
-            <div key={node.nodeID} style={{ marginLeft: depth > 0 ? '20px' : '0' }}>
+        const perm = permissions.get(node.nodeID) || 'none';
+
+        return (
+            <div key={node.nodeID} style={{ marginLeft: depth > 0 ? '16px' : '0' }}>
                 <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    padding: '8px',
-                    borderBottom: '1px solid #333',
-                    backgroundColor: depth % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent'
+                    padding: '6px 8px',
+                    borderBottom: '1px solid #2a2a2a',
+                    backgroundColor: depth % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent',
+                    borderRadius: '4px',
+                    margin: '1px 0'
                 }}>
                     <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
-                        {node.children && (
+                        {hasChildren ? (
                             <button
                                 onClick={() => toggleExpand(node.nodeID)}
                                 style={{
                                     background: 'none',
                                     border: 'none',
-                                    color: '#ccc',
+                                    color: '#aaa',
                                     cursor: 'pointer',
-                                    fontSize: '12px',
+                                    fontSize: '11px',
                                     padding: '0',
                                     width: '100%',
                                     textAlign: 'center'
                                 }}
+                                title={isExpanded ? 'Collapse' : 'Expand'}
                             >
-                                {expandedNodes.has(node.nodeID) ? '▼' : '▶'}
+                                {isExpanded ? '▼' : '▶'}
                             </button>
+                        ) : (
+                            <span style={{ width: '12px' }} />
                         )}
                     </div>
 
-                    <span style={{ marginRight: '8px', opacity: node.children ? 1 : 0.5 }}>
-                        {node.children ? '📁' : '📄'}
+                    <span style={{ marginRight: '8px', fontSize: '0.95rem' }}>
+                        {hasChildren ? '📁' : '📄'}
                     </span>
-                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span
+                        style={{
+                            flex: 1,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            color: '#e5e7eb',
+                            fontWeight: hasChildren ? 500 : 400
+                        }}
+                        title={node.title}
+                    >
                         {node.title}
                     </span>
 
                     <select
-                        value={permissions.get(node.nodeID) || 'none'}
+                        value={perm}
                         onChange={(e) => handlePermissionChange(node.nodeID, e.target.value as AccessLevel | 'none')}
                         disabled={!selectedUser}
                         style={{
                             backgroundColor: '#252526',
-                            color: '#fff',
+                            color: perm === 'full_access'
+                                ? '#4ade80'
+                                : perm === 'read_only'
+                                ? '#60a5fa'
+                                : '#9ca3af',
                             border: '1px solid #444',
                             borderRadius: '4px',
-                            padding: '4px 8px'
+                            padding: '4px 8px',
+                            fontSize: '0.85rem'
                         }}
                     >
-                        <option value="none">None (Hidden)</option>
-                        <option value="read_only">Read Only</option>
-                        <option value="full_access">Full Access</option>
+                        <option value="none" style={{ color: '#9ca3af' }}>None (Hidden)</option>
+                        <option value="read_only" style={{ color: '#60a5fa' }}>Read Only</option>
+                        <option value="full_access" style={{ color: '#4ade80' }}>Full Access</option>
                     </select>
                 </div>
-                {expandedNodes.has(node.nodeID) && renderTree(node.nodeID, depth + 1)}
+                {hasChildren && isExpanded && (
+                    <div style={{ borderLeft: '1px solid rgba(255,255,255,0.08)', marginLeft: '11px', paddingLeft: '4px' }}>
+                        {node.childNodes!.map(child => renderTreeNode(child, depth + 1))}
+                    </div>
+                )}
             </div>
-        ));
+        );
     };
 
 
@@ -465,25 +552,98 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                     </div>
                 ) : (
                     <>
-                        <div style={{ padding: '16px', borderBottom: '1px solid #333', backgroundColor: '#252526' }}>
-                            <label style={{ marginRight: '10px', color: '#ccc' }}>Select User:</label>
-                            <select
-                                value={selectedUser}
-                                onChange={(e) => setSelectedUser(e.target.value)}
-                                style={{
-                                    padding: '8px',
-                                    borderRadius: '4px',
-                                    backgroundColor: '#333',
-                                    color: '#fff',
-                                    border: '1px solid #555',
-                                    minWidth: '250px'
-                                }}
-                            >
-                                <option value="">-- Select a User --</option>
-                                {users.filter(u => u.approved).map(u => (
-                                    <option key={u.id} value={u.id}>{u.email}</option>
-                                ))}
-                            </select>
+                        <div style={{ padding: '12px 16px', borderBottom: '1px solid #333', backgroundColor: '#252526', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                    <label style={{ marginRight: '10px', color: '#ccc', fontWeight: 500 }}>Select User:</label>
+                                    <select
+                                        value={selectedUser}
+                                        onChange={(e) => setSelectedUser(e.target.value)}
+                                        style={{
+                                            padding: '8px 12px',
+                                            borderRadius: '4px',
+                                            backgroundColor: '#333',
+                                            color: '#fff',
+                                            border: '1px solid #555',
+                                            minWidth: '260px'
+                                        }}
+                                    >
+                                        <option value="">-- Select a User --</option>
+                                        {users.filter(u => u.approved).map(u => (
+                                            <option key={u.id} value={u.id}>{u.email}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                {selectedUser && (
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button
+                                            onClick={handleExpandAll}
+                                            style={{
+                                                padding: '6px 12px',
+                                                backgroundColor: '#333',
+                                                color: '#ccc',
+                                                border: '1px solid #555',
+                                                borderRadius: '4px',
+                                                cursor: 'pointer',
+                                                fontSize: '0.8rem'
+                                            }}
+                                            title="Expand all tree branches"
+                                        >
+                                            ▼ Expand All
+                                        </button>
+                                        <button
+                                            onClick={handleCollapseAll}
+                                            style={{
+                                                padding: '6px 12px',
+                                                backgroundColor: '#333',
+                                                color: '#ccc',
+                                                border: '1px solid #555',
+                                                borderRadius: '4px',
+                                                cursor: 'pointer',
+                                                fontSize: '0.8rem'
+                                            }}
+                                            title="Collapse all tree branches"
+                                        >
+                                            ▶ Collapse All
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            {selectedUser && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="🔍 Search nodes by title..."
+                                        value={searchQuery}
+                                        onChange={(e) => handleSearchChange(e.target.value)}
+                                        style={{
+                                            flex: 1,
+                                            padding: '8px 12px',
+                                            borderRadius: '4px',
+                                            backgroundColor: '#1e1e1e',
+                                            color: '#fff',
+                                            border: '1px solid #444',
+                                            fontSize: '0.85rem'
+                                        }}
+                                    />
+                                    {searchQuery && (
+                                        <button
+                                            onClick={() => handleSearchChange('')}
+                                            style={{
+                                                padding: '8px 12px',
+                                                backgroundColor: '#333',
+                                                color: '#aaa',
+                                                border: '1px solid #555',
+                                                borderRadius: '4px',
+                                                cursor: 'pointer',
+                                                fontSize: '0.8rem'
+                                            }}
+                                        >
+                                            Clear
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
@@ -494,9 +654,13 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                                     {selectedUser ? (
                                         <>
                                             <div style={{ marginBottom: '1rem', fontStyle: 'italic', fontSize: '0.9rem', color: '#888' }}>
-                                                Assign permissions to individual nodes. "None" means the user cannot see the node.
+                                                Assign permissions to individual nodes. Setting permission on a parent node cascades to its child branches.
                                             </div>
-                                            {renderTree()}
+                                            {treeData.length === 0 ? (
+                                                <div style={{ color: '#888', fontStyle: 'italic', textAlign: 'center', marginTop: '2rem' }}>No nodes found.</div>
+                                            ) : (
+                                                treeData.map(rootNode => renderTreeNode(rootNode, 0))
+                                            )}
                                         </>
                                     ) : (
                                         <div style={{ textAlign: 'center', marginTop: '4rem', color: '#666' }}>

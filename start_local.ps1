@@ -15,7 +15,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Starting Frontend (Vite) in a separate window..." -ForegroundColor Yellow
 Set-Location "..\node-hierarchy-manager"
 # Opens a new PowerShell window to run the dev server so the root window remains usable
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "npm run dev"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "npm run dev" -WorkingDirectory "$PSScriptRoot\node-hierarchy-manager"
 
 # 3. Summary
 Write-Host "`n--- Local Environment Status ---" -ForegroundColor Green

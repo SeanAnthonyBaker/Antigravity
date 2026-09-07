@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1,
+    "question": "What is the primary role of a Quiz node in the knowledge hierarchy?",
+    "options": [
+      "To retrieve dynamic assessment questions directly from its designated Quiz URL",
+      "To permanently delete all child nodes upon quiz completion",
+      "To replace PostgreSQL database tables with flat text files",
+      "To restrict user authentication across all sessions"
+    ],
+    "correctAnswer": 0,
+    "explanation": "Quiz nodes are designed to retrieve assessment content from their configured Quiz URL and evaluate knowledge mastery."
+  },
+  {
+    "id": 2,
+    "question": "How are learner quiz results recorded upon completion?",
+    "options": [
+      "As a percentage success rate stored in Supabase learning_records with user ID and parent node ID",
+      "In temporary unencrypted browser cookies that disappear on tab close",
+      "By sending an unformatted plain-text email to administrators",
+      "Via physical punch-card telemetry records"
+    ],
+    "correctAnswer": 0,
+    "explanation": "Test results are stored in the learning_records table in Supabase, capturing user_id, parent_node_id, success rate, and item details."
+  },
+  {
+    "id": 3,
+    "question": "Which action triggers retrieving questions from the Quiz URL?",
+    "options": [
+      "Pressing the Execute button on the Quiz node",
+      "Closing the browser tab",
+      "Clicking Cancel on the modal",
+      "Zooming in on the canvas"
+    ],
+    "correctAnswer": 0,
+    "explanation": "When a node is of type Quiz, pressing the Execute button retrieves the quiz content directly from the URL."
+  },
+  {
+    "id": 4,
+    "question": "What formats can be parsed from a Quiz URL?",
+    "options": [
+      "Both structured JSON (array or object) and formatted Markdown quizzes",
+      "Only compiled C++ binary machine code",
+      "Exclusively raw hexadecimal memory addresses",
+      "Only audio WAV recordings"
+    ],
+    "correctAnswer": 0,
+    "explanation": "The quiz engine parses JSON data (arrays or objects with questions/items) as well as markdown-formatted quiz questionnaires."
+  },
+  {
+    "id": 5,
+    "question": "How can the user inspect reasons for correct answers during the quiz?",
+    "options": [
+      "By clicking the Explain drawer on any question to view detailed rationale",
+      "By restarting the computer",
+      "By deleting the node hierarchy",
+      "By contacting database support"
+    ],
+    "correctAnswer": 0,
+    "explanation": "The Explain drawer provides immediate educational feedback clarifying why the correct answer is right and why alternatives are incorrect."
+  }
+]

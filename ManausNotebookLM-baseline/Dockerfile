@@ -4,7 +4,7 @@ FROM python:3.11.8-slim-bullseye
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies and Chrome
+# Install system dependencies, Chrome, and Node.js
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     gnupg \
@@ -17,6 +17,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get install -y --no-install-recommends \
     google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js (required for M365 CLI)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install CLI for Microsoft 365 globally
+RUN npm install -g @pnp/cli-microsoft365
 
 # Copy requirements first for better caching
 COPY requirements.txt .

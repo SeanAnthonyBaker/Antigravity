@@ -10,6 +10,7 @@ from user import user_bp
 from notebooklm import notebooklm_bp, browser_lock, start_browser_initialization_thread, reset_browser
 from grok import grok_bp
 from deepseek import deepseek_bp
+from project_api import project_bp
 
 # Configure logging for the application
 # Set up log directory
@@ -58,6 +59,7 @@ app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(notebooklm_bp, url_prefix='/api')
 app.register_blueprint(grok_bp, url_prefix='/api')
 app.register_blueprint(deepseek_bp, url_prefix='/api')
+app.register_blueprint(project_bp)  # Project for the web API
 
 from mcp_bp import mcp_bp
 app.register_blueprint(mcp_bp, url_prefix='/api/mcp')

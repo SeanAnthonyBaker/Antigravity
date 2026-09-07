@@ -58,6 +58,36 @@ export const StorageService = {
         }
 
         return data || [];
+    },
+
+    /**
+     * Upload quiz JSON payload as a stored asset in BlobStore.
+     * @param filename Desired filename for the quiz asset.
+     * @param quizData The quiz questions or quiz payload object/string.
+     */
+    async uploadQuizAsset(filename: string, quizData: any): Promise<{ path: string; publicUrl: string }> {
+        const jsonContent = typeof quizData === 'string' ? quizData : JSON.stringify(quizData, null, 2);
+        const jsonBlob = new Blob([jsonContent], {
+            type: 'application/json'
+        });
+        const sanitized = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const storagePath = `quiz_assets/${sanitized}`;
+
+        const { data, error } = await supabase.storage
+            .from(BUCKET_NAME)
+            .upload(storagePath, jsonBlob, {
+                contentType: 'application/json',
+                cacheControl: '3600',
+                upsert: true
+            });
+
+        if (error) {
+            console.error('[StorageService] Error uploading quiz asset:', error);
+            throw error;
+        }
+
+        const publicUrl = this.getPublicUrl(BUCKET_NAME, storagePath);
+        return { path: data?.path || storagePath, publicUrl };
     }
 };
 

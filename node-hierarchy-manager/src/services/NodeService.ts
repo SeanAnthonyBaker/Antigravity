@@ -57,22 +57,60 @@ export const NodeService = {
             console.log('[NodeService] No authenticated user found for permissions');
         }
 
-        // 4. Merge permissions
-        return nodes.map(node => {
-            // Admin override removed per user request - explicit permissions required
-            // if (isAdmin) {
-            //     return { ...node, access_level: 'full_access' as const };
-            // }
+        // 4. Merge permissions with hierarchical parent inheritance
+        const explicitPermMap = new Map<number, 'read_only' | 'full_access'>();
+        permissions.forEach(p => {
+            if (p.node_id != null) {
+                explicitPermMap.set(Number(p.node_id), p.access_level);
+            }
+        });
 
-            // Check explicit permissions (using loose equality for potential string/number mismatch)
-            const perm = permissions.find(p => p.node_id == node.nodeID);
-            if (perm) {
-                return { ...node, access_level: perm.access_level };
+        // Fast node map for parent lookup
+        const nodeMap = new Map<number, DocumentNode>();
+        nodes.forEach(n => nodeMap.set(n.nodeID, n));
+
+        // Memoized access resolution with parent branch inheritance
+        const resolvedAccess = new Map<number, 'read_only' | 'full_access'>();
+
+        const resolveAccess = (targetNode: DocumentNode, visited = new Set<number>()): 'read_only' | 'full_access' => {
+            if (resolvedAccess.has(targetNode.nodeID)) {
+                return resolvedAccess.get(targetNode.nodeID)!;
             }
 
-            // Default fallback
-            return { ...node, access_level: 'read_only' as const };
-        });
+            // Cycle prevention
+            if (visited.has(targetNode.nodeID)) {
+                return 'read_only';
+            }
+            visited.add(targetNode.nodeID);
+
+            // 1. Explicit permission on this node takes precedence
+            if (explicitPermMap.has(targetNode.nodeID)) {
+                const access = explicitPermMap.get(targetNode.nodeID)!;
+                resolvedAccess.set(targetNode.nodeID, access);
+                return access;
+            }
+
+            // 2. Inherit full access from parent branch if parent exists
+            if (targetNode.parentNodeID && targetNode.parentNodeID > 0) {
+                const parent = nodeMap.get(targetNode.parentNodeID);
+                if (parent) {
+                    const parentAccess = resolveAccess(parent, visited);
+                    if (parentAccess === 'full_access') {
+                        resolvedAccess.set(targetNode.nodeID, 'full_access');
+                        return 'full_access';
+                    }
+                }
+            }
+
+            // 3. Default fallback
+            resolvedAccess.set(targetNode.nodeID, 'read_only');
+            return 'read_only';
+        };
+
+        return nodes.map(node => ({
+            ...node,
+            access_level: resolveAccess(node)
+        }));
     },
 
     async getNodeById(nodeID: number) {
@@ -85,17 +123,8 @@ export const NodeService = {
         if (error) throw error;
         const node = data as DocumentNode;
 
-        // Admin override removed per user request
-        // const isAdmin = await AuthService.checkIsAdmin();
-        // if (isAdmin) {
-        //     return { ...node, access_level: 'full_access' as const };
-        // }
-
         // Fetch permissions for this node
         const { data: user } = await supabase.auth.getUser();
-
-        // Owner has full access (REMOVED: user_id no longer exists on node)
-
 
         if (user?.user) {
             const { data: perm } = await supabase
@@ -103,22 +132,30 @@ export const NodeService = {
                 .select('access_level')
                 .eq('user_id', user.user.id)
                 .eq('node_id', nodeID)
-                .single();
+                .maybeSingle();
 
             if (perm) {
                 return { ...node, access_level: perm.access_level as 'read_only' | 'full_access' };
             }
+
+            // Inherit from parent if parent has full access
+            if (node.parentNodeID && node.parentNodeID > 0) {
+                try {
+                    const parent = await this.getNodeById(node.parentNodeID);
+                    if (parent && parent.access_level === 'full_access') {
+                        return { ...node, access_level: 'full_access' as const };
+                    }
+                } catch {
+                    // Ignore parent lookup error
+                }
+            }
         }
 
         // Default to read_only if visible but no explicit permission
-        // (RLS handles visibility, if we got here we can see it)
         return { ...node, access_level: 'read_only' as const };
     },
 
     async createNode(node: Partial<DocumentNode>) {
-        // user_id removed from documents table
-
-
         const { access_level: _access_level, ...nodeData } = node as Partial<DocumentNode> & { access_level?: string };
         const { data, error } = await supabase
             .from('documents')
@@ -127,7 +164,24 @@ export const NodeService = {
             .single();
 
         if (error) throw error;
-        return data as DocumentNode;
+        const created = data as DocumentNode;
+
+        // Ensure user gets full_access in document_permissions
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await supabase.from('document_permissions').insert({
+                    node_id: created.nodeID,
+                    user_id: user.id,
+                    access_level: 'full_access',
+                    docid: created.docid
+                });
+            }
+        } catch (permErr) {
+            console.warn('[NodeService] Failed to insert creator permission:', permErr);
+        }
+
+        return created;
     },
 
     async updateNode(nodeID: number, updates: Partial<DocumentNode>) {

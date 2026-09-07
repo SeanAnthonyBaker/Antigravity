@@ -47,7 +47,7 @@ Important:
 - Return ONLY the JSON, no markdown formatting or explanations`;
 
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -113,7 +113,7 @@ Important:
 - Return ONLY the JSON, no markdown formatting or explanations`;
 
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -170,7 +170,7 @@ Return the SAME structure but with the description field filled for each node wi
 Return ONLY valid JSON with the same structure, no markdown formatting or explanations.`;
 
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -321,7 +321,20 @@ Return ONLY valid JSON with the same structure, no markdown formatting or explan
             .single();
 
         if (rootError) throw rootError;
-        createdNodes.push(rootNode as DocumentNode);
+        const createdRoot = rootNode as DocumentNode;
+        createdNodes.push(createdRoot);
+
+        // Grant full_access to the creator in document_permissions
+        try {
+            await supabase.from('document_permissions').insert({
+                node_id: nodeId,
+                user_id: user.id,
+                access_level: 'full_access',
+                docid: createdRoot.docid
+            });
+        } catch (permErr) {
+            console.warn('[HierarchyService] Failed to insert root permission:', permErr);
+        }
 
         // Update parent's children flag if parent exists
         if (parentNodeId) {
@@ -336,8 +349,8 @@ Return ONLY valid JSON with the same structure, no markdown formatting or explan
             const childNodes = await this.createChildNodes(
                 hierarchyData.children,
                 nodeId,
-                parentLevel + 1
-
+                parentLevel + 1,
+                user.id
             );
             createdNodes.push(...childNodes);
         }
@@ -351,8 +364,8 @@ Return ONLY valid JSON with the same structure, no markdown formatting or explan
     async createChildNodes(
         children: HierarchyNode[],
         parentId: number,
-        parentLevel: number
-
+        parentLevel: number,
+        userId?: string
     ): Promise<DocumentNode[]> {
         const createdNodes: DocumentNode[] = [];
 
@@ -380,22 +393,35 @@ Return ONLY valid JSON with the same structure, no markdown formatting or explan
                     type: 'leaf',
                     url: '',
                     urltype: null
-                    // user_id removed
-
                 })
                 .select()
                 .single();
 
             if (childError) throw childError;
-            createdNodes.push(childNode as DocumentNode);
+            const createdChild = childNode as DocumentNode;
+            createdNodes.push(createdChild);
+
+            // Grant full_access to the creator in document_permissions
+            if (userId) {
+                try {
+                    await supabase.from('document_permissions').insert({
+                        node_id: nodeId,
+                        user_id: userId,
+                        access_level: 'full_access',
+                        docid: createdChild.docid
+                    });
+                } catch (permErr) {
+                    console.warn('[HierarchyService] Failed to insert child permission:', permErr);
+                }
+            }
 
             // Recursively create grandchildren
             if (child.children && child.children.length > 0) {
                 const grandchildren = await this.createChildNodes(
                     child.children,
                     nodeId,
-                    parentLevel + 1
-
+                    parentLevel + 1,
+                    userId
                 );
                 createdNodes.push(...grandchildren);
             }

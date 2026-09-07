@@ -11,14 +11,17 @@ import type { TagTreeNode } from '../types/tags';
 import { openMarkdownWindow } from '../utils/markdownUtils';
 import AIQueryRefinementModal from './AIQueryRefinementModal';
 import { CurationModal } from './CurationModal';
+import { TestService } from '../services/TestService';
 
 interface NodeDetailsModalProps {
     node: DocumentNode;
     onClose: () => void;
-    onUpdate?: () => void;
+    onUpdate?: (updatedNode?: DocumentNode) => void;
+    onExecuteTest?: (node: DocumentNode) => void;
+    onCreateTest?: (node: DocumentNode) => void;
 }
 
-export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClose, onUpdate }) => {
+export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClose, onUpdate, onExecuteTest, onCreateTest }) => {
     const [currentNode, setCurrentNode] = useState(node);
 
     useEffect(() => {
@@ -29,7 +32,9 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
     const [isEditing, setIsEditing] = useState(false);
     const [editedText, setEditedText] = useState(node.text || '');
     const [editedUrl, setEditedUrl] = useState(node.url || '');
-    const [editedUrlType, setEditedUrlType] = useState<'Video' | 'Audio' | 'Image' | 'Markdown' | 'PDF' | 'PNG' | 'Url' | 'Loop' | 'InfoGraphic' | 'Specification' | null>(node.urltype || null);
+    const [editedUrlType, setEditedUrlType] = useState<'Video' | 'Audio' | 'Image' | 'Markdown' | 'PDF' | 'PNG' | 'Url' | 'Loop' | 'InfoGraphic' | 'Specification' | 'Quiz' | null>(node.urltype || null);
+    const [editedQuizUrl, setEditedQuizUrl] = useState(node.quiz_url || '');
+    const [editedType, setEditedType] = useState(node.type || 'Node');
     const [isSaving, setIsSaving] = useState(false);
     const [showPlayer, setShowPlayer] = useState(false);
     const [blobStoreFiles, setBlobStoreFiles] = useState<string[]>([]);
@@ -55,6 +60,8 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                 setEditedText(node.text || '');
                 setEditedUrl(node.url || '');
                 setEditedUrlType(node.urltype || null);
+                setEditedQuizUrl(node.quiz_url || '');
+                setEditedType(node.type || 'Node');
 
                 // Then fetch fresh data in background to ensure sync
                 const freshNode = await NodeService.getNodeById(node.nodeID);
@@ -62,12 +69,14 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                 setEditedText(freshNode.text || '');
                 setEditedUrl(freshNode.url || '');
                 setEditedUrlType(freshNode.urltype || null);
+                setEditedQuizUrl(freshNode.quiz_url || '');
+                setEditedType(freshNode.type || 'Node');
             } catch (err) {
                 console.error('Failed to fetch node data:', err);
             }
         };
         fetchNodeData();
-    }, [node.nodeID, node.modified_at, node.text, node.url, node.urltype]);
+    }, [node.nodeID, node.modified_at, node.text, node.url, node.urltype, node.quiz_url, node.type]);
 
     // Load available tags and current node's tags
     useEffect(() => {
@@ -125,11 +134,16 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
         return false;
     })();
 
+    const isQuiz = (editedUrlType === 'Quiz') || (editedType?.toLowerCase() === 'quiz');
+    const isCurrentQuiz = (currentNode.urltype === 'Quiz') || (currentNode.type?.toLowerCase() === 'quiz');
+
     // Check if any fields have been modified
     const hasChanges =
         editedText !== (node.text || '') ||
         editedUrl !== (node.url || '') ||
         editedUrlType !== (node.urltype || null) ||
+        editedQuizUrl !== (node.quiz_url || '') ||
+        editedType !== (node.type || 'Node') ||
         tagsChanged;
 
     const handleTagToggle = (tagId: number) => {
@@ -185,10 +199,13 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
     const handleSave = async () => {
         try {
             setIsSaving(true);
-            await NodeService.updateNode(node.nodeID, {
+            const resolvedType = editedUrlType === 'Quiz' ? 'Quiz' : editedType;
+            const updatedFromDb = await NodeService.updateNode(node.nodeID, {
                 text: editedText,
                 url: editedUrl,
-                urltype: editedUrlType
+                urltype: editedUrlType,
+                quiz_url: editedQuizUrl,
+                type: resolvedType
             });
 
             // Save tag assignments if changed
@@ -198,14 +215,18 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
             }
 
             // Update currentNode with the saved values
-            setCurrentNode({
+            const updated: DocumentNode = {
                 ...currentNode,
+                ...(updatedFromDb || {}),
                 text: editedText,
                 url: editedUrl,
-                urltype: editedUrlType
-            });
+                urltype: editedUrlType,
+                quiz_url: editedQuizUrl,
+                type: resolvedType
+            };
+            setCurrentNode(updated);
 
-            if (onUpdate) onUpdate();
+            if (onUpdate) onUpdate(updated);
 
             setIsEditing(false);
         } catch (err: any) {
@@ -219,6 +240,8 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
         setEditedText(currentNode.text || '');
         setEditedUrl(currentNode.url || '');
         setEditedUrlType(currentNode.urltype || null);
+        setEditedQuizUrl(currentNode.quiz_url || '');
+        setEditedType(currentNode.type || 'Node');
         setIsEditing(false);
     };
 
@@ -623,6 +646,7 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                                         >
                                             <option value="">None</option>
                                             <option value="Url">Url</option>
+                                            <option value="Quiz">Quiz</option>
                                             <option value="Loop">Loop</option>
                                             <option value="Video">Video</option>
                                             <option value="Audio">Audio</option>
@@ -747,6 +771,186 @@ export const NodeDetailsModal: React.FC<NodeDetailsModalProps> = ({ node, onClos
                             </div>
                         </div>
                     </div>
+
+                    {/* Quiz URL Attribute (rendered when node type is Quiz) */}
+                    {isEditing && isQuiz && (
+                        <div className="detail-section quiz-attribute-editor" style={{
+                            marginTop: '1.25rem',
+                            padding: '1.2rem',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(168, 85, 247, 0.5)',
+                            background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.12) 0%, rgba(124, 58, 237, 0.06) 100%)',
+                            boxShadow: '0 2px 10px rgba(168, 85, 247, 0.15)'
+                        }}>
+                            <label style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                marginBottom: '0.6rem',
+                                fontWeight: 600,
+                                color: '#c084fc',
+                                fontSize: '0.95rem'
+                            }}>
+                                <span style={{ fontSize: '1.2rem' }}>🎯</span>
+                                <span>Quiz URL:</span>
+                                <span style={{
+                                    fontSize: '0.75rem',
+                                    fontWeight: 'normal',
+                                    backgroundColor: 'rgba(168, 85, 247, 0.25)',
+                                    color: '#e9d5ff',
+                                    padding: '0.15rem 0.5rem',
+                                    borderRadius: '12px'
+                                }}>Quiz Node Attribute</span>
+                            </label>
+                            <input
+                                type="url"
+                                value={editedQuizUrl}
+                                onChange={(e) => setEditedQuizUrl(e.target.value)}
+                                placeholder="Enter Quiz URL (e.g., https://...)"
+                                style={{
+                                    width: '100%',
+                                    padding: '0.65rem 0.85rem',
+                                    borderRadius: '6px',
+                                    border: '1px solid rgba(168, 85, 247, 0.4)',
+                                    backgroundColor: 'var(--color-bg-primary)',
+                                    color: 'var(--color-text-primary)',
+                                    fontSize: '0.95rem',
+                                    boxSizing: 'border-box',
+                                    outline: 'none'
+                                }}
+                            />
+                            <div style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '0.4rem' }}>
+                                This URL is dedicated to testing/quiz interactions associated with this node.
+                            </div>
+                        </div>
+                    )}
+
+                    {!isEditing && isCurrentQuiz && (
+                        <div className="detail-section quiz-attribute-viewer" style={{
+                            marginTop: '1.25rem',
+                            padding: '1.2rem',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(168, 85, 247, 0.5)',
+                            background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.12) 0%, rgba(124, 58, 237, 0.06) 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '1.5rem',
+                            boxShadow: '0 2px 10px rgba(168, 85, 247, 0.15)'
+                        }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    fontSize: '0.8rem',
+                                    color: '#c084fc',
+                                    fontWeight: 600,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
+                                    marginBottom: '0.35rem'
+                                }}>
+                                    <span>🎯</span>
+                                    <span>Quiz URL</span>
+                                </div>
+                                {currentNode.quiz_url || currentNode.url ? (
+                                    <a
+                                        href={currentNode.quiz_url || currentNode.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{
+                                            color: '#d8b4fe',
+                                            wordBreak: 'break-all',
+                                            fontWeight: 500,
+                                            textDecoration: 'underline',
+                                            fontSize: '0.95rem'
+                                        }}
+                                    >
+                                        {currentNode.quiz_url || currentNode.url}
+                                    </a>
+                                ) : (
+                                    <span style={{ fontStyle: 'italic', color: '#9ca3af' }}>No Quiz URL configured</span>
+                                )}
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                {TestService.hasTestCreated(currentNode) ? (
+                                    onExecuteTest && (
+                                        <button
+                                            onClick={() => onExecuteTest(currentNode)}
+                                            style={{
+                                                padding: '0.55rem 1.1rem',
+                                                background: 'linear-gradient(135deg, #9333ea 0%, #6d28d9 100%)',
+                                                color: '#ffffff',
+                                                borderRadius: '6px',
+                                                border: 'none',
+                                                fontWeight: 600,
+                                                fontSize: '0.9rem',
+                                                whiteSpace: 'nowrap',
+                                                boxShadow: '0 2px 8px rgba(147, 51, 234, 0.4)',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '0.4rem',
+                                                cursor: 'pointer'
+                                            }}
+                                            title="Execute this quiz in the interactive test suite"
+                                        >
+                                            <span>🎯</span>
+                                            <span>Execute Quiz</span>
+                                        </button>
+                                    )
+                                ) : (
+                                    onCreateTest && (
+                                        <button
+                                            onClick={() => onCreateTest(currentNode)}
+                                            style={{
+                                                padding: '0.55rem 1.1rem',
+                                                background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
+                                                color: '#ffffff',
+                                                borderRadius: '6px',
+                                                border: 'none',
+                                                fontWeight: 600,
+                                                fontSize: '0.9rem',
+                                                whiteSpace: 'nowrap',
+                                                boxShadow: '0 2px 8px rgba(124, 58, 237, 0.4)',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '0.4rem',
+                                                cursor: 'pointer'
+                                            }}
+                                            title="Create Test from NotebookLM Quiz URL"
+                                        >
+                                            <span>➕</span>
+                                            <span>Create Test / Convert Asset</span>
+                                        </button>
+                                    )
+                                )}
+                                {(currentNode.quiz_url || currentNode.url) && (
+                                    <a
+                                        href={currentNode.quiz_url || currentNode.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{
+                                            padding: '0.55rem 1rem',
+                                            background: 'rgba(255, 255, 255, 0.08)',
+                                            color: '#e2e8f0',
+                                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                                            borderRadius: '6px',
+                                            textDecoration: 'none',
+                                            fontWeight: 500,
+                                            fontSize: '0.85rem',
+                                            whiteSpace: 'nowrap',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '0.4rem'
+                                        }}
+                                    >
+                                        <span>🚀</span>
+                                        <span>Open URL ↗</span>
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Tags Section */}
                     {isEditing && availableTags.length > 0 && (

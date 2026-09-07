@@ -74,8 +74,7 @@ function App() {
             } else {
               setExpandedNodeIds(new Set());
             }
-            if (!isSilent) setLoading(false);
-            return;
+            // Stale-while-revalidate: continue to fetch fresh data from server
           } catch (e) {
             console.error('Failed to parse saved state:', e);
           }
@@ -91,14 +90,54 @@ function App() {
 
       setNodes(data);
 
-      // Infer expansion state
-      const expanded = new Set<number>();
-      data.forEach(node => {
-        if (node.visible && node.parentNodeID) {
-          expanded.add(node.parentNodeID);
-        }
-      });
-      setExpandedNodeIds(expanded);
+      // Handle expansion state
+      if (tagsToUse.size > 0) {
+        // Tag filter mode: expand parents of matching nodes so search results are visible
+        const filterExpanded = new Set<number>();
+        data.forEach(node => {
+          if (node.parentNodeID) {
+            filterExpanded.add(node.parentNodeID);
+          }
+        });
+        setExpandedNodeIds(filterExpanded);
+      } else {
+        // Normal hierarchy mode: PRESERVE existing expanded nodes
+        setExpandedNodeIds(prev => {
+          if (prev && prev.size > 0) {
+            // Keep existing expanded nodes, retaining valid IDs
+            const validIds = new Set(data.map(n => n.nodeID));
+            const retained = new Set<number>();
+            prev.forEach(id => {
+              if (validIds.has(id)) {
+                retained.add(id);
+              }
+            });
+            return retained.size > 0 ? retained : prev;
+          }
+
+          // Check if there is saved expansion state in localStorage
+          const savedExpanded = localStorage.getItem('hierarchy_expanded');
+          if (savedExpanded) {
+            try {
+              const parsed = JSON.parse(savedExpanded);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                return new Set<number>(parsed);
+              }
+            } catch (e) {
+              console.error('Failed to parse saved hierarchy_expanded:', e);
+            }
+          }
+
+          // Initial fallback only: Infer expansion state from visible nodes
+          const expanded = new Set<number>();
+          data.forEach(node => {
+            if (node.visible && node.parentNodeID) {
+              expanded.add(node.parentNodeID);
+            }
+          });
+          return expanded;
+        });
+      }
 
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -189,6 +228,20 @@ function App() {
     setNodes(prev => prev.map(node =>
       node.nodeID === updatedNode.nodeID ? updatedNode : node
     ));
+
+    // Ensure the updated node's parent and all of its ancestors remain expanded
+    if (updatedNode.parentNodeID && updatedNode.parentNodeID > 0) {
+      setExpandedNodeIds(prev => {
+        const next = new Set(prev);
+        let currParentId: number | null = updatedNode.parentNodeID;
+        while (currParentId && currParentId > 0) {
+          next.add(currParentId);
+          const parent = nodes.find(n => n.nodeID === currParentId);
+          currParentId = parent?.parentNodeID || null;
+        }
+        return next;
+      });
+    }
   };
 
 
@@ -481,7 +534,10 @@ function App() {
 
       <AdminModal
         isOpen={showAdmin}
-        onClose={() => setShowAdmin(false)}
+        onClose={() => {
+          setShowAdmin(false);
+          loadNodes(true);
+        }}
       />
       <UploadModal
         isOpen={showUpload}

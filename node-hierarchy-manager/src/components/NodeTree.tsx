@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { DocumentNode, NodeTreeItem } from '../types';
+import type { DocumentNode } from '../types';
 import { NodeService } from '../services/NodeService';
 import { NodeItem } from './NodeItem';
 import { NodeDetailsModal } from './NodeDetailsModal';
@@ -9,6 +9,10 @@ import { ApiKeyService } from '../services/ApiKeyService';
 import { supabase } from '../lib/supabase';
 
 import { ThemeToggle } from './ThemeToggle';
+import { ContextCanvas } from './ContextCanvas';
+import { TestModal } from './TestModal';
+import { CreateTestModal } from './CreateTestModal';
+import { buildTree } from '../utils/treeUtils';
 
 interface NodeTreeProps {
     nodes: DocumentNode[];
@@ -39,48 +43,21 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
     isSaving,
     showSaveMessage
 }) => {
-    const [selectedNode, setSelectedNode] = useState<DocumentNode | null>(null);
+    const [viewMode, setViewMode] = useState<'split' | 'classic'>(() => {
+        return (localStorage.getItem('traversal_view_mode') as 'split' | 'classic') || 'split';
+    });
+    const [activeTraversalNode, setActiveTraversalNode] = useState<DocumentNode | null>(null);
+    const [modalNode, setModalNode] = useState<DocumentNode | null>(null);
     const [draggedNodeId, setDraggedNodeId] = useState<number | null>(null);
     const [showHierarchyModal, setShowHierarchyModal] = useState(false);
     const [hierarchyParentId, setHierarchyParentId] = useState<number | null>(null);
     const [curatingNode, setCuratingNode] = useState<DocumentNode | null>(null);
+    const [testingSubnode, setTestingSubnode] = useState<DocumentNode | null>(null);
+    const [createTestNode, setCreateTestNode] = useState<DocumentNode | null>(null);
     const [geminiApiKey, setGeminiApiKey] = useState('');
-
-    const buildTree = (flatNodes: DocumentNode[]): NodeTreeItem[] => {
-        const nodeMap = new Map<number, NodeTreeItem>();
-        const roots: NodeTreeItem[] = [];
-
-        flatNodes.forEach(node => {
-            nodeMap.set(node.nodeID, { ...node, childNodes: [] });
-        });
-
-        flatNodes.forEach(node => {
-            const treeNode = nodeMap.get(node.nodeID)!;
-            if (node.parentNodeID === null || node.parentNodeID === 0 || node.parentNodeID === -1) {
-                roots.push(treeNode);
-            } else {
-                const parent = nodeMap.get(node.parentNodeID);
-                if (parent) {
-                    parent.childNodes!.push(treeNode);
-                } else {
-                    roots.push(treeNode);
-                }
-            }
-        });
-
-        const sortNodes = (nodes: NodeTreeItem[]) => {
-            nodes.sort((a, b) => (a.order || 0) - (b.order || 0));
-            nodes.forEach(node => {
-                if (node.childNodes && node.childNodes.length > 0) {
-                    sortNodes(node.childNodes);
-                }
-            });
-        };
-
-        sortNodes(roots);
-
-        return roots;
-    };
+    const [showThumbnails, setShowThumbnails] = useState<boolean>(() => {
+        return localStorage.getItem('hierarchy_show_thumbnails') !== 'false';
+    });
 
     // Fetch Gemini API key on mount
     React.useEffect(() => {
@@ -273,21 +250,65 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
         return <div style={{ color: 'red' }}>Error: {error}</div>;
     }
 
-    // Sync selectedNode when nodes prop changes (preserve details view after background refresh)
+    // Auto-select root node for traversal view if none active
     React.useEffect(() => {
-        if (selectedNode) {
-            const matches = nodes.filter(n => n.nodeID === selectedNode.nodeID);
-            if (matches.length > 0) {
-                // Check if object has changed meaningfully before updating state
-                // This prevents some unnecessary re-renders
-                const fresh = matches[0];
-                if (fresh.modified_at !== selectedNode.modified_at || fresh.text !== selectedNode.text || fresh.url !== selectedNode.url) {
-                    console.log("[NodeTree] Syncing selectedNode with fresh data");
-                    setSelectedNode(fresh);
-                }
+        if (viewMode === 'split' && !activeTraversalNode && nodes.length > 0) {
+            const roots = nodes.filter(n => n.parentNodeID === null || n.parentNodeID === 0 || n.parentNodeID === -1);
+            setActiveTraversalNode(roots.length > 0 ? roots[0] : nodes[0]);
+        }
+    }, [nodes, viewMode, activeTraversalNode]);
+
+    // Sync activeTraversalNode and modalNode when nodes prop changes (preserve details view after background refresh)
+    React.useEffect(() => {
+        if (activeTraversalNode) {
+            const fresh = nodes.find(n => n.nodeID === activeTraversalNode.nodeID);
+            if (fresh && (fresh.modified_at !== activeTraversalNode.modified_at || fresh.text !== activeTraversalNode.text || fresh.title !== activeTraversalNode.title || fresh.url !== activeTraversalNode.url || fresh.urltype !== activeTraversalNode.urltype)) {
+                setActiveTraversalNode(fresh);
+            }
+        }
+        if (modalNode) {
+            const fresh = nodes.find(n => n.nodeID === modalNode.nodeID);
+            if (fresh && (fresh.modified_at !== modalNode.modified_at || fresh.text !== modalNode.text || fresh.title !== modalNode.title || fresh.url !== modalNode.url || fresh.urltype !== modalNode.urltype)) {
+                setModalNode(fresh);
             }
         }
     }, [nodes]);
+
+    const handleNodeClick = (node: DocumentNode) => {
+        if (viewMode === 'split') {
+            setActiveTraversalNode(node);
+        } else {
+            setModalNode(node);
+        }
+    };
+
+    const renderedTreeItems = treeData.length === 0 ? (
+        <div style={{ color: '#6b7280', fontStyle: 'italic' }}>No nodes found.</div>
+    ) : (
+        treeData.map(node => (
+            <NodeItem
+                key={node.nodeID}
+                node={node}
+                isExpanded={expandedNodeIds.has(node.nodeID)}
+                expandedNodeIds={expandedNodeIds}
+                onAdd={handleAddNode}
+                onEdit={handleEditNode}
+                onDelete={handleDeleteNode}
+                onClick={handleNodeClick}
+                onDragStart={handleDragStart}
+                onDrop={handleMoveNode}
+                onToggle={onToggle}
+                onMoveUpDown={handleMoveNodeUpDown}
+                onCreateHierarchy={handleCreateHierarchy}
+                onCurate={setCuratingNode}
+                onExecuteTest={setTestingSubnode}
+                onCreateTest={(n) => setCreateTestNode(n)}
+                showActions={showActions}
+                selectedNodeId={activeTraversalNode?.nodeID}
+                showThumbnails={showThumbnails}
+            />
+        ))
+    );
 
     return (
         <div className="tree-container" style={{ position: 'relative' }}>
@@ -312,10 +333,55 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                     Loading...
                 </div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <h2 style={{ margin: 0 }}>Expert quality assured Knowledge</h2>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     {showSaveMessage && <span style={{ color: '#4ade80', fontWeight: 'bold', animation: 'fadeIn 0.3s ease-in-out' }}>Hierarchy Saved</span>}
+                    
+                    <button
+                        onClick={() => {
+                            const nextVal = !showThumbnails;
+                            setShowThumbnails(nextVal);
+                            localStorage.setItem('hierarchy_show_thumbnails', String(nextVal));
+                        }}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            fontSize: '0.85rem',
+                            padding: '0.4rem 0.75rem',
+                            backgroundColor: showThumbnails ? 'rgba(168, 85, 247, 0.15)' : 'var(--color-bg-primary)',
+                            borderColor: showThumbnails ? 'rgba(168, 85, 247, 0.4)' : 'var(--color-border)',
+                            color: showThumbnails ? '#a855f7' : 'var(--color-text-secondary)',
+                            fontWeight: 500
+                        }}
+                        title={showThumbnails ? "Hide Visual Thumbnails in Tree" : "Show Visual Thumbnails in Tree"}
+                    >
+                        {showThumbnails ? '🖼️ Visual: ON' : '🖼️ Visual: OFF'}
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            const nextMode = viewMode === 'split' ? 'classic' : 'split';
+                            setViewMode(nextMode);
+                            localStorage.setItem('traversal_view_mode', nextMode);
+                        }}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            fontSize: '0.85rem',
+                            padding: '0.4rem 0.8rem',
+                            backgroundColor: viewMode === 'split' ? 'rgba(59, 130, 246, 0.2)' : 'var(--color-bg-primary)',
+                            borderColor: viewMode === 'split' ? 'var(--color-primary)' : 'var(--color-border)',
+                            color: viewMode === 'split' ? 'var(--color-primary)' : 'var(--color-text-primary)',
+                            fontWeight: 600
+                        }}
+                        title={viewMode === 'split' ? "Switch to Classic Tree View" : "Switch to Split Traversal View"}
+                    >
+                        {viewMode === 'split' ? '◫ Traversal View' : '☰ Classic Tree'}
+                    </button>
+
                     <button onClick={onSave} disabled={isSaving || loading}>
                         {isSaving ? 'Saving...' : 'Save View'}
                     </button>
@@ -345,38 +411,72 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                 </div>
             </div>
 
-            {treeData.length === 0 ? (
-                <div style={{ color: '#6b7280', fontStyle: 'italic' }}>No nodes found.</div>
+            {viewMode === 'split' ? (
+                <div className="traversal-workspace">
+                    <div className="traversal-tree-pane">
+                        {renderedTreeItems}
+                    </div>
+                    <div className="traversal-canvas-pane">
+                        {activeTraversalNode ? (
+                            <ContextCanvas
+                                node={activeTraversalNode}
+                                allNodes={nodes}
+                                onSelectNode={(target) => {
+                                    setActiveTraversalNode(target);
+                                    if (target.parentNodeID && !expandedNodeIds.has(target.parentNodeID)) {
+                                        onToggle(target.parentNodeID);
+                                    }
+                                }}
+                                onCurate={(node) => setCuratingNode(node)}
+                                onExecuteTest={(node) => setTestingSubnode(node)}
+                                onCreateTest={(node) => setCreateTestNode(node)}
+                                onOpenModal={(node) => setModalNode(node)}
+                                onClose={() => {
+                                    setViewMode('classic');
+                                    localStorage.setItem('traversal_view_mode', 'classic');
+                                }}
+                                onNodeUpdated={(updated) => {
+                                    onNodeUpdated(updated);
+                                    setActiveTraversalNode(updated);
+                                }}
+                            />
+                        ) : (
+                            <div className="context-canvas-container" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+                                <div style={{ fontSize: '2rem' }}>🧭</div>
+                                <h3 style={{ margin: '0.5rem 0' }}>Knowledge Traversal</h3>
+                                <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
+                                    Select any node from the tree on the left to inspect its context and curated artifacts.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
             ) : (
-                treeData.map(node => (
-                    <NodeItem
-                        key={node.nodeID}
-                        node={node}
-                        isExpanded={expandedNodeIds.has(node.nodeID)}
-                        expandedNodeIds={expandedNodeIds}
-                        onAdd={handleAddNode}
-                        onEdit={handleEditNode}
-                        onDelete={handleDeleteNode}
-                        onClick={setSelectedNode}
-                        onDragStart={handleDragStart}
-                        onDrop={handleMoveNode}
-                        onToggle={onToggle}
-                        onMoveUpDown={handleMoveNodeUpDown}
-                        onCreateHierarchy={handleCreateHierarchy}
-                        onCurate={setCuratingNode}
-                        showActions={showActions}
-                    />
-                ))
+                renderedTreeItems
             )}
 
-            {selectedNode && (
+            {modalNode && (
                 <NodeDetailsModal
-                    node={selectedNode}
+                    node={modalNode}
                     onClose={() => {
                         console.log("[NodeTree] Closing NodeDetailsModal (via onClose)");
-                        setSelectedNode(null);
+                        setModalNode(null);
                     }}
-                    onUpdate={() => onRefresh(true)}
+                    onUpdate={(updated) => {
+                        if (updated) {
+                            onNodeUpdated(updated);
+                            setModalNode(updated);
+                        }
+                        onRefresh(true);
+                    }}
+                    onExecuteTest={(n) => {
+                        setModalNode(null);
+                        setTestingSubnode(n);
+                    }}
+                    onCreateTest={(n) => {
+                        setModalNode(null);
+                        setCreateTestNode(n);
+                    }}
                 />
             )}
 
@@ -393,6 +493,35 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                 <CurationModal
                     node={curatingNode}
                     onClose={() => setCuratingNode(null)}
+                />
+            )}
+
+            {createTestNode && (
+                <CreateTestModal
+                    isOpen={!!createTestNode}
+                    node={createTestNode}
+                    allNodes={nodes}
+                    onClose={() => setCreateTestNode(null)}
+                    onTestCreated={(updatedNode, executeNow) => {
+                        setCreateTestNode(null);
+                        onNodeUpdated(updatedNode);
+                        if (activeTraversalNode?.nodeID === updatedNode.nodeID) {
+                            setActiveTraversalNode(updatedNode);
+                        }
+                        onRefresh(true);
+                        if (executeNow) {
+                            setTestingSubnode(updatedNode);
+                        }
+                    }}
+                />
+            )}
+
+            {testingSubnode && (
+                <TestModal
+                    isOpen={!!testingSubnode}
+                    subnode={testingSubnode}
+                    allNodes={nodes}
+                    onClose={() => setTestingSubnode(null)}
                 />
             )}
         </div>

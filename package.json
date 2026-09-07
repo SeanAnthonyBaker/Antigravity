@@ -1,0 +1,13 @@
+{
+    "name": "project-dataverse-api",
+    "version": "1.0.0",
+    "description": "Access Microsoft Project for the web via Dataverse API",
+    "main": "access_project.js",
+    "scripts": {
+        "start": "node access_project.js"
+    },
+    "dependencies": {
+        "@azure/msal-node": "^2.6.0",
+        "axios": "^1.6.0"
+    }
+}

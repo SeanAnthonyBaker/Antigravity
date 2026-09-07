@@ -1,0 +1,1431 @@
+{
+  "team": {
+    "id": "06ca04f4-e98a-4616-a706-3f862a12f35f",
+    "name": "Tulkah AI Management Team"
+  },
+  "channels": [
+    {
+      "id": "19:yVYAEGaw7mPwSTmDe9PLy1B0doMCKqm6EJ8ALQxGaak1@thread.tacv2",
+      "createdDateTime": "2025-11-14T11:05:16.179Z",
+      "displayName": "General",
+      "description": "This is a team for managing the Tulkah AI business",
+      "isFavoriteByDefault": null,
+      "email": "TulkahLeadership@TulkahAIAgileSolutioning.onmicrosoft.com",
+      "tenantId": "2bec83ec-133e-4dff-b5e4-45045d92b1c8",
+      "webUrl": "https://teams.cloud.microsoft/l/channel/19%3AyVYAEGaw7mPwSTmDe9PLy1B0doMCKqm6EJ8ALQxGaak1%40thread.tacv2/Tulkah%20AI%20Management%20Team?groupId=06ca04f4-e98a-4616-a706-3f862a12f35f&tenantId=2bec83ec-133e-4dff-b5e4-45045d92b1c8&allowXTenantAccess=False",
+      "membershipType": "standard",
+      "isArchived": false,
+      "tabs": [
+        {
+          "id": "ddc72b5f-6f26-4782-9df9-35fb4002865c",
+          "displayName": "Notes",
+          "webUrl": "https://teams.microsoft.com/l/entity/0d820ecd-def2-4297-adad-78056cde7c78/_djb2_msteams_prefix_2954300447?webUrl=https%3a%2f%2fonenote.com%2f&label=Notes&context=%7b%0d%0a++%22canvasUrl%22%3a+%22https%3a%2f%2fwww.microsoft365.com%2flaunch%2fonenote%2fofficeunihost%2fteams%3fauth%3d2%26flight%3dofficeunihost%26notebookSource%3dDefaultNotes%26notebookSelfUrl%3dhttps%253A%252F%252Fwww.onenote.com%252Fapi%252Fv1.0%252FmyOrganization%252FsiteCollections%252F67c3926d-09e1-4fee-be89-8b9773a1b3f2%252Fsites%252Fe271a5ea-d6c9-4a0e-ba70-6b270dc0b195%252Fnotes%252Fnotebooks%252F1-0b6969b0-6ea0-4dd0-bbfc-4e91f4a3b881%26oneNoteWebUrl%3dhttps%253A%252F%252Ftulkahaiagilesolutioning.sharepoint.com%252Fsites%252FTulkahLeadership%252FSiteAssets%252FTulkah%252520AI%252520Management%252520Team%252520Notebook%26notebookName%3dNotes%26createdTeamType%3dStandard%26oneNoteClientUrl%3dhttps%253A%252F%252Ftulkahaiagilesolutioning.sharepoint.com%252Fsites%252FTulkahLeadership%252FSiteAssets%252FTulkah%252520AI%252520Management%252520Team%252520Notebook%252FGeneral.one%26subEntityId%3d%257B%2522objectUrl%2522%253A%2522https%253A%252F%252Ftulkahaiagilesolutioning.sharepoint.com%252Fsites%252FTulkahLeadership%252FSiteAssets%252FTulkah%252520AI%252520Management%252520Team%252520Notebook%2522%252C%2522wd%2522%253A%2522target(General.one%252F)%2522%252C%2522fileType%2522%253A%2522one%2522%252C%2522fileId%2522%253A%25220b6969b0-6ea0-4dd0-bbfc-4e91f4a3b881%2522%252C%2522baseUrl%2522%253A%2522https%253A%252F%252Ftulkahaiagilesolutioning.sharepoint.com%252Fsites%252FTulkahLeadership%2522%257D%26sectionId%3d1-9c00ddaf-7285-4905-87ee-0603e43344fe%26notebookIsDefault%3dfalse%26isMigrated%3d1%26locale%3d%7blocale%7d%26tid%3d%7btid%7d%26upn%3d%7buserPrincipalName%7d%26groupId%3d%7bgroupId%7d%26theme%3d%7btheme%7d%26entityId%3d%7bentityId%7d%26sessionId%3d%7bsessionId%7d%26ringId%3d%7bringId%7d%26teamSiteUrl%3d%7bteamSiteUrl%7d%26channelType%3d%7bchannelType%7d%26appSessionId%3d%7bappSessionId%7d%26hostClientType%3d%7bhostClientType%7d%22%2c%0d%0a++%22channelId%22%3a+%2219%3ayVYAEGaw7mPwSTmDe9PLy1B0doMCKqm6EJ8ALQxGaak1%40thread.tacv2%22%2c%0d%0a++%22subEntityId%22%3a+null%0d%0a%7d&groupId=06ca04f4-e98a-4616-a706-3f862a12f35f&tenantId=2bec83ec-133e-4dff-b5e4-45045d92b1c8",
+          "configuration": {
+            "entityId": "NOTES_51239d96-a282-4ad2-b868-85476f03ae0b",
+            "contentUrl": "https://www.microsoft365.com/launch/onenote/officeunihost/teams?auth=2&flight=officeunihost&notebookSource=DefaultNotes&notebookSelfUrl=https%3A%2F%2Fwww.onenote.com%2Fapi%2Fv1.0%2FmyOrganization%2FsiteCollections%2F67c3926d-09e1-4fee-be89-8b9773a1b3f2%2Fsites%2Fe271a5ea-d6c9-4a0e-ba70-6b270dc0b195%2Fnotes%2Fnotebooks%2F1-0b6969b0-6ea0-4dd0-bbfc-4e91f4a3b881&oneNoteWebUrl=https%3A%2F%2Ftulkahaiagilesolutioning.sharepoint.com%2Fsites%2FTulkahLeadership%2FSiteAssets%2FTulkah%2520AI%2520Management%2520Team%2520Notebook&notebookName=Notes&createdTeamType=Standard&oneNoteClientUrl=https%3A%2F%2Ftulkahaiagilesolutioning.sharepoint.com%2Fsites%2FTulkahLeadership%2FSiteAssets%2FTulkah%2520AI%2520Management%2520Team%2520Notebook%2FGeneral.one&subEntityId=%7B%22objectUrl%22%3A%22https%3A%2F%2Ftulkahaiagilesolutioning.sharepoint.com%2Fsites%2FTulkahLeadership%2FSiteAssets%2FTulkah%2520AI%2520Management%2520Team%2520Notebook%22%2C%22wd%22%3A%22target(General.one%2F)%22%2C%22fileType%22%3A%22one%22%2C%22fileId%22%3A%220b6969b0-6ea0-4dd0-bbfc-4e91f4a3b881%22%2C%22baseUrl%22%3A%22https%3A%2F%2Ftulkahaiagilesolutioning.sharepoint.com%2Fsites%2FTulkahLeadership%22%7D&sectionId=1-9c00ddaf-7285-4905-87ee-0603e43344fe&notebookIsDefault=false&isMigrated=1&locale={locale}&tid={tid}&upn={userPrincipalName}&groupId={groupId}&theme={theme}&entityId={entityId}&sessionId={sessionId}&ringId={ringId}&teamSiteUrl={teamSiteUrl}&channelType={channelType}&appSessionId={appSessionId}&hostClientType={hostClientType}",
+            "removeUrl": "",
+            "websiteUrl": "https://onenote.com/"
+          }
+        },
+        {
+          "id": "3ed5b337-c2c9-4d5d-b7b4-84ff09a8fc1c",
+          "displayName": "Files",
+          "webUrl": "https://teams.microsoft.com/l/entity/3ed5b337-c2c9-4d5d-b7b4-84ff09a8fc1c/_djb2_msteams_prefix_2364260807?label=Files&context=%7b%0d%0a++%22canvasUrl%22%3a+%22https%3a%2f%2f%7bteamSiteDomain%7d%7bteamSitePath%7d%2f_layouts%2f15%2ffilebrowser.aspx%3ffileBrowser%3d%257B%2522sdk%2522%253A%2522v1.0%2522%252C%2522entry%2522%253A%257B%2522sharePoint%2522%253A%257B%2522byPath%2522%253A%257B%2522web%2522%253A%2522%7bteamSitePath%7d%2522%252C%2522folder%2522%253A%2522%7bchannelRelativeUrl%7d%2522%257D%257D%257D%257D%26app%3dteamsfile%26teamId%3d%7bteamId%7d%26channelId%3d%7bchannelId%7d%26entityId%3d%7bentityId%7d%26theme%3d%7btheme%7d%26ringId%3d%7bringId%7d%26locale%3d%7blocale%7d%26sid%3d%7bsessionId%7d%26asid%3d%7bappSessionId%7d%26subEntityId%3d%7bsubEntityId%7d%26scenario%3dChannelFiles%26auth%3dnone%26p%3d31%26hostName%3d%7bhostName%7d%22%2c%0d%0a++%22channelId%22%3a+%2219%3ayVYAEGaw7mPwSTmDe9PLy1B0doMCKqm6EJ8ALQxGaak1%40thread.tacv2%22%2c%0d%0a++%22subEntityId%22%3a+null%0d%0a%7d&groupId=06ca04f4-e98a-4616-a706-3f862a12f35f&tenantId=2bec83ec-133e-4dff-b5e4-45045d92b1c8",
+          "configuration": {
+            "entityId": "FileBrowserTabApp",
+            "contentUrl": "https://{teamSiteDomain}{teamSitePath}/_layouts/15/filebrowser.aspx?fileBrowser=%7B%22sdk%22%3A%22v1.0%22%2C%22entry%22%3A%7B%22sharePoint%22%3A%7B%22byPath%22%3A%7B%22web%22%3A%22{teamSitePath}%22%2C%22folder%22%3A%22{channelRelativeUrl}%22%7D%7D%7D%7D&app=teamsfile&teamId={teamId}&channelId={channelId}&entityId={entityId}&theme={theme}&ringId={ringId}&locale={locale}&sid={sessionId}&asid={appSessionId}&subEntityId={subEntityId}&scenario=ChannelFiles&auth=none&p=31&hostName={hostName}",
+            "removeUrl": null,
+            "websiteUrl": null
+          }
+        }
+      ]
+    }
+  ],
+  "apps": [
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyMxNGQ2OTYyZC02ZWViLTRmNDgtODg5MC1kZTU1NDU0YmIxMzY=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "MTRkNjk2MmQtNmVlYi00ZjQ4LTg4OTAtZGU1NTQ1NGJiMTM2IyMxLjAjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "14d6962d-6eeb-4f48-8890-de55454bb136",
+        "displayName": "Activity",
+        "version": "1.0",
+        "publishingState": "published",
+        "shortDescription": "Activity app bar entry.",
+        "description": "Activity app bar entry.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyMyMGMzNDQwZC1jNjdlLTQ0MjAtOWY4MC0wZTUwYzM5NjkzZGY=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "MjBjMzQ0MGQtYzY3ZS00NDIwLTlmODAtMGU1MGMzOTY5M2RmIyMxLjAjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "20c3440d-c67e-4420-9f80-0e50c39693df",
+        "displayName": "Calling",
+        "version": "1.0",
+        "publishingState": "published",
+        "shortDescription": "Calling app bar entry.",
+        "description": "Calling app bar entry.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyMyYTg0OTE5Zi01OWQ4LTQ0NDEtYTk3NS0yYThjMjY0M2I3NDE=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "MmE4NDkxOWYtNTlkOC00NDQxLWE5NzUtMmE4YzI2NDNiNzQxIyMxLjAuNSMjUHVibGlzaGVk",
+        "teamsAppId": "2a84919f-59d8-4441-a975-2a8c2643b741",
+        "displayName": "Teams",
+        "version": "1.0.5",
+        "publishingState": "published",
+        "shortDescription": "Teams app bar entry.",
+        "description": "Teams app bar entry.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "b55b276d-2b09-4ad2-8de5-f09cf24ffba9",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyMzNGIwMTg1MS1jMTNkLTQ2MDQtYmIzYi01ZGUxZWNiZjAyODg=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "MzRiMDE4NTEtYzEzZC00NjA0LWJiM2ItNWRlMWVjYmYwMjg4IyMxLjAjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "34b01851-c13d-4604-bb3b-5de1ecbf0288",
+        "displayName": "Saved",
+        "version": "1.0",
+        "publishingState": "published",
+        "shortDescription": "Saved messages view.",
+        "description": "Saved messages view.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyM1YWU4MGU0OS03YWRhLTQ2MWEtYTZiZC1jNWRmMmUwY2RiMDY=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "NWFlODBlNDktN2FkYS00NjFhLWE2YmQtYzVkZjJlMGNkYjA2IyMxLjAuMTEjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "5ae80e49-7ada-461a-a6bd-c5df2e0cdb06",
+        "displayName": "Channel Pages",
+        "version": "1.0.11",
+        "publishingState": "published",
+        "shortDescription": "Channel Pages",
+        "description": "Channel Pages brings collaborative Loop pages directly into Teams channels, offering a flexible, shareable space for teams to co-create content, organize ideas, and stay aligned—all within the channel experience.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "3138fe80-4087-4b04-80a6-8866c738028a",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyM4NmZjZDQ5Yi02MWEyLTQ3MDEtYjc3MS01NDcyOGNkMjkxZmI=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "ODZmY2Q0OWItNjFhMi00NzAxLWI3NzEtNTQ3MjhjZDI5MWZiIyMxLjAjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "86fcd49b-61a2-4701-b771-54728cd291fb",
+        "displayName": "Chat",
+        "version": "1.0",
+        "publishingState": "published",
+        "shortDescription": "Chat app bar entry.",
+        "description": "Chat app bar entry.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNhMmRhODc2OC05NWQ1LTQxOWUtOTQ0MS0zYjUzOTg2NWIxMTg=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "YTJkYTg3NjgtOTVkNS00MTllLTk0NDEtM2I1Mzk4NjViMTE4IyMxLjAjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "a2da8768-95d5-419e-9441-3b539865b118",
+        "displayName": "Search",
+        "version": "1.0",
+        "publishingState": "published",
+        "shortDescription": "Search results view.",
+        "description": "Search results view.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNhNjNmNzAxMi04Y2M5LTQyZDUtOTljMy1lMzVmNTI2ZmFiMTc=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "YTYzZjcwMTItOGNjOS00MmQ1LTk5YzMtZTM1ZjUyNmZhYjE3IyMxLjIuNCMjUHVibGlzaGVk",
+        "teamsAppId": "a63f7012-8cc9-42d5-99c3-e35f526fab17",
+        "displayName": "Meet",
+        "version": "1.2.4",
+        "publishingState": "published",
+        "shortDescription": "(Native) Microsoft Teams meetings, events and more.",
+        "description": "Meet app (Native) allows you to manage your meetings, events and real time collaboration. Quickly create, schedule or join your meetings and much more.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNlZjU2YzBkZS0zNmZjLTRlZjgtYjQxNy0zZDgyYmE5ZDA3M2M=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "ZWY1NmMwZGUtMzZmYy00ZWY4LWI0MTctM2Q4MmJhOWQwNzNjIyMxLjIuMjUjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "ef56c0de-36fc-4ef8-b417-3d82ba9d073c",
+        "displayName": "Calendar",
+        "version": "1.2.25",
+        "publishingState": "published",
+        "shortDescription": "Meeting invites, updates and reminders.",
+        "description": "Meeting invites, updates and reminders.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "c9224372-5534-42cb-a48b-8db4f4a3892e",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyMwMDAwMTAxNi1kZTA1LTQ5MmUtOTEwNi00ODI4ZmM4YTg2ODc=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "MDAwMDEwMTYtZGUwNS00OTJlLTkxMDYtNDgyOGZjOGE4Njg3IyMxLjAuMiMjUHVibGlzaGVk",
+        "teamsAppId": "00001016-de05-492e-9106-4828fc8a8687",
+        "displayName": "Power Automate Actions",
+        "version": "1.0.2",
+        "publishingState": "published",
+        "shortDescription": "Be more productive with Microsoft Flow",
+        "description": "Automate time-consuming and repetitive tasks by integrating your favorite apps and services with Microsoft Power Automate.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "7df0a125-d3be-4c96-aa54-591f83ff541c",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyMwNDA4ODBmNC0wYzY4LTRjMzgtODgyMS1kNWVmZDJiNmRkYmU=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "MDQwODgwZjQtMGM2OC00YzM4LTg4MjEtZDVlZmQyYjZkZGJlIyMxLjAuMiMjUHVibGlzaGVk",
+        "teamsAppId": "040880f4-0c68-4c38-8821-d5efd2b6ddbe",
+        "displayName": "Milestones",
+        "version": "1.0.2",
+        "publishingState": "published",
+        "shortDescription": "Stay on top of your work with efficient tracking, team status, and activity log",
+        "description": "Plan, track, and prioritize team's work capacity across projects in a central place. See team status and work item updates to become aware of how's the work going today, and react with any needed actions. Easily manage several projects in the app to avoid switching platforms. App can be easily extended with Microsoft Power Platform to meet your org's need.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "9362bc14-3e81-4ef9-8b77-f1c40afe68e0",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyMwYWUzNWIzNi0wZmQ3LTQyMmUtODA1Yi1kNTNhZjE1NzkwOTM=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "MGFlMzViMzYtMGZkNy00MjJlLTgwNWItZDUzYWYxNTc5MDkzIyMxLjIuNCMjUHVibGlzaGVk",
+        "teamsAppId": "0ae35b36-0fd7-422e-805b-d53af1579093",
+        "displayName": "SharePoint Pages",
+        "version": "1.2.4",
+        "publishingState": "published",
+        "shortDescription": "Add a tab for a SharePoint news article or page.",
+        "description": "Add a SharePoint page from your associated team site by selecting a page from the pages list and clicking Save. Your team will be able to view the page, but not edit.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "00000003-0000-0ff1-ce00-000000000000",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyMwZDgyMGVjZC1kZWYyLTQyOTctYWRhZC03ODA1NmNkZTdjNzg=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "MGQ4MjBlY2QtZGVmMi00Mjk3LWFkYWQtNzgwNTZjZGU3Yzc4IyMyLjEuMSMjUHVibGlzaGVk",
+        "teamsAppId": "0d820ecd-def2-4297-adad-78056cde7c78",
+        "displayName": "OneNote",
+        "version": "2.1.1",
+        "publishingState": "published",
+        "shortDescription": "OneNote: Digital notes to help you be productive & collaborate with your team.",
+        "description": "Microsoft OneNote is a versatile digital notebook designed to meet all your notetaking requirements.\nHere are some key features:\n- Free-form writing and drawing: Whether you prefer typing, writing, or drawing, OneNote provides a free-form experience akin to pen and paper.\n- Collaboration made easy: Share your notebooks with others, allowing simultaneous viewing and contribution. Collaborate seamlessly with colleagues, classmates, or friends.\n- Dictation for precision: Never overlook details with voice dictation. Capture your thoughts efficiently, focus on essential content, and revisit it later.\n- Cross-device accessibility: Access your notebooks from any device—whether you’re at work, home, school, or on the move.\nReady to organize your thoughts? Explore Microsoft OneNote and sign up [here](https://www.microsoft.com/en-us/microsoft-365/onenote/digital-note-taking-app).",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "2d4d3d8e-2be3-4bef-9f87-7875a61c29de",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyMxYzI1NmE2NS04M2E2LTRiNWMtOWNjZi03OGY4YWZiNmYxZTg=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "MWMyNTZhNjUtODNhNi00YjVjLTljY2YtNzhmOGFmYjZmMWU4IyMxLjIuMSMjUHVibGlzaGVk",
+        "teamsAppId": "1c256a65-83a6-4b5c-9ccf-78f8afb6f1e8",
+        "displayName": "Excel",
+        "version": "1.2.1",
+        "publishingState": "published",
+        "shortDescription": "Create powerful workbooks with data, use smart templates, and edit together.",
+        "description": "Organize your data in familiar spreadsheets and workbooks, with all changes saved automatically. Create modern visuals that turn numbers into valuable insights. Work together in real time with rich collaboration features that help you get work done with confidence.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "1c256a65-83a6-4b5c-9ccf-78f8afb6f1e8",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyMxYzQzNDBkZS0yYTg1LTQwZTUtOGViMC00ZjI5NTM2ODk3OGI=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "MWM0MzQwZGUtMmE4NS00MGU1LThlYjAtNGYyOTUzNjg5NzhiIyMxLjE5LjUjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "1c4340de-2a85-40e5-8eb0-4f295368978b",
+        "displayName": "Power BI",
+        "version": "1.19.5",
+        "publishingState": "published",
+        "shortDescription": "Collaborate better with your data.",
+        "description": "Make smart, data-based decisions at any level by bringing analysis and reporting into your conversations.\nShare Power BI reports, apps and dashboards with your teammates without leaving your chat or meeting, on Microsoft 365, Outlook and Microsoft Teams.\n\n[Get Started](https://go.microsoft.com/fwlink/?linkid=2191055) | [Get Help](https://go.microsoft.com/fwlink/?linkid=2191159) | [Contact Us](https://go.microsoft.com/fwlink/?linkid=2191057)",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "00000009-0000-0000-c000-000000000000",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyMyNmJjMjg3My02MDIzLTQ4MGMtYTExYi03NmI2NjYwNWNlOGM=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "MjZiYzI4NzMtNjAyMy00ODBjLWExMWItNzZiNjY2MDVjZThjIyMxLjUuMyMjUHVibGlzaGVk",
+        "teamsAppId": "26bc2873-6023-480c-a11b-76b66605ce8c",
+        "displayName": "Lists",
+        "version": "1.5.3",
+        "publishingState": "published",
+        "shortDescription": "Bring Lists into your channel",
+        "description": "Create a new list from scratch, from templates, based on an existing list, or by importing data from Excel. Record data, have conversations about list items, organize process, and track status in an environment built for teamwork and collaboration.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "00000003-0000-0ff1-ce00-000000000000",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyMyOGRiOTM5Zi1iMzlkLTRjODEtODg5OS02MjJmOTE3Y2IxYzY=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "MjhkYjkzOWYtYjM5ZC00YzgxLTg4OTktNjIyZjkxN2NiMWM2IyMxLjAuNCMjUHVibGlzaGVk",
+        "teamsAppId": "28db939f-b39d-4c81-8899-622f917cb1c6",
+        "displayName": "Inspection",
+        "version": "1.0.4",
+        "publishingState": "published",
+        "shortDescription": "Digitize inspection process for areas and assets",
+        "description": "Create customized checklist style inspections for areas and assets. Perform them digitally with the ability to take notes and pictures. Issues identified can have tasks created right from the app. Review long term trends on inspection results. Relevant in manufacturing, retail, healthcare, government, hospitality, transport etc. App can be easily extended with Microsoft Power Platform to meet your org's need.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "9362bc14-3e81-4ef9-8b77-f1c40afe68e0",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyMyOWFlODdjZi02NTQ1LTRlNzktODA5My05MjVkOTFlNDE1MGU=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "MjlhZTg3Y2YtNjU0NS00ZTc5LTgwOTMtOTI1ZDkxZTQxNTBlIyMxLjAuMiMjUHVibGlzaGVk",
+        "teamsAppId": "29ae87cf-6545-4e79-8093-925d91e4150e",
+        "displayName": "Bulletins",
+        "version": "1.0.2",
+        "publishingState": "published",
+        "shortDescription": "Read all company communication post in a central place",
+        "description": "Be in the know of all company communications, broadcasts, and announcements in an easy to consume experience in Microsoft Teams. Customize post categories or fit your needs and bookmark a post to revisit it later. View company wide important FAQ and links to get your answers quickly. App can be easily extended with Microsoft Power Platform to meet your org's need.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "9362bc14-3e81-4ef9-8b77-f1c40afe68e0",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyMyYTUyNzcwMy0xZjZmLTQ1NTktYTMzMi1kOGE3ZDI4OGNkODg=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "MmE1Mjc3MDMtMWY2Zi00NTU5LWEzMzItZDhhN2QyODhjZDg4IyMxLjAuNCMjUHVibGlzaGVk",
+        "teamsAppId": "2a527703-1f6f-4559-a332-d8a7d288cd88",
+        "displayName": "SharePoint",
+        "version": "1.0.4",
+        "publishingState": "published",
+        "shortDescription": "View pages and collaborate with lists.",
+        "description": "Add a SharePoint page or list. Lists can be edited. Pages are read only in Teams.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "00000003-0000-0ff1-ce00-000000000000",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyMzYmYyZTI1NC1kNmM5LTRlMGMtYjI2OS0xYzgwYzEyMjBkYzQ=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "M2JmMmUyNTQtZDZjOS00ZTBjLWIyNjktMWM4MGMxMjIwZGM0IyMxLjAuMyMjUHVibGlzaGVk",
+        "teamsAppId": "3bf2e254-d6c9-4e0c-b269-1c80c1220dc4",
+        "displayName": "Speaker coach",
+        "version": "1.0.3",
+        "publishingState": "published",
+        "shortDescription": "Control notifications when speaker coach has a summary report ready for review",
+        "description": "Listens as you speak in meetings and gives a summary report of how you did, and what you could work on.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "446f6ff1-f129-4dd2-930e-c5c620fb4121",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyMzZTBhNGZlYy00OTliLTQxMzgtOGU3Yy03MWE5ZDg4YTYyZWQ=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "M2UwYTRmZWMtNDk5Yi00MTM4LThlN2MtNzFhOWQ4OGE2MmVkIyMxLjIuMSMjUHVibGlzaGVk",
+        "teamsAppId": "3e0a4fec-499b-4138-8e7c-71a9d88a62ed",
+        "displayName": "PowerPoint",
+        "version": "1.2.1",
+        "publishingState": "published",
+        "shortDescription": "Create compelling presentations, try out templates, and coauthor in real time.",
+        "description": "Turn your ideas into compelling presentations using professional-looking templates. Use animations, transitions, photos, and online videos to tell one-of-a-kind stories. Coauthor team presentations at the same time, from anywhere.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "3e0a4fec-499b-4138-8e7c-71a9d88a62ed",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyMzZWQ1YjMzNy1jMmM5LTRkNWQtYjdiNC04NGZmMDlhOGZjMWM=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "M2VkNWIzMzctYzJjOS00ZDVkLWI3YjQtODRmZjA5YThmYzFjIyMxLjAuNCMjUHVibGlzaGVk",
+        "teamsAppId": "3ed5b337-c2c9-4d5d-b7b4-84ff09a8fc1c",
+        "displayName": "FileBrowser",
+        "version": "1.0.4",
+        "publishingState": "published",
+        "shortDescription": "Add a tab for Teams Channel Files.",
+        "description": "This app allows you to tab Teams channel files. ",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "00000003-0000-0ff1-ce00-000000000000",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyM0MDUxNzQ4NS0yMjYyLTQxMzUtYjE3NC00MDFkYTRhYTZmMGY=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "NDA1MTc0ODUtMjI2Mi00MTM1LWIxNzQtNDAxZGE0YWE2ZjBmIyMxLjEjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "40517485-2262-4135-b174-401da4aa6f0f",
+        "displayName": "Share conversation",
+        "version": "1.1",
+        "publishingState": "published",
+        "shortDescription": "A message action enabling users to share messages to Outlook.",
+        "description": "Share to Outlook is a message action in which a user can share chat messages or channel conversations to Outlook without leaving Teams.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "40517485-2262-4135-b174-401da4aa6f0f",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyM0MWFmNWNmZC1jMjQ5LTQyNGItYTNlYS01YzRiMTE1YzNkYzY=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "NDFhZjVjZmQtYzI0OS00MjRiLWEzZWEtNWM0YjExNWMzZGM2IyMxLjAuMCMjUHVibGlzaGVk",
+        "teamsAppId": "41af5cfd-c249-424b-a3ea-5c4b115c3dc6",
+        "displayName": "Share to Teams",
+        "version": "1.0.0",
+        "publishingState": "published",
+        "shortDescription": "Share to Teams",
+        "description": "Share to Teams",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyM0YTY1MjBkNi05NGE4LTQ3MzAtOTE4NC0yNDk5N2I5YjM0MDE=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "NGE2NTIwZDYtOTRhOC00NzMwLTkxODQtMjQ5OTdiOWIzNDAxIyMyLjQuMCMjUHVibGlzaGVk",
+        "teamsAppId": "4a6520d6-94a8-4730-9184-24997b9b3401",
+        "displayName": "Loop",
+        "version": "2.4.0",
+        "publishingState": "published",
+        "shortDescription": "Think, plan and create together with Microsoft Loop",
+        "description": "Microsoft Loop is a transformative co-creation experience that brings together teams, content and tasks across your tools and devices. Loop combines a powerful and flexible canvas with portable components that move freely and stay in sync across applications — enabling teams to think, plan, and create together.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "a187e399-0c36-4b98-8f04-1edc167a0996",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": [
+              {
+                "permissionValue": "MeetingStage.Write.Chat",
+                "permissionType": "delegated"
+              },
+              {
+                "permissionValue": "ChannelMeetingStage.Write.Group",
+                "permissionType": "delegated"
+              },
+              {
+                "permissionValue": "LiveShareSession.ReadWrite.Chat",
+                "permissionType": "delegated"
+              },
+              {
+                "permissionValue": "LiveShareSession.ReadWrite.Group",
+                "permissionType": "delegated"
+              },
+              {
+                "permissionValue": "OnlineMeetingParticipant.Read.Chat",
+                "permissionType": "delegated"
+              },
+              {
+                "permissionValue": "OnlineMeeting.ReadBasic.Chat",
+                "permissionType": "delegated"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyM0YzBjMWY5Yi03NTAwLTRlYWMtOGQ0OC0zZmZmZTY5YjNiOTE=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "NGMwYzFmOWItNzUwMC00ZWFjLThkNDgtM2ZmZmU2OWIzYjkxIyMxLjEuMCMjUHVibGlzaGVk",
+        "teamsAppId": "4c0c1f9b-7500-4eac-8d48-3fffe69b3b91",
+        "displayName": "Meeting attendance report",
+        "version": "1.1.0",
+        "publishingState": "published",
+        "shortDescription": "Allows access to the attendance report for a Teams meeting to the organizer",
+        "description": "Provides a rich attendance report experience to a Teams meeting organizer",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyM1YWY2YTc2Yi00MGZjLTRiYTEtYWYyOS04ZjQ5YjA4ZTQ0ZmQ=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "NWFmNmE3NmItNDBmYy00YmExLWFmMjktOGY0OWIwOGU0NGZkIyMxLjEuMyMjUHVibGlzaGVk",
+        "teamsAppId": "5af6a76b-40fc-4ba1-af29-8f49b08e44fd",
+        "displayName": "OneDrive",
+        "version": "1.1.3",
+        "publishingState": "published",
+        "shortDescription": "A hub for all your content",
+        "description": "This app helps discovering, accessing and sharing your files from your chats, channels or meetings in Teams. The app experience is also consistent and familiar with how files are stored, shared and accessed across Microsoft 365 and OneDrive. The app offers easy navigation to relevant files and offers following navigation functionality:\n•    Home: Get back to your recently accessed files.\n•    My files: Access your personal files saved in your OneDrive. \n•    Shared: Find files shared with you and files you have shared with others across Microsoft 365.\n•    Downloads: Locate files downloaded from Teams on your computer.\n•    Quick Access: Pin a Teams channel file tab or SharePoint document library to access quickly.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "3138fe80-4087-4b04-80a6-8866c738028a",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyM1ZGI1NmRkMC01MzRkLTQ2N2ItYWVkYS1kNjIyYmVlMjU3NGE=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "NWRiNTZkZDAtNTM0ZC00NjdiLWFlZGEtZDYyMmJlZTI1NzRhIyMxLjEuMTUjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "5db56dd0-534d-467b-aeda-d622bee2574a",
+        "displayName": "Q&A",
+        "version": "1.1.15",
+        "publishingState": "published",
+        "shortDescription": "Questions and answers for structured meetings​",
+        "description": "The Q&A app is a robust solution for structured scenarios that organizers can customize with just a few clicks. You can add open or moderated Q&A, mark the best answer for a question, filter responses, enable replies, and more. This Q&A experience is powered by Microsoft Yammer and customized for Microsoft Teams.​",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "00000005-0000-0ff1-ce00-000000000000",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": [
+              {
+                "permissionValue": "OnlineMeeting.ReadBasic.Chat",
+                "permissionType": "delegated"
+              },
+              {
+                "permissionValue": "ChannelMeeting.ReadBasic.Group",
+                "permissionType": "delegated"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyM3YTBjMWQ1My1mNjQ3LTRkNzYtYWIyYy1mYmMwZDczYzhiYjA=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "N2EwYzFkNTMtZjY0Ny00ZDc2LWFiMmMtZmJjMGQ3M2M4YmIwIyMwLjEuMiMjUHVibGlzaGVk",
+        "teamsAppId": "7a0c1d53-f647-4d76-ab2c-fbc0d73c8bb0",
+        "displayName": "Broadcast QnA",
+        "version": "0.1.2",
+        "publishingState": "published",
+        "shortDescription": "Broadcast QnA",
+        "description": "Broadcast QnA",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "7557eb47-c689-4224-abcf-aef9bd7573df",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyM3YTc4ZmRlOC03YzVjLTQ0NWQtOTQ1ZS05MzU0NjQ5Zjk1NjI=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "N2E3OGZkZTgtN2M1Yy00NDVkLTk0NWUtOTM1NDY0OWY5NTYyIyMwLjIuMTkjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "7a78fde8-7c5c-445d-945e-9354649f9562",
+        "displayName": "Organization",
+        "version": "0.2.19",
+        "publishingState": "published",
+        "shortDescription": "Organizational Chart.",
+        "description": "Organizational Chart.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyM3ZDcxYzRhNS1kZDQ0LTQ1MjUtYjIxYi04NjdkN2IyZDZlOTQ=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "N2Q3MWM0YTUtZGQ0NC00NTI1LWIyMWItODY3ZDdiMmQ2ZTk0IyMxLjAuMyMjUHVibGlzaGVk",
+        "teamsAppId": "7d71c4a5-dd44-4525-b21b-867d7b2d6e94",
+        "displayName": "Loop notifications",
+        "version": "1.0.3",
+        "publishingState": "published",
+        "shortDescription": "Get notified when you're mentioned.",
+        "description": "Get notified when you're @mentioned in a Loop component.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "3138fe80-4087-4b04-80a6-8866c738028a",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyM4MWZlZjNhNi03MmFhLTQ2NDgtYTc2My1kZTgyNGFlYWZiN2Q=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "ODFmZWYzYTYtNzJhYS00NjQ4LWE3NjMtZGU4MjRhZWFmYjdkIyMxLjEuOSMjUHVibGlzaGVk",
+        "teamsAppId": "81fef3a6-72aa-4648-a763-de824aeafb7d",
+        "displayName": "Forms",
+        "version": "1.1.9",
+        "publishingState": "published",
+        "shortDescription": "Easily create surveys, quizzes and polls.",
+        "description": "Forms empower you to collect better data and make better decisions. Use Forms in Microsoft Teams to:\n* Create effective forms with easy-to-use tools and clear design suggestions.\n* Get quick feedback or collect more detailed information with branching questions.\n* Instantly visualize response data and advanced analysis.\n* Stay connected from any browser on any device—no matter where you are.\n* Assess student progress with quizzes and easily export answers to Excel.\n* Launch a poll in your meeting/chat to collect real-time feedbacks and better engage with participants.\n\n[Get Help](https://support.microsoft.com/forms)",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "c9a559d2-7aab-4f13-a6ed-e7e9c52aec87",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyM4NjU4ZmU3MC01NDBhLTQ5MzAtYjAyYi02NWFlMjUzMTkzZmY=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "ODY1OGZlNzAtNTQwYS00OTMwLWIwMmItNjVhZTI1MzE5M2ZmIyMxLjAuMiMjUHVibGlzaGVk",
+        "teamsAppId": "8658fe70-540a-4930-b02b-65ae253193ff",
+        "displayName": "Meeting Sensitivity Alert",
+        "version": "1.0.2",
+        "publishingState": "published",
+        "shortDescription": "Update meeting sensitivity label as recommended by your organization",
+        "description": "This App notifies a meeting organizer with a recommendation from their organization to make an update to the sensitivity label of their meetings.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "e9d778bd-0cde-4e66-977e-3702cef954c0",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyM4ZTE0ZTg3My0zNWJhLTQ3MjAtYjc4Ny0wYmVkOTQzNzBiMTc=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "OGUxNGU4NzMtMzViYS00NzIwLWI3ODctMGJlZDk0MzcwYjE3IyMxLjAjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "8e14e873-35ba-4720-b787-0bed94370b17",
+        "displayName": "Tags",
+        "version": "1.0",
+        "publishingState": "published",
+        "shortDescription": "Tags",
+        "description": "Create and manage custom groups of people in a team",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "8e14e873-35ba-4720-b787-0bed94370b17",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyM5NWRlNjMzYS0wODNlLTQyZjUtYjQ0NC1hNDI5NWQ4ZTkzMTQ=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "OTVkZTYzM2EtMDgzZS00MmY1LWI0NDQtYTQyOTVkOGU5MzE0IyMxLjEuMCMjUHVibGlzaGVk",
+        "teamsAppId": "95de633a-083e-42f5-b444-a4295d8e9314",
+        "displayName": "Whiteboard",
+        "version": "1.1.0",
+        "publishingState": "published",
+        "shortDescription": "Use Microsoft Whiteboard to collaborate, visualize ideas, and work creatively in Microsoft Teams",
+        "description": "The Microsoft Whiteboard app in Teams brings the power of digital whiteboards to supercharge visual collaboration in one seamless experience right within Teams.\n\n Use Whiteboard across your entire Teams workspace\n* Easily access all your whiteboards in one single place inside Teams\n* Prepare a whiteboard in advance for your next meeting to brainstorm, plan or co-create express ideas naturally with your team together in real time\n* Add a whiteboard as a tab to your favorite chat/channel to continue collaboration with your team asynchronously",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "95de633a-083e-42f5-b444-a4295d8e9314",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": [
+              {
+                "permissionValue": "MeetingStage.Write.Chat",
+                "permissionType": "delegated"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyM5NzgxYmM3ZC01YjJlLTRjZDctYTE3OS00NmRlOWE2ZjAyNDc=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "OTc4MWJjN2QtNWIyZS00Y2Q3LWExNzktNDZkZTlhNmYwMjQ3IyMxLjAuNSMjUHVibGlzaGVk",
+        "teamsAppId": "9781bc7d-5b2e-4cd7-a179-46de9a6f0247",
+        "displayName": "Bookable desks ",
+        "version": "1.0.5",
+        "publishingState": "published",
+        "shortDescription": "Bookable desks is an app to help employees book shared desks in office",
+        "description": "Bookable desks give you an ability to book or check-into shared desks by plugging managed devices on an unassigned desk into Windows PC or Mac with active Teams client.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "1996141e-2b07-4491-927a-5a024b335c78",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": [
+              {
+                "permissionValue": "TeamsActivity.Send.User",
+                "permissionType": "application"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyM5OWU0NjMzNS01MjUwLTRhNjgtODQ5OS0zZTRmNTVlNmYzZjY=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "OTllNDYzMzUtNTI1MC00YTY4LTg0OTktM2U0ZjU1ZTZmM2Y2IyMzLjMuMCMjUHVibGlzaGVk",
+        "teamsAppId": "99e46335-5250-4a68-8499-3e4f55e6f3f6",
+        "displayName": "Updates",
+        "version": "3.3.0",
+        "publishingState": "published",
+        "shortDescription": "Updates app helps users easily track team work status and gain insights.",
+        "description": "Updates is a Microsoft app designed to help users effortlessly track their teams' work status and gain insights by collecting and reviewing work reports from team members. Whether you need to manage regular recurring processes or ad-hoc reports required at a moment's notice, the Updates app streamlines everything in one convenient place.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "ea62c1c6-550b-4238-8ea7-c55a85d86be8",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyM5ZjFhNGFlMC02YWUyLTQ3NWQtOTczZC1jODk2ODdkMDM3NTM=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "OWYxYTRhZTAtNmFlMi00NzVkLTk3M2QtYzg5Njg3ZDAzNzUzIyMxLjEuMCMjUHVibGlzaGVk",
+        "teamsAppId": "9f1a4ae0-6ae2-475d-973d-c89687d03753",
+        "displayName": "GCP",
+        "version": "1.1.0",
+        "publishingState": "published",
+        "shortDescription": "Groups Configuration Processor",
+        "description": "Contains Groups related assistants logic",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "1690c5aa-925a-4d0e-836b-722c795bd0d0",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNhYTM5YjJmOC0zYzhkLTRjZTEtOGI4Yi03ZmUwMmM1OWFlM2U=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "YWEzOWIyZjgtM2M4ZC00Y2UxLThiOGItN2ZlMDJjNTlhZTNlIyMxLjAjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "aa39b2f8-3c8d-4ce1-8b8b-7fe02c59ae3e",
+        "displayName": "Outgoing Webhook",
+        "version": "1.0",
+        "publishingState": "published",
+        "shortDescription": "Outgoing Webhooks help communicate with apps outside Microsoft Teams.",
+        "description": "Webhooks are a great way for Teams to integrate with external apps. A webhook is essentially a POST request sent to a callback URL. In Teams, outgoing webhooks provide a simple way to allow users to send messages to your web service without having to go through the full process of creating bots via the Microsoft Bot Framework. Outgoing webhooks post data from Teams to any chosen service capable of accepting a JSON payload. Once an outgoing webhook is added to a team, it acts like bot, listening in channels for messages using @mention, sending notifications to external web services, and responding with rich messages that can include cards and images.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNiNmU1MjcwYy1mMzY3LTRhNGUtODhiMS0xMjk0NmMxMWE2MTY=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "YjZlNTI3MGMtZjM2Ny00YTRlLTg4YjEtMTI5NDZjMTFhNjE2IyMxLjAuNyMjUHVibGlzaGVk",
+        "teamsAppId": "b6e5270c-f367-4a4e-88b1-12946c11a616",
+        "displayName": "Teams Immersive",
+        "version": "1.0.7",
+        "publishingState": "published",
+        "shortDescription": "Immersive events in Teams",
+        "description": "Enhance collaboration with immersive events in Teams! Create a new meeting and select the immersive event type. \nUsers interact with each other with personalized avatars in a virtual 3D space. Environments are customizable to make immersive events unique to your organization.\nImmersive events are currently available in the 2D Teams meeting experience or from Quest.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "3016d0ce-47cc-4005-b11d-5fcabb1b643d",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": [
+              {
+                "permissionValue": "ChannelMeeting.ReadBasic.Group",
+                "permissionType": "delegated"
+              },
+              {
+                "permissionValue": "OnlineMeeting.ReadBasic.Chat",
+                "permissionType": "delegated"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNiN2ZhZDZjZS0yZTIzLTRhYmEtYjIwOS04NTlhNTljYTIzMGU=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "YjdmYWQ2Y2UtMmUyMy00YWJhLWIyMDktODU5YTU5Y2EyMzBlIyMxLjAuMyMjUHVibGlzaGVk",
+        "teamsAppId": "b7fad6ce-2e23-4aba-b209-859a59ca230e",
+        "displayName": "Employee ideas",
+        "version": "1.0.3",
+        "publishingState": "published",
+        "shortDescription": "Enables team members to quickly generate and organize ideas by campaigns",
+        "description": "Easily review, manage, and vote upon team's ideas to increase team engagement and morale. Team managers can create idea campaigns to collect ideas from team members. While submitting an idea, team members can attach images, notes, and files to better communicate the ideas. Relevant for teams in manufacturing, retail, healthcare, government, hospitality, transport etc. App can be easily extended with Microsoft Power Platform to meet your org's need.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "9362bc14-3e81-4ef9-8b77-f1c40afe68e0",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNjMWExNzY0Yy02MjcyLTRkMDMtODQ5NS03ZGE5Njk4YWQ0MGE=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "YzFhMTc2NGMtNjI3Mi00ZDAzLTg0OTUtN2RhOTY5OGFkNDBhIyMxLjAuMyMjUHVibGlzaGVk",
+        "teamsAppId": "c1a1764c-6272-4d03-8495-7da9698ad40a",
+        "displayName": "Issue reporting",
+        "version": "1.0.3",
+        "publishingState": "published",
+        "shortDescription": "Identify + manage issues & incidents in your organization",
+        "description": "Empower the front line worker to report issues they see on the ground. Easily collect issues submitted in Planner for effective case management within Microsoft Teams. Define issue templates with SLA for task closure, auto assign tickets to right person, and track open issues based on a customizable template. App can be easily extended with Microsoft Power Platform to meet your org's need.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "9362bc14-3e81-4ef9-8b77-f1c40afe68e0",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNjM2ExOTk2ZC1kYjBmLTQ4NTctYTZlYS03YWFiZjAyNjZiMDA=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "YzNhMTk5NmQtZGIwZi00ODU3LWE2ZWEtN2FhYmYwMjY2YjAwIyMyLjQuOSMjUHVibGlzaGVk",
+        "teamsAppId": "c3a1996d-db0f-4857-a6ea-7aabf0266b00",
+        "displayName": "Workflows",
+        "version": "2.4.9",
+        "publishingState": "published",
+        "shortDescription": "Be more productive with Microsoft Power Automate",
+        "description": "Automate time-consuming and repetitive tasks by integrating your favorite apps and services with Microsoft Power Automate.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "7df0a125-d3be-4c96-aa54-591f83ff541c",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNjYWUzYThhOC0xYmE5LTQ1MTctYTcwOC00ZTBhYjdmYWI3ZWU=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "Y2FlM2E4YTgtMWJhOS00NTE3LWE3MDgtNGUwYWI3ZmFiN2VlIyMxLjAuMiMjUHVibGlzaGVk",
+        "teamsAppId": "cae3a8a8-1ba9-4517-a708-4e0ab7fab7ee",
+        "displayName": "Room Remote",
+        "version": "1.0.2",
+        "publishingState": "published",
+        "shortDescription": "Control the physical meeting room devices",
+        "description": "Allows meeting participants in the physical meeting room to control the meeting room devices using the app instead of the shared device",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNjb20ubWljcm9zb2Z0LnRlYW1zcGFjZS50YWIuZmlsZS5zdGF0aWN2aWV3ZXIuZXhjZWw=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "Y29tLm1pY3Jvc29mdC50ZWFtc3BhY2UudGFiLmZpbGUuc3RhdGljdmlld2VyLmV4Y2VsIyMwLjEjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "com.microsoft.teamspace.tab.file.staticviewer.excel",
+        "displayName": "Excel",
+        "version": "0.1",
+        "publishingState": "published",
+        "shortDescription": "files_pintab_excel_gallery_description",
+        "description": "files_pintab_excel_gallery_descriptionLong",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNjb20ubWljcm9zb2Z0LnRlYW1zcGFjZS50YWIuZmlsZS5zdGF0aWN2aWV3ZXIucGRm",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "Y29tLm1pY3Jvc29mdC50ZWFtc3BhY2UudGFiLmZpbGUuc3RhdGljdmlld2VyLnBkZiMjMC4wLjEjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "com.microsoft.teamspace.tab.file.staticviewer.pdf",
+        "displayName": "PDF",
+        "version": "0.0.1",
+        "publishingState": "published",
+        "shortDescription": "files_pintab_pdf_gallery_description",
+        "description": "files_pintab_pdf_gallery_descriptionLong",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNjb20ubWljcm9zb2Z0LnRlYW1zcGFjZS50YWIuZmlsZS5zdGF0aWN2aWV3ZXIucG93ZXJwb2ludA==",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "Y29tLm1pY3Jvc29mdC50ZWFtc3BhY2UudGFiLmZpbGUuc3RhdGljdmlld2VyLnBvd2VycG9pbnQjIzAuMSMjUHVibGlzaGVk",
+        "teamsAppId": "com.microsoft.teamspace.tab.file.staticviewer.powerpoint",
+        "displayName": "PowerPoint",
+        "version": "0.1",
+        "publishingState": "published",
+        "shortDescription": "files_pintab_powerpoint_gallery_description",
+        "description": "files_pintab_powerpoint_gallery_descriptionLong",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNjb20ubWljcm9zb2Z0LnRlYW1zcGFjZS50YWIuZmlsZS5zdGF0aWN2aWV3ZXIudmlzaW8=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "Y29tLm1pY3Jvc29mdC50ZWFtc3BhY2UudGFiLmZpbGUuc3RhdGljdmlld2VyLnZpc2lvIyMwLjEjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "com.microsoft.teamspace.tab.file.staticviewer.visio",
+        "displayName": "Visio",
+        "version": "0.1",
+        "publishingState": "published",
+        "shortDescription": "files_pintab_visio_gallery_description",
+        "description": "files_pintab_visio_gallery_descriptionLong",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNjb20ubWljcm9zb2Z0LnRlYW1zcGFjZS50YWIuZmlsZS5zdGF0aWN2aWV3ZXIud29yZA==",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "Y29tLm1pY3Jvc29mdC50ZWFtc3BhY2UudGFiLmZpbGUuc3RhdGljdmlld2VyLndvcmQjIzAuMSMjUHVibGlzaGVk",
+        "teamsAppId": "com.microsoft.teamspace.tab.file.staticviewer.word",
+        "displayName": "Word",
+        "version": "0.1",
+        "publishingState": "published",
+        "shortDescription": "files_pintab_word_gallery_description",
+        "description": "files_pintab_word_gallery_descriptionLong",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNjb20ubWljcm9zb2Z0LnRlYW1zcGFjZS50YWIuZmlsZXMuc2hhcmVwb2ludA==",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "Y29tLm1pY3Jvc29mdC50ZWFtc3BhY2UudGFiLmZpbGVzLnNoYXJlcG9pbnQjIzAuMSMjUHVibGlzaGVk",
+        "teamsAppId": "com.microsoft.teamspace.tab.files.sharepoint",
+        "displayName": "Document Library",
+        "version": "0.1",
+        "publishingState": "published",
+        "shortDescription": "extensioncatalog_tabFilesCustomSpoDescription",
+        "description": "extensioncatalog_tabFilesCustomSpoDescriptionLong",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNjb20ubWljcm9zb2Z0LnRlYW1zcGFjZS50YWIubm90ZXM=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "Y29tLm1pY3Jvc29mdC50ZWFtc3BhY2UudGFiLm5vdGVzIyMwLjEjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "com.microsoft.teamspace.tab.notes",
+        "displayName": "OneNote (Legacy)",
+        "version": "0.1",
+        "publishingState": "published",
+        "shortDescription": "Use OneNote to collaborate on digital notes and notebooks with your team.",
+        "description": "Use OneNote to collaborate on digital notes and notebooks and share them with your team.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNjb20ubWljcm9zb2Z0LnRlYW1zcGFjZS50YWIucGxhbm5lcg==",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "Y29tLm1pY3Jvc29mdC50ZWFtc3BhY2UudGFiLnBsYW5uZXIjIzEuNS4xIyNQdWJsaXNoZWQ=",
+        "teamsAppId": "com.microsoft.teamspace.tab.planner",
+        "displayName": "Planner",
+        "version": "1.5.1",
+        "publishingState": "published",
+        "shortDescription": "A simple way to organize tasks and projects",
+        "description": "The new Microsoft Planner brings together the best of To Do, Planner, and Project for the web with the added intelligence of Copilot.\n\n**Simple**\nEasily manage all your tasks, to-dos, lists, plans, and projects across Microsoft 365 apps.\n\n**Flexible**\nFrom individual task management to large team initiatives, Planner scales to meet your organization's changing needs. Use templates to quickly start a new plan and choose between views such as lists, boards, timelines, and goals.\n\n**Intelligent**\nAccelerate outcomes with AI. Copilot in Planner (preview) can help you and your team generate new plans, set goals, track status, and react to changes as projects evolve.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "75efb5bc-18a1-4e7b-8a66-2ad2503d79c6",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNjb20ubWljcm9zb2Z0LnRlYW1zcGFjZS50YWIucG93ZXJiaQ==",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "Y29tLm1pY3Jvc29mdC50ZWFtc3BhY2UudGFiLnBvd2VyYmkjIzAuMSMjUHVibGlzaGVk",
+        "teamsAppId": "com.microsoft.teamspace.tab.powerbi",
+        "displayName": "Power BI (Legacy)",
+        "version": "0.1",
+        "publishingState": "published",
+        "shortDescription": "Keep a Power BI report handy.",
+        "description": "Add a Power BI report to your channel. You can even add multiple reports to the same tab.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNjb20ubWljcm9zb2Z0LnRlYW1zcGFjZS50YWIud2Vi",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "Y29tLm1pY3Jvc29mdC50ZWFtc3BhY2UudGFiLndlYiMjMC4yLjAjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "com.microsoft.teamspace.tab.web",
+        "displayName": "Website",
+        "version": "0.2.0",
+        "publishingState": "published",
+        "shortDescription": "Add websites you need to get to in a hurry.",
+        "description": "The website tab lets you pin a secure website at the top of a channel or conversation so everyone has easy access to important sites.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNjb20ubWljcm9zb2Z0LnRlYW1zcGFjZS50YWIud2lraQ==",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "Y29tLm1pY3Jvc29mdC50ZWFtc3BhY2UudGFiLndpa2kjIzEuMC4zIyNQdWJsaXNoZWQ=",
+        "teamsAppId": "com.microsoft.teamspace.tab.wiki",
+        "displayName": "Wiki",
+        "version": "1.0.3",
+        "publishingState": "published",
+        "shortDescription": "extensioncatalog_tabCanvasDescription",
+        "description": "extensioncatalog_tabCanvasDescriptionLong",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNjb20ubWljcm9zb2Z0c3RyZWFtLmVtYmVkLnNreXBldGVhbXN0YWI=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "Y29tLm1pY3Jvc29mdHN0cmVhbS5lbWJlZC5za3lwZXRlYW1zdGFiIyMyLjAuMTUjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "com.microsoftstream.embed.skypeteamstab",
+        "displayName": "Clipchamp",
+        "version": "2.0.15",
+        "publishingState": "published",
+        "shortDescription": "Create and watch all videos in one place with Microsoft Clipchamp.",
+        "description": "Microsoft Clipchamp is a single video destination of creation, consumption, and discovery with intelligent AI powered copilot video consumption.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "bfd4ce15-eae0-460c-89a3-4b2e12635ed5",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNkNTMwNTgwMS1kOWM0LTRkZDEtYWFkZi1kM2NkYjBkOWQ4OTM=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "ZDUzMDU4MDEtZDljNC00ZGQxLWFhZGYtZDNjZGIwZDlkODkzIyMwLjAuMjEjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "d5305801-d9c4-4dd1-aadf-d3cdb0d9d893",
+        "displayName": "Camera",
+        "version": "0.0.21",
+        "publishingState": "published",
+        "shortDescription": "Camera",
+        "description": "Camera",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNkNzk1OGFkZi1mNDE5LTQ2ZmEtOTQxYi0xYjk0NjQ5N2VmODQ=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "ZDc5NThhZGYtZjQxOS00NmZhLTk0MWItMWI5NDY0OTdlZjg0IyMxLjIuMSMjUHVibGlzaGVk",
+        "teamsAppId": "d7958adf-f419-46fa-941b-1b946497ef84",
+        "displayName": "Word",
+        "version": "1.2.1",
+        "publishingState": "published",
+        "shortDescription": "Create documents, try out templates, and collaborate with others in real time.",
+        "description": "Craft great-looking resumes, newsletters, and documents while inviting others to review and coauthor in real time. Plus, access free templates, formatting tools for APA, MLA, and Chicago style, and add functionality with free add-ins.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "d7958adf-f419-46fa-941b-1b946497ef84",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNkNzk1OGFkZi1mNDE5LTQ2ZmEtOTQxYi0xYjk0NjQ5N2VmOTU=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "ZDc5NThhZGYtZjQxOS00NmZhLTk0MWItMWI5NDY0OTdlZjk1IyMxLjAuOCMjUHVibGlzaGVk",
+        "teamsAppId": "d7958adf-f419-46fa-941b-1b946497ef95",
+        "displayName": "Visio",
+        "version": "1.0.8",
+        "publishingState": "published",
+        "shortDescription": "Create and collaborate on professional looking diagrams.",
+        "description": "Create and collaborate on easy-to-understand visuals with confidence for effective decision making, data visualization, and process execution to help increase productivity across the business. Choose from dozens of premade templates, starter diagrams, and stencils. Visio is an innovative solution that helps you visualize business processes with flowcharts, team, hierarchy or reporting structures with Org charts, engineering systems with network, azure, UML diagrams and many more.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "d7958adf-f419-46fa-941b-1b946497ef95",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": [
+              {
+                "permissionValue": "OnlineMeeting.ReadBasic.Chat",
+                "permissionType": "delegated"
+              },
+              {
+                "permissionValue": "ChannelMeeting.ReadBasic.Group",
+                "permissionType": "delegated"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNkODMyYTMzZi0yOGMyLTQ5NjktOGFkMC00ZmVlNjgxZGM1YjQ=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "ZDgzMmEzM2YtMjhjMi00OTY5LThhZDAtNGZlZTY4MWRjNWI0IyMxLjIuMTIjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "d832a33f-28c2-4969-8ad0-4fee681dc5b4",
+        "displayName": "Praise",
+        "version": "1.2.12",
+        "publishingState": "published",
+        "shortDescription": "Show gratitude for your peers.",
+        "description": "Recognize your colleagues’ contributions using the praise messaging extension from Microsoft Viva Insights. Easily access the praise feature within Microsoft Teams, choose a celebratory badge, add an optional message, and share gratitude within the flow of work. Praise badges can be sent in a private chat or posted to Teams channels for wider visibility.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "3c896ded-22c5-450f-91f6-3d1ef0848f6e",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNlYjYyZDA4Mi0yYzBhLTQ2NzItOTI1Mi1lOGU0NTZmMTkyYjE=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "ZWI2MmQwODItMmMwYS00NjcyLTkyNTItZThlNDU2ZjE5MmIxIyMxLjAuOCMjUHVibGlzaGVk",
+        "teamsAppId": "eb62d082-2c0a-4672-9252-e8e456f192b1",
+        "displayName": "Recommendations",
+        "version": "1.0.8",
+        "publishingState": "published",
+        "shortDescription": "Suggestions for you from Microsoft Teams",
+        "description": "Suggestions for you from Microsoft Teams",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": "cc15fd57-2c6c-4117-a88c-83b1d56b4bbe",
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNhMTk5ZDQ1Yy1hNjQ2LTRhZDMtYjRhOS1jYTI4ODA0NmJiMTc=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "YTE5OWQ0NWMtYTY0Ni00YWQzLWI0YTktY2EyODgwNDZiYjE3IyMxLjAjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "a199d45c-a646-4ad3-b4a9-ca288046bb17",
+        "displayName": "Datadog (Legacy)",
+        "version": "1.0",
+        "publishingState": "published",
+        "shortDescription": "Monitoring and analytics",
+        "description": "Connectors keep your team current by delivering content and updates from services you use directly into a channel. The Datadog connector sends notifications about alerts and downtime for your application.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    },
+    {
+      "id": "MDZjYTA0ZjQtZTk4YS00NjE2LWE3MDYtM2Y4NjJhMTJmMzVmIyNmYjI3OTZmYS0yNWY0LTRhZmMtOGU1NS02ODM2YWYyYzQ5MjE=",
+      "consentedPermissionSet": null,
+      "teamsAppDefinition": {
+        "id": "ZmIyNzk2ZmEtMjVmNC00YWZjLThlNTUtNjgzNmFmMmM0OTIxIyMxLjAjI1B1Ymxpc2hlZA==",
+        "teamsAppId": "fb2796fa-25f4-4afc-8e55-6836af2c4921",
+        "displayName": "Asana (Legacy)",
+        "version": "1.0",
+        "publishingState": "published",
+        "shortDescription": "Track your team's tasks in an Asana project.",
+        "description": "Asana helps you clarify who's doing what by when. Assign tasks and due dates to stay accountable to each other.",
+        "lastModifiedDateTime": null,
+        "createdBy": null,
+        "authorization": {
+          "clientAppId": null,
+          "requiredPermissionSet": {
+            "resourceSpecificPermissions": []
+          }
+        }
+      }
+    }
+  ]
+}
