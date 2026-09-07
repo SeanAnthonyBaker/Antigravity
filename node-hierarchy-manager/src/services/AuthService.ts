@@ -49,7 +49,7 @@ export const AuthService = {
     async getAllUsers(): Promise<UserProfile[]> {
         const defaultUsers: UserProfile[] = [
             {
-                id: 'f280a833-da47-4dd2-a594-4a4456caecdd',
+                id: '16f8c386-52e8-42b0-a929-7cd76d562b90',
                 email: 'seanbaker513@gmail.com',
                 role: 'admin',
                 approved: true,
@@ -193,23 +193,33 @@ export const AuthService = {
     async bulkAssignPermissions(userId: string, permissions: { nodeId: number; docid?: number; accessLevel: AccessLevel }[]): Promise<void> {
         if (permissions.length === 0) return;
 
+        // Ensure docid is always the true docid from documents table if not provided
+        const missingDocIds = permissions.filter(p => typeof p.docid !== 'number').map(p => p.nodeId);
+        const docIdMap = new Map<number, number>();
+        if (missingDocIds.length > 0) {
+            const { data: docData } = await supabase
+                .from('documents')
+                .select('nodeID, docid')
+                .in('nodeID', missingDocIds);
+            if (docData) {
+                docData.forEach((d: { nodeID: number; docid: number }) => docIdMap.set(d.nodeID, d.docid));
+            }
+        }
+
         const records = permissions.map(p => ({
             user_id: userId,
             node_id: p.nodeId,
-            docid: typeof p.docid === 'number' ? p.docid : p.nodeId,
+            docid: typeof p.docid === 'number' ? p.docid : (docIdMap.get(p.nodeId) ?? p.nodeId),
             access_level: p.accessLevel
         }));
 
-        try {
-            const { error } = await supabase
-                .from('document_permissions')
-                .upsert(records, { onConflict: 'node_id,docid,user_id' });
+        const { error } = await supabase
+            .from('document_permissions')
+            .upsert(records, { onConflict: 'node_id,docid,user_id' });
 
-            if (error) {
-                console.warn('[AuthService] Supabase bulkAssignPermissions warning:', error);
-            }
-        } catch (e) {
-            console.warn('[AuthService] Exception in bulkAssignPermissions:', e);
+        if (error) {
+            console.error('[AuthService] Supabase bulkAssignPermissions error:', error);
+            throw new Error(error.message || 'Failed to assign permissions');
         }
     },
 
@@ -219,18 +229,15 @@ export const AuthService = {
     async bulkRemovePermissions(userId: string, nodeIds: number[]): Promise<void> {
         if (nodeIds.length === 0) return;
 
-        try {
-            const { error } = await supabase
-                .from('document_permissions')
-                .delete()
-                .eq('user_id', userId)
-                .in('node_id', nodeIds);
+        const { error } = await supabase
+            .from('document_permissions')
+            .delete()
+            .eq('user_id', userId)
+            .in('node_id', nodeIds);
 
-            if (error) {
-                console.warn('[AuthService] Supabase bulkRemovePermissions warning:', error);
-            }
-        } catch (e) {
-            console.warn('[AuthService] Exception in bulkRemovePermissions:', e);
+        if (error) {
+            console.error('[AuthService] Supabase bulkRemovePermissions error:', error);
+            throw new Error(error.message || 'Failed to remove permissions');
         }
     },
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, DEV_ADMIN_TOKEN, DEV_ADMIN_USER } from '../lib/supabase';
 import { AuthService } from '../services/AuthService';
 import { McpService } from '../services/McpService';
 import tulkahLogo from '../assets/tulkah-logo.png';
@@ -43,26 +43,18 @@ export const Auth: React.FC = () => {
         setMessage(null);
 
         try {
-            const devUser = {
-                id: 'f280a833-da47-4dd2-a594-4a4456caecdd',
-                aud: 'authenticated',
-                role: 'authenticated',
-                email: 'seanbaker513@gmail.com',
-                app_metadata: { provider: 'email', providers: ['email'] },
-                user_metadata: { full_name: 'Sean Baker' },
-                created_at: new Date().toISOString()
-            };
-
             const devSession = {
-                access_token: 'dev-token-seanbaker513',
+                access_token: DEV_ADMIN_TOKEN,
                 token_type: 'bearer',
                 expires_in: 3600 * 24 * 365,
                 expires_at: Math.floor(Date.now() / 1000) + (3600 * 24 * 365),
                 refresh_token: 'dev-refresh-token',
-                user: devUser
+                user: DEV_ADMIN_USER
             };
 
             localStorage.setItem('sb-ryeoceystuqrdynbtsvt-auth-token', JSON.stringify(devSession));
+            localStorage.setItem('sb-localhost-auth-token', JSON.stringify(devSession));
+            localStorage.setItem('sb-127.0.0.1-auth-token', JSON.stringify(devSession));
             window.location.reload();
         } catch (error: any) {
             setMessage({

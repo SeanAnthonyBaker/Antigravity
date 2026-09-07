@@ -53,7 +53,12 @@ function App() {
     setIsAdmin(isAdm);
   }, []);
 
-  const loadNodes = useCallback(async (force = false, tagsOverride?: Set<number>, isSilent = false) => {
+  const loadNodes = useCallback(async (
+    force = false,
+    tagsOverride?: Set<number>,
+    isSilent = false,
+    discardUnsaved = false
+  ) => {
     const tagsToUse = tagsOverride || activeFilterTagIds;
 
     try {
@@ -85,9 +90,9 @@ function App() {
         });
         setExpandedNodeIds(filterExpanded);
       } else {
-        // Normal hierarchy mode: PRESERVE existing expanded nodes across reloads
+        // Normal hierarchy mode
         setExpandedNodeIds(prev => {
-          if (prev && prev.size > 0) {
+          if (!discardUnsaved && prev && prev.size > 0) {
             const validIds = new Set(data.map(n => n.nodeID));
             const preserved = new Set<number>();
             prev.forEach(id => {
@@ -98,30 +103,33 @@ function App() {
             return preserved.size > 0 ? preserved : prev;
           }
 
-          const savedExpanded = localStorage.getItem('hierarchy_expanded');
-          if (savedExpanded) {
-            try {
-              const parsed = JSON.parse(savedExpanded);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                const validIds = new Set(data.map(n => n.nodeID));
-                const preserved = new Set<number>();
-                parsed.forEach((id: number) => {
-                  if (validIds.has(id)) preserved.add(id);
-                });
-                return preserved;
+          if (!discardUnsaved) {
+            const savedExpanded = localStorage.getItem('hierarchy_expanded');
+            if (savedExpanded) {
+              try {
+                const parsed = JSON.parse(savedExpanded);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  const validIds = new Set(data.map(n => n.nodeID));
+                  const preserved = new Set<number>();
+                  parsed.forEach((id: number) => {
+                    if (validIds.has(id)) preserved.add(id);
+                  });
+                  return preserved;
+                }
+              } catch (e) {
+                console.error('Failed to parse saved hierarchy_expanded:', e);
               }
-            } catch (e) {
-              console.error('Failed to parse saved hierarchy_expanded:', e);
             }
           }
 
-          // Default initial fallback only
+          // Restore expansion state directly from database visibility
           const initialExpanded = new Set<number>();
           data.forEach(node => {
             if (node.visible && node.parentNodeID && node.parentNodeID > 0) {
               initialExpanded.add(node.parentNodeID);
             }
           });
+          localStorage.setItem('hierarchy_expanded', JSON.stringify(Array.from(initialExpanded)));
           return initialExpanded;
         });
       }
@@ -140,6 +148,12 @@ function App() {
   useEffect(() => {
     getCurrentSession().then((sess) => {
       if (sess) {
+        if (sess.access_token) {
+          supabase.auth.setSession({
+            access_token: sess.access_token,
+            refresh_token: sess.refresh_token || 'dev-refresh-token'
+          }).catch(() => {});
+        }
         setSession(sess as Session);
         localStorage.setItem('app_user_session', JSON.stringify(sess));
         checkAdminStatus();
@@ -286,25 +300,29 @@ function App() {
   const handleSaveHierarchy = async () => {
     try {
       setIsSaving(true);
+      const nodeMap = new Map<number, DocumentNode>();
+      nodes.forEach(n => nodeMap.set(n.nodeID, n));
+
       const visibilityMap = new Map<number, boolean>();
       const childrenMap = new Map<number, DocumentNode[]>();
       const roots: DocumentNode[] = [];
 
       nodes.forEach(node => {
-        if (!node.parentNodeID || node.parentNodeID === 0 || node.parentNodeID === -1) {
+        const pid = node.parentNodeID != null ? Number(node.parentNodeID) : null;
+        if (pid === null || pid <= 0 || !nodeMap.has(pid)) {
           roots.push(node);
         } else {
-          const list = childrenMap.get(node.parentNodeID) || [];
+          const list = childrenMap.get(pid) || [];
           list.push(node);
-          childrenMap.set(node.parentNodeID, list);
+          childrenMap.set(pid, list);
         }
       });
 
-      const updates: { nodeID: number; visible: boolean }[] = [];
+      const updates: DocumentNode[] = [];
 
       const processNode = (node: DocumentNode, isParentVisible: boolean, isParentExpanded: boolean) => {
         let isVisible = false;
-        if (!node.parentNodeID || node.parentNodeID === 0 || node.parentNodeID === -1) {
+        if (!node.parentNodeID || node.parentNodeID === 0 || node.parentNodeID === -1 || !nodeMap.has(Number(node.parentNodeID))) {
           isVisible = true;
         } else {
           isVisible = isParentVisible && isParentExpanded;
@@ -312,8 +330,9 @@ function App() {
 
         visibilityMap.set(node.nodeID, isVisible);
 
-        // Only update writeable nodes
-        if (node.access_level !== 'read_only') {
+        // Update writeable nodes
+        const isWritable = isAdmin || node.access_level !== 'read_only';
+        if (isWritable) {
           updates.push({
             ...node,
             visible: isVisible
@@ -328,6 +347,15 @@ function App() {
       roots.forEach(root => processNode(root, true, true));
 
       await NodeService.bulkUpdateNodes(updates);
+
+      // Immediately update local React state with new visibility values
+      setNodes(prev => prev.map(node => {
+        const newVis = visibilityMap.get(node.nodeID);
+        return newVis !== undefined ? { ...node, visible: newVis } : node;
+      }));
+
+      // Explicitly sync localStorage with current expansion set
+      localStorage.setItem('hierarchy_expanded', JSON.stringify(Array.from(expandedNodeIds)));
 
       setShowSaveMessage(true);
       setTimeout(() => setShowSaveMessage(false), 2000);
@@ -374,6 +402,8 @@ function App() {
             onClick={async () => {
               localStorage.removeItem('app_user_session');
               localStorage.removeItem('sb-ryeoceystuqrdynbtsvt-auth-token');
+              localStorage.removeItem('sb-localhost-auth-token');
+              localStorage.removeItem('sb-127.0.0.1-auth-token');
               localStorage.removeItem('hierarchy_nodes');
               localStorage.removeItem('hierarchy_expanded');
               setSession(null);
@@ -513,7 +543,7 @@ function App() {
         loading={loading}
         error={error}
         onToggle={handleToggleNode}
-        onRefresh={(isSilent = false) => loadNodes(true, undefined, isSilent)}
+        onRefresh={(isSilent = false) => loadNodes(true, undefined, isSilent, true)}
         onNodeAdded={handleNodeAdded}
         onNodeUpdated={handleNodeUpdated}
         onNodesUpdated={handleNodesUpdated}

@@ -59,9 +59,6 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
     const [testingSubnode, setTestingSubnode] = useState<DocumentNode | null>(null);
     const [createTestNode, setCreateTestNode] = useState<DocumentNode | null>(null);
     const [geminiApiKey, setGeminiApiKey] = useState('');
-    const [showThumbnails, setShowThumbnails] = useState<boolean>(() => {
-        return localStorage.getItem('hierarchy_show_thumbnails') !== 'false';
-    });
     const [showActions, setShowActions] = useState(false);
 
     // Fetch Gemini API key on mount
@@ -314,7 +311,6 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                 onCreateTest={(n) => setCreateTestNode(n)}
                 showActions={showActions}
                 selectedNodeId={activeTraversalNode?.nodeID}
-                showThumbnails={showThumbnails}
             />
         ))
     );
@@ -347,28 +343,6 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                     {showSaveMessage && <span style={{ color: '#4ade80', fontWeight: 'bold', animation: 'fadeIn 0.3s ease-in-out' }}>Hierarchy Saved</span>}
                     <button
                         onClick={() => {
-                            const nextVal = !showThumbnails;
-                            setShowThumbnails(nextVal);
-                            localStorage.setItem('hierarchy_show_thumbnails', String(nextVal));
-                        }}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.35rem',
-                            fontSize: '0.85rem',
-                            padding: '0.4rem 0.75rem',
-                            backgroundColor: showThumbnails ? 'rgba(168, 85, 247, 0.15)' : 'var(--color-bg-primary)',
-                            borderColor: showThumbnails ? 'rgba(168, 85, 247, 0.4)' : 'var(--color-border)',
-                            color: showThumbnails ? '#a855f7' : 'var(--color-text-secondary)',
-                            fontWeight: 500
-                        }}
-                        title={showThumbnails ? "Hide Visual Thumbnails in Tree" : "Show Visual Thumbnails in Tree"}
-                    >
-                        {showThumbnails ? '🖼️ Visual: ON' : '🖼️ Visual: OFF'}
-                    </button>
-
-                    <button
-                        onClick={() => {
                             const nextMode = viewMode === 'split' ? 'classic' : 'split';
                             setViewMode(nextMode);
                             localStorage.setItem('traversal_view_mode', nextMode);
@@ -389,19 +363,10 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                         {viewMode === 'split' ? '◫ Traversal View' : '☰ Classic Tree'}
                     </button>
 
-                    {isAdmin && (
+                    {isAdmin && treeData.length === 0 && (
                         <button
                             onClick={() => handleAddNode(null)}
                             disabled={loading}
-                            style={{
-                                backgroundColor: '#2563eb',
-                                color: '#fff',
-                                border: 'none',
-                                fontWeight: '600',
-                                borderRadius: '4px',
-                                padding: '0.5rem 1rem',
-                                cursor: 'pointer'
-                            }}
                             title="Add a top-level root node"
                         >
                             ➕ Add Root Node

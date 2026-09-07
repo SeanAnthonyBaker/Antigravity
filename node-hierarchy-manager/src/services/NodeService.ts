@@ -1,6 +1,33 @@
 import { supabase, getCurrentUser } from '../lib/supabase';
 import type { DocumentNode } from '../types';
 
+const ALLOWED_DOCUMENT_COLUMNS = new Set([
+    'nodeID',
+    'created_at',
+    'title',
+    'order',
+    'selected',
+    'text',
+    'parentNodeID',
+    'docid',
+    'level',
+    'type',
+    'visible',
+    'children',
+    'url',
+    'urltype',
+    'quiz_url'
+]);
+
+function sanitizeNodePayload(obj: Record<string, any>): Record<string, any> {
+    const clean: Record<string, any> = {};
+    for (const key of Object.keys(obj)) {
+        if (ALLOWED_DOCUMENT_COLUMNS.has(key)) {
+            clean[key] = obj[key];
+        }
+    }
+    return clean;
+}
 
 export const NodeService = {
     async fetchNodes() {
@@ -168,9 +195,8 @@ export const NodeService = {
         // Default to read_only if visible but no explicit permission
         return { ...node, access_level: 'read_only' as const };
     },
-
     async createNode(node: Partial<DocumentNode>) {
-        const { access_level: _access_level, ...nodeData } = node as Partial<DocumentNode> & { access_level?: string };
+        const nodeData = sanitizeNodePayload(node as Record<string, any>);
         const { data, error } = await supabase
             .from('documents')
             .insert([nodeData])
@@ -199,11 +225,11 @@ export const NodeService = {
     },
 
     async updateNode(nodeID: number, updates: Partial<DocumentNode>) {
-        const { access_level: _access_level, ...updateData } = updates as Partial<DocumentNode> & { access_level?: string };
-        console.log('NodeService.updateNode:', { nodeID, updateData });
+        const safeUpdate = sanitizeNodePayload(updates as Record<string, any>);
+        console.log('NodeService.updateNode:', { nodeID, safeUpdate });
         const { data, error } = await supabase
             .from('documents')
-            .update(updateData)
+            .update(safeUpdate)
             .eq('nodeID', nodeID)
             .select()
             .single();
@@ -247,10 +273,7 @@ export const NodeService = {
     },
 
     async bulkUpdateNodes(nodes: Partial<DocumentNode>[]) {
-        const safeNodes = nodes.map(n => {
-            const { access_level: _access_level, ...rest } = n as Partial<DocumentNode> & { access_level?: string };
-            return rest;
-        });
+        const safeNodes = nodes.map(n => sanitizeNodePayload(n as Record<string, any>));
 
         const { data, error } = await supabase
             .from('documents')

@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import type { DocumentNode, NodeTreeItem } from '../types';
 import { openMarkdownWindow } from '../utils/markdownUtils';
-import { getArtifactThumbnail } from '../utils/artifactUtils';
-import { PdfThumbnail } from './PdfThumbnail';
 import { TestService } from '../services/TestService';
 
 interface NodeItemProps {
@@ -24,10 +22,9 @@ interface NodeItemProps {
     onCreateTest?: (node: DocumentNode) => void;
     showActions: boolean;
     selectedNodeId?: number | null;
-    showThumbnails?: boolean;
 }
 
-export const NodeItem: React.FC<NodeItemProps> = ({ node, parentTitle, isExpanded, expandedNodeIds, onAdd, onEdit, onDelete, onClick, onDragStart, onDrop, onToggle, onMoveUpDown, onCreateHierarchy, onCurate, onExecuteTest, onCreateTest, showActions, selectedNodeId, showThumbnails = true }) => {
+export const NodeItem: React.FC<NodeItemProps> = ({ node, parentTitle, isExpanded, expandedNodeIds, onAdd, onEdit, onDelete, onClick, onDragStart, onDrop, onToggle, onMoveUpDown, onCreateHierarchy, onCurate, onExecuteTest, onCreateTest, showActions, selectedNodeId }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editTitle, setEditTitle] = useState(node.title);
     const [isDragging, setIsDragging] = useState(false);
@@ -76,8 +73,6 @@ export const NodeItem: React.FC<NodeItemProps> = ({ node, parentTitle, isExpande
     const hasChildren = node.childNodes && node.childNodes.length > 0;
     const canEdit = node.access_level === 'full_access';
     const isSelected = selectedNodeId === node.nodeID;
-    const artifactThumb = showThumbnails ? getArtifactThumbnail(node.url, node.urltype) : null;
-    const [thumbImgError, setThumbImgError] = useState(false);
     const pTitle = parentTitle?.trim().toLowerCase() || '';
     const isTestSubnode = pTitle === 'test' || pTitle.includes('test');
     const isQuizNode = node.type?.toLowerCase() === 'quiz' || node.urltype?.toLowerCase() === 'quiz' || Boolean(node.quiz_url && node.quiz_url.trim().length > 0);
@@ -108,49 +103,6 @@ export const NodeItem: React.FC<NodeItemProps> = ({ node, parentTitle, isExpande
                     >
                         {isExpanded ? '▼' : '▶'}
                     </button>
-
-                    {showThumbnails && artifactThumb && (
-                        <div
-                            className={`node-tree-thumbnail thumb-${artifactThumb.kind}`}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onClick(node);
-                            }}
-                            title={`${artifactThumb.label}: ${node.title} (Click to inspect)`}
-                        >
-                            {artifactThumb.imageUrl && !thumbImgError ? (
-                                <img
-                                    src={artifactThumb.imageUrl}
-                                    alt={node.title}
-                                    loading="lazy"
-                                    className="node-tree-thumb-img"
-                                    onError={() => setThumbImgError(true)}
-                                />
-                            ) : artifactThumb.isVideoFile && node.url ? (
-                                <video
-                                    src={node.url + '#t=0.5'}
-                                    preload="metadata"
-                                    muted
-                                    playsInline
-                                    className="node-tree-thumb-video"
-                                />
-                            ) : artifactThumb.kind === 'pdf' && node.url ? (
-                                <PdfThumbnail
-                                    url={node.url}
-                                    className="node-tree-thumb-img"
-                                    fallbackIcon={
-                                        <div className="node-tree-thumb-fallback">
-                                            <span className="tree-thumb-icon">{artifactThumb.icon}</span>
-                                        </div>
-                                    }
-                                />
-                            ) : (
-                                <div className="node-tree-thumb-fallback">
-                                    <span className="tree-thumb-icon">{artifactThumb.icon}</span>
-                                </div>
-                            )}
-                        </div>
-                    )}
 
                     {(isQuizNode || isTestSubnode) && (
                         <span
@@ -416,7 +368,6 @@ export const NodeItem: React.FC<NodeItemProps> = ({ node, parentTitle, isExpande
                             onCreateTest={onCreateTest}
                             showActions={showActions}
                             selectedNodeId={selectedNodeId}
-                            showThumbnails={showThumbnails}
                         />
                     ))}
                 </div>
